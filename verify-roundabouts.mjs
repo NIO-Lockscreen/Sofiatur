@@ -46,17 +46,18 @@ for(const entry of entries){
 }
 console.log(`Roundabouts: ${tested} exits from ${entries.length-automatic} entrances passed; touch, pause, directed route and automatic traversal and undo verified. ${automatic} entrances with one exit that is not a blindvei drive through automatically.`);
 
-// Exit arrows follow the exit numbers round the circle: right, then straight on, then left (then back).
+// Exit arrows follow the exit numbers round the circle: right, then straight on, then left, then back.
 const order={Høyre:0,'Rett frem':1,Venstre:2,Snu:3};let entrances=0;
 for(const entry of entries){env.test.enter(entry);const s=env.test.read();if(s.state!=='decision')continue;entrances++;
  const byNumber=[...s.choices].sort((a,b)=>a.exitNumber-b.exitNumber).map(c=>order[c.direction]);
  for(let i=1;i<byNumber.length;i++)assert.ok(byNumber[i]>=byNumber[i-1],`Arrows in exit order at ${entry.to}: ${s.choices.map(c=>c.exitNumber+' '+c.direction).join(', ')}`);}
-// The KIWI roundabout on the way to the kindergarten: General Bangs veg is straight on, and the car drives past the
+// The KIWI roundabout on the way to the kindergarten, entered at a slant: Odd Husbys veg carries straight on, General
+// Bangs veg is the first turn to the left (the user's description), and the car drives past the
 // splitter island without asking again; the next question is the KIWI parking entrance.
 env.test.enter(data.edges.find(e=>e.to==='105852'&&e.name==='Gamle Oslovei'));const kiwi=env.test.read().choices;
-assert.deepEqual(kiwi.map(c=>`${c.exitNumber}. ${c.direction} ${c.street}`),['1. Høyre Odd Husbys veg','2. Rett frem General Bangs veg','3. Venstre Gamle Oslovei']);
+assert.deepEqual(kiwi.map(c=>`${c.exitNumber}. ${c.direction} ${c.street}`),['1. Rett frem Odd Husbys veg','2. Venstre General Bangs veg','3. Snu Gamle Oslovei']);
 element('worldArrows').children[kiwi.findIndex(c=>c.street==='General Bangs veg')].onclick();const bangs=env.test.getActive().e;
 assert.equal(bangs.to,'6673481580','Past the splitter island to the next real junction (KIWI entrance)');let ringTop=0;
 for(let i=0;i<5000&&env.test.read().state==='driving';i++){frame();if(env.test.getActive()?.e===bangs)ringTop=Math.max(ringTop,env.test.read().speedKmh);}
 assert.equal(env.test.read().currentNode,'6673481580','Next stop is the KIWI entrance, not the splitter island');assert.ok(ringTop>=44,`Circle speed ${ringTop} km/h`);
-console.log(`Exit arrows in exit order at ${entrances} entrances; KIWI roundabout right/straight/left, straight through the splitter island: OK`);
+console.log(`Exit arrows in exit order at ${entrances} entrances; KIWI roundabout straight/left/back, straight through the splitter island: OK`);
