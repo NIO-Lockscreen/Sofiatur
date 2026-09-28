@@ -1,0 +1,332 @@
+[
+  {
+    "id": [
+      "188006431"
+    ],
+    "address": "Konrad Dahls veg 2C",
+    "source": "https://partners.no/eiendom/148842",
+    "photos": [
+      "https://rt-gateway.reeltime.no/proxy/webtop/wle/148842/image/9d413af4-d7a1-4dc9-b426-5e3acc6df654/Large",
+      "https://rt-gateway.reeltime.no/proxy/webtop/wle/148842/image/54947b3f-96db-4391-bd35-23d2d11dd68c/Large"
+    ],
+    "confidence": "high",
+    "limits": [
+      "Hex colours are approximate visual modelling choices, not sampled paint specifications. Twilight affects perceived colour.",
+      "A matching adjoining dark house is visible, but exact adjacent footprint-to-unit identity was not proven; do not propagate to all nearby ways."
+    ]
+  },
+  {
+    "id": [
+      "1037053105"
+    ],
+    "address": "Konrad Dahls veg 3A",
+    "source": "https://partners.no/eiendom/143743",
+    "photos": [
+      "https://rt-gateway.reeltime.no/proxy/webtop/wle/143743/image/0dd68a73-b65f-4e52-ad1e-4d7eb2d3c6ff/Large"
+    ],
+    "confidence": "high for facade and roof shape; medium for level split",
+    "limits": [
+      "Visible photo supports three tiers, but does not establish the formal building:levels versus roof:levels split. Model as two wall levels plus one roof level only if that convention is required.",
+      "Nearby matching gabled row is visible at right; precise OSM identity and facade extent not independently verified."
+    ]
+  },
+  {
+    "id": [
+      "1036716127",
+      "165650302"
+    ],
+    "address": "Skavlans veg 5",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=476583255",
+    "photos": [
+      "https://images.finncdn.no/dynamic/1600w/2026/9/vertical-2/16/5/476/583/255_cdb90ed2-a543-4edb-a90b-7f63c0cfb67d.jpg",
+      "https://images.finncdn.no/dynamic/1600w/2026/9/vertical-2/16/5/476/583/255_c810167f-3c95-4081-a5d7-7966c2822bf1.jpg",
+      "https://images.finncdn.no/dynamic/1600w/2026/9/vertical-2/16/5/476/583/255_f2b5d1ba-a9d6-405c-a383-193c7f94600a.jpg"
+    ],
+    "confidence": "high for primary and medium-high for paired half",
+    "limits": [
+      "Second way is the directly adjoining mapped half under the continuous photographed roof; treat white lower storey as a separate facade band.",
+      "Roof material varies visually; do not assert a uniform tile or metal material."
+    ]
+  },
+  {
+    "id": [
+      "191198736",
+      "1037053973"
+    ],
+    "address": "Dalgårdvegen 5",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=422892172",
+    "photos": [
+      "https://images.finncdn.no/dynamic/1600w/2025/8/vertical-2/20/2/422/892/172_f0c5e055-5785-4ec1-9b4b-73249abffdd2.jpg",
+      "https://images.finncdn.no/dynamic/1600w/2025/8/vertical-2/20/2/422/892/172_00103587-ee43-4de1-8588-f24259d3400e.jpg"
+    ],
+    "confidence": "high for primary; medium-high for paired half",
+    "limits": [
+      "Second way is directly adjoining mapped half under the continuous photographed roof.",
+      "Upper gable window is visible but habitable roof-storey count is not established. Exposed wall level count varies with slope."
+    ]
+  },
+  {
+    "id": [
+      "191314912"
+    ],
+    "address": "Vådanvegen 4D",
+    "source": "https://www.eiendomsmegler1.no/boliger/mn-32260204",
+    "photos": [
+      "https://images.em1.no/JHl7VQbU0_mCnTPzBrV5MCBL8U8=/1330x569/filters:blur(0):quality(70):strip_exif():strip_icc()/https%3A%2F%2Fem1.webtopsolutions.com%2Fflow%2F%2Fapi%2FPublic%2FCases%2Feb2e041b-ef75-4ffa-98ec-d6cd12f79504%2FImages%2F8116e023-38b4-4161-b0e4-8fb0a6fdcad0%2FOriginal",
+      "https://images.em1.no/eoztNbVLZZ9vNa3bqmEvrSfG4GU=/1330x569/filters:blur(0):quality(70):strip_exif():strip_icc()/https%3A%2F%2Fem1.webtopsolutions.com%2Fflow%2F%2Fapi%2FPublic%2FCases%2Feb2e041b-ef75-4ffa-98ec-d6cd12f79504%2FImages%2F93f6595f-e1b8-40d2-a2e6-7de8498d0e55%2FOriginal"
+    ],
+    "confidence": "high for visible wall; medium for whole-building colour",
+    "limits": [
+      "Views show only the balcony portion of subject building; its own roof and total levels are not visible.",
+      "Yellow gabled building in the window reflection/background is a neighbor; no roof shape or roof colour is transferred to subject. Existing OSM building:levels=2 remains source data, not a photo-confirmed observation."
+    ]
+  },
+  {
+    "id": [
+      "221087517"
+    ],
+    "address": "General Bangs veg 28A",
+    "source": "https://dnbeiendom.no/bolig/Trøndelag/Trondheim/Vest/General-bangs-veg-28a/818250270",
+    "photos": [
+      "https://dnb-nextgen-cdn-prod.azureedge.net/property-images/534ea056-2b1a-4a51-5fd4-08de2074a218/534ea056-2b1a-4a51-5fd4-08de2074a218.jpg",
+      "https://dnb-nextgen-cdn-prod.azureedge.net/property-images/534ea056-2b1a-4a51-5fd4-08de2074a218/534ea056-2b1a-4a51-5fd4-08de2074a218-1.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "28A is readable on wall. One full principal floor plus occupied gable attic, with lower single-storey wings. Address point lies within footprint. Tile roof. Color values are approximate visual swatches, not sampled measurements."
+    ]
+  },
+  {
+    "id": [
+      "221092498"
+    ],
+    "address": "Arnt Smistads veg 27D",
+    "source": "https://visning.ai/arnt-smistads-veg-27d-7023-trondheim-451802105",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2026/4/vertical-2/25/5/451/802/105_c77682aa-5f9d-4e14-a97f-5e5068b2992d.jpg",
+      "https://images.finncdn.no/dynamic/960w/2026/4/vertical-2/25/5/451/802/105_07e9831f-2dea-4edb-9156-3ce8cd50c85d.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "27D readable on front. Two full window rows and small attic gable window; attic photos also present. Address point inside footprint; OSM levels=2 agrees. Dark brown tile roof; small low side wing."
+    ]
+  },
+  {
+    "id": [
+      "221092485"
+    ],
+    "address": "Garage immediately beside Arnt Smistads veg 27D",
+    "source": "https://visning.ai/arnt-smistads-veg-27d-7023-trondheim-451802105",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2026/4/vertical-2/25/5/451/802/105_c77682aa-5f9d-4e14-a97f-5e5068b2992d.jpg",
+      "https://images.finncdn.no/dynamic/960w/2026/4/vertical-2/25/5/451/802/105_900c4b3b-17c8-457e-972c-340b0c49d2a6.jpg"
+    ],
+    "confidence": "medium",
+    "limits": [
+      "Detached double garage next to photographed house. Footprint adjacency and size agree; lower confidence than address-contained main house."
+    ]
+  },
+  {
+    "id": [
+      "89233415"
+    ],
+    "address": "Nordre Hallsetveg 78A apartment block",
+    "source": "https://visning.ai/nordre-hallsetveg-78a-7023-trondheim-450764625",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2026/2/vertical-2/12/5/450/764/625_d068fd11-7ea8-4ecb-8feb-1605beb194e3.jpg",
+      "https://images.finncdn.no/dynamic/960w/2026/2/vertical-2/12/5/450/764/625_1332d695-d92d-41f5-bc93-346309933c96.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "Three full residential levels, visible in three balcony/window rows; attic not established as occupied. Orange terracotta tile roof, skylights and several chimneys. Address inside footprint and OSM levels=3 agrees."
+    ]
+  },
+  {
+    "id": [
+      "186839677"
+    ],
+    "address": "Nordre Hallsetveg 91B apartment block",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=467865489",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2026/6/vertical-2/23/9/467/865/489_c3429763-882b-4a76-ae37-b171926dab8e.jpg",
+      "https://images.finncdn.no/dynamic/960w/2026/6/vertical-2/23/9/467/865/489_be4f4ffe-2a5c-4005-94d9-b9efd62e8627.jpg",
+      "https://images.finncdn.no/dynamic/960w/2026/6/vertical-2/23/9/467/865/489_2d0dee4f-4732-433f-8a5d-296e0491297c.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "Three full window rows; low basement strip does not establish fourth full level. Dark gray tiled HIP roof confirmed by sloping end faces in both aerial views. Address point inside footprint; OSM levels=3 agrees."
+    ]
+  },
+  {
+    "id": [
+      "930791650"
+    ],
+    "address": "Yellow detached house immediately west of Hallsetveg 91 block",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=467865489",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2026/6/vertical-2/23/9/467/865/489_be4f4ffe-2a5c-4005-94d9-b9efd62e8627.jpg",
+      "https://images.finncdn.no/dynamic/960w/2026/6/vertical-2/23/9/467/865/489_2d0dee4f-4732-433f-8a5d-296e0491297c.jpg"
+    ],
+    "confidence": "medium",
+    "limits": [
+      "Inferred footprint match from immediate west position, east-side detached garage, and aerial shape. Main level and occupied-looking roof space. Several intersecting gables. Mapping is geographic inference, no readable address."
+    ]
+  },
+  {
+    "id": [
+      "1036716294"
+    ],
+    "address": "Yellow garage southeast of yellow house west of Hallsetveg 91",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=467865489",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2026/6/vertical-2/23/9/467/865/489_be4f4ffe-2a5c-4005-94d9-b9efd62e8627.jpg",
+      "https://images.finncdn.no/dynamic/960w/2026/6/vertical-2/23/9/467/865/489_2d0dee4f-4732-433f-8a5d-296e0491297c.jpg"
+    ],
+    "confidence": "medium",
+    "limits": [
+      "Inferred from aerial arrangement with yellow house 930791650. Small separate rectangular garage, brown-red tiles, same yellow paint."
+    ]
+  },
+  {
+    "id": [
+      "709921162",
+      "1037054461"
+    ],
+    "address": "Per Sivles veg 37A/B",
+    "source": "https://www.eiendomsmegler1.no/boliger/mn-35260107",
+    "photos": [
+      "https://images.em1.no/gUJn_bqJGRsLd6_Ed8uP3E-oau8=/800x0/filters:blur(0):quality(70):strip_exif():strip_icc()/https%3A%2F%2Fem1.webtopsolutions.com%2Fflow%2F%2Fapi%2FPublic%2FCases%2F547ab80e-a1e6-4d52-904b-f86807879e62%2FImages%2F3b31f280-3c47-4701-af68-34f8faed7bc8%2FOriginal",
+      "https://images.em1.no/kiylToo4fu3kr5es1fX7oEVk9Xs=/800x0/filters:blur(0):quality(70):strip_exif():strip_icc()/https%3A%2F%2Fem1.webtopsolutions.com%2Fflow%2F%2Fapi%2FPublic%2FCases%2F547ab80e-a1e6-4d52-904b-f86807879e62%2FImages%2F06b25cf1-ecb8-4440-a2f4-e7adf3448c10%2FOriginal",
+      "https://images.em1.no/mWg4VAzIIRfHjH2RfXXfFCGKcms=/800x0/filters:blur(0):quality(70):strip_exif():strip_icc()/https%3A%2F%2Fem1.webtopsolutions.com%2Fflow%2F%2Fapi%2FPublic%2FCases%2F547ab80e-a1e6-4d52-904b-f86807879e62%2FImages%2Fad31eac8-ae6d-427e-afb4-eb8efb302982%2FOriginal"
+    ],
+    "confidence": "high",
+    "limits": [
+      "37A address point (-68.0,52.5) inside709921162; 37B (-55.8,55.3) inside1037054461. Both halves share the photographed mass.",
+      "Dimensions/door placements and full unseen elevations remain approximate."
+    ]
+  },
+  {
+    "id": [
+      "188008377"
+    ],
+    "address": "Per Sivles veg 2F",
+    "source": "https://www.eiendomsmegler1.no/boliger/mn-35230211",
+    "photos": [
+      "https://images.em1.no/fOv1AU9ywzB-r-_035EIfKopMkg=/800x0/filters:blur(0):quality(70):strip_exif():strip_icc()/https%3A%2F%2Fem1.webtopsolutions.com%2Fflow%2F%2Fapi%2FPublic%2FCases%2F65906f30-a932-4370-8457-db5d5a339921%2FImages%2F98b95919-b764-4aaa-aa52-5f6c649bf604%2FOriginal",
+      "https://images.em1.no/okTNKotgTfIR0UetayWsCKMu6rU=/800x0/filters:blur(0):quality(70):strip_exif():strip_icc()/https%3A%2F%2Fem1.webtopsolutions.com%2Fflow%2F%2Fapi%2FPublic%2FCases%2F65906f30-a932-4370-8457-db5d5a339921%2FImages%2Fa4b17b84-4277-4755-b641-2620133b8bef%2FOriginal",
+      "https://images.em1.no/UdHbO2-Nlc9d4-H7RYO56r1Cg7w=/800x0/filters:blur(0):quality(70):strip_exif():strip_icc()/https%3A%2F%2Fem1.webtopsolutions.com%2Fflow%2F%2Fapi%2FPublic%2FCases%2F65906f30-a932-4370-8457-db5d5a339921%2FImages%2Fdbc6dbd9-4021-496f-95c2-d7ca31dd946f%2FOriginal",
+      "https://images.em1.no/y5XmC3QAlKxuG4-ZunFSaBSgTe0=/800x0/filters:blur(0):quality(70):strip_exif():strip_icc()/https%3A%2F%2Fem1.webtopsolutions.com%2Fflow%2F%2Fapi%2FPublic%2FCases%2F65906f30-a932-4370-8457-db5d5a339921%2FImages%2F18bff593-27ad-4190-b1ba-33de1615208a%2FOriginal"
+    ],
+    "confidence": "high",
+    "limits": [
+      "Address point (555.9,-238.9) is inside188008377. Roof should not be a normal steep gable.",
+      "Dimensions/door placements and full unseen elevations remain approximate."
+    ]
+  },
+  {
+    "id": [
+      "187113248"
+    ],
+    "address": "Herlofsons veg 3C",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=460143047",
+    "photos": [
+      "https://images.finncdn.no/dynamic/1600w/2026/4/vertical-2/17/7/460/143/047_9d465008-371c-43b8-aa90-2b852eb3faca.jpg",
+      "https://images.finncdn.no/dynamic/1600w/2026/4/vertical-2/17/7/460/143/047_88cec3e9-cd19-48c9-a415-1ef9d21b047c.jpg",
+      "https://images.finncdn.no/dynamic/1600w/2026/4/vertical-2/17/7/460/143/047_83851cd3-06ca-4344-a971-5587b5988c73.jpg",
+      "https://images.finncdn.no/dynamic/1600w/2026/4/vertical-2/17/7/460/143/047_de803f12-cc53-4703-a91d-c95dda28aef6.jpg",
+      "https://images.finncdn.no/dynamic/1600w/2026/4/vertical-2/17/7/460/143/047_2fbd39af-f936-4e5e-a15c-8be573017afb.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "Address point (26.1,-26.5) inside187113248.",
+      "Dimensions/door placements and full unseen elevations remain approximate."
+    ]
+  },
+  {
+    "id": [
+      "187113242"
+    ],
+    "address": "Herlofsons veg 3B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=460143047",
+    "photos": [
+      "https://images.finncdn.no/dynamic/1600w/2026/4/vertical-2/17/7/460/143/047_88cec3e9-cd19-48c9-a415-1ef9d21b047c.jpg",
+      "https://images.finncdn.no/dynamic/1600w/2026/4/vertical-2/17/7/460/143/047_2fbd39af-f936-4e5e-a15c-8be573017afb.jpg",
+      "https://images.finncdn.no/dynamic/1600w/2026/4/vertical-2/17/7/460/143/047_c42efc0f-ac68-47ce-b584-f31e9ea816f3.jpg"
+    ],
+    "confidence": "medium-high",
+    "limits": [
+      "Address point (20.8,-39.3) inside187113242. Immediate north/northwest neighbor of3C, matching white/dark house seen behind it in h3c-26 and27.",
+      "Dimensions/door placements and full unseen elevations remain approximate."
+    ]
+  },
+  {
+    "id": [
+      "188007143"
+    ],
+    "address": "Kristofer Uppdals veg 23 main house",
+    "source": null,
+    "photos": [],
+    "confidence": "medium",
+    "limits": [
+      "23B address point (171.4,-85.1) inside188007143. 23A point (178.2,-74.7) instead lands in garage188007049; do not use address nearest-footprint alone or style that garage as the full house.",
+      "Dimensions/door placements and full unseen elevations remain approximate."
+    ]
+  },
+  {
+    "id": [
+      "1037053662"
+    ],
+    "address": "Ugla skole entrance and main block",
+    "source": "https://www.trondheim.kommune.no/org/oppvekst/skoler/ugla-skole/",
+    "photos": [
+      "https://www.trondheim.kommune.no/globalassets/10-bilder-og-filer/02-skoler/skoler-p-a/ugla-skole/bilder/ugla-skole.jpg"
+    ],
+    "confidence": "medium",
+    "limits": [
+      "Campus identified by OSM relation6901842. Uglavegen13 address node2958664901 at(10.3386893,63.3997459) is near south entrance of connector1037053662. Flanking wings89285924 and1037053661. Exact photo-to-entrance footprint is inferred; full wing heights are not established by this single image.",
+      "Dimensions/door placements and full unseen elevations remain approximate."
+    ]
+  },
+  {
+    "id": [
+      "89285924"
+    ],
+    "address": "Ugla school flanking wing",
+    "source": "https://www.trondheim.kommune.no/org/oppvekst/skoler/ugla-skole/",
+    "confidence": "medium",
+    "limits": [
+      "Flat concrete school wing from entrance photo; exact heights and unseen facades estimated."
+    ],
+    "photos": [
+      "https://www.trondheim.kommune.no/globalassets/10-bilder-og-filer/02-skoler/skoler-p-a/ugla-skole/bilder/ugla-skole.jpg"
+    ]
+  },
+  {
+    "id": [
+      "1037053661"
+    ],
+    "address": "Ugla school flanking wing",
+    "source": "https://www.trondheim.kommune.no/org/oppvekst/skoler/ugla-skole/",
+    "confidence": "medium",
+    "limits": [
+      "Flat concrete school wing from entrance photo; exact heights and unseen facades estimated."
+    ],
+    "photos": [
+      "https://www.trondheim.kommune.no/globalassets/10-bilder-og-filer/02-skoler/skoler-p-a/ugla-skole/bilder/ugla-skole.jpg"
+    ]
+  },
+  {
+    "id": [
+      "221087561"
+    ],
+    "address": "General Bangs veg38",
+    "source": "https://partners.no/eiendom/154218",
+    "photos": [
+      "https://rt-gateway.reeltime.no/proxy/webtop/wle/154218/image/3b4ce32b-1c68-48a9-af95-618528344789/Large"
+    ],
+    "confidence": "high",
+    "limits": [
+      "Photo downloaded and inspected Sept27. Cream vertical timber, gray-brown tiled gables, white balcony, basement. Stepped wings simplified."
+    ]
+  }
+]
