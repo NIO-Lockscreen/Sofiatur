@@ -14,3 +14,15 @@
 
 
 .camera-help,.free-help{font-size:14px}#freeControls{position:absolute;inset:auto 20px 32px;z-index:33;display:flex;justify-content:space-between;pointer-events:none}.free-steering,.free-actions{display:flex;gap:12px;pointer-events:auto}#freeControls button{min-width:76px;height:70px;border:3px solid #fff8df;border-radius:20px;background:#174e48;color:#fff8df;font-size:18px;font-weight:800;box-shadow:0 5px 0 #0b3833;touch-action:none;user-select:none;-webkit-user-select:none}#freeLeft,#freeRight{font-size:36px!important}#freeControls button.held{background:#dfa72d;color:#173e3c;transform:translateY(3px);box-shadow:none}body:has(#freeControls:not([hidden])) .trip,body:has(#freeControls:not([hidden])) .mini{bottom:122px}.paused #freeControls{opacity:.45;pointer-events:none}.paused #freeControls button{pointer-events:none}@media(max-width:700px){#freeControls{left:14px;right:14px;bottom:30px}.free-steering,.free-actions{gap:8px}#freeControls button{min-width:62px;height:62px;font-size:15px}.trip,.mini{bottom:30px}}
+
+.reward-teaser{margin:-8px 0 16px;padding:10px 14px;border-radius:14px;background:#fff4cf;color:#6b5a26;font-size:13px;font-weight:700;line-height:1.4}
+.rewards{margin:-6px 0 18px;padding:12px 14px 13px;border-radius:16px;background:#eef3e7}.rewards-title{font-size:13px;font-weight:800;margin-bottom:9px}
+.swatches{display:flex;flex-wrap:wrap;gap:7px}.swatch-list{display:contents}
+.swatch{width:30px;height:30px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px #0002,0 2px 5px #1a3a3222;padding:0;position:relative;overflow:hidden}
+.swatch.on{box-shadow:0 0 0 3px #174e48,0 2px 6px #1a3a3240;transform:scale(1.12)}
+.swatch.custom{background:conic-gradient(#ff4b4b,#ffd94a,#5ccf66,#41a7f4,#a65fe6,#ff4b4b);cursor:pointer;display:inline-block}
+.swatch.custom input{position:absolute;inset:-6px;width:calc(100% + 12px);height:calc(100% + 12px);opacity:0;cursor:pointer;border:0;padding:0}
+.trail-row{display:flex;align-items:center;gap:9px;margin-top:11px;font-size:13px;font-weight:750;cursor:pointer}.trail-row input{width:20px;height:20px;accent-color:#174e48}
+.unlock{margin:14px 0 4px;padding:12px 14px;border-radius:14px;background:#fff1c4;color:#5d4c17;font-size:15px;font-weight:750;line-height:1.45;animation:reward-pop .6s ease-out}
+@keyframes reward-pop{0%{transform:scale(.8);opacity:0}60%{transform:scale(1.04);opacity:1}100%{transform:scale(1)}}
+@media(max-height:650px) and (min-width:701px){.rewards{margin:-8px 0 12px;padding:9px 12px}.reward-teaser{margin:-6px 0 10px}}

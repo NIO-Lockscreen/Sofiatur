@@ -15,7 +15,10 @@ let choices=0,peak=0;while(read().state!=='finished'&&choices<180){let s=read();
  for(let i=0;i<600&&read().state==='driving';i++){step();peak=Math.max(peak,read().speedKmh);assert.ok(read().speedKmh<=200);}}
 assert.equal(read().state,'finished');assert.ok(read().travelledMetres>2900&&read().travelledMetres<3400);assert.equal(element('finish').hidden,false);console.log('Full route arrival: OK',read(),{choices});
 assert.ok(peak>=195,'Automatic acceleration must approach 200 without touching any speed selector');
-element('again').onclick();assert.equal(read().state,'decision');assert.equal(read().travelledMetres,0);console.log('Replay: OK');
+// The first arrival unlocks the colour picker: the button leads to the start screen, where it is shown.
+assert.equal(element('unlock').hidden,false);assert.match(element('again').textContent,/farge/);
+element('again').onclick();assert.equal(read().state,'intro');assert.equal(element('welcome').hidden,false);assert.equal(element('rewards').hidden,false);
+act('start_drive');assert.equal(read().state,'decision');assert.equal(read().travelledMetres,0);console.log('Replay via the start screen after the first reward: OK');
 let off=false;for(let k=0;k<8&&!off;k++){const s=read();const other=s.choices.find(c=>!c.recommended);if(other){act('choose_road',{edgeId:other.id});off=true;}else act('choose_road',{edgeId:s.choices[0].id});for(let j=0;j<5000&&read().state==='driving';j++)step();}assert.ok(off);assert.ok(read().choices.some(c=>c.recommended));console.log('Detour retains route guidance: OK');
 element('driveMode').onchange({target:{value:'free'}});assert.equal(read().state,'free');assert.equal(element('worldArrows').hidden,true);assert.equal(element('freeControls').hidden,false);for(let i=0;i<25;i++)step();
 const key=(type,code)=>listeners.get(type)({code,key:code==='Space'?' ':code,preventDefault(){},repeat:false});key('keydown','Space');key('keydown','ArrowRight');for(let i=0;i<8;i++)step();assert.equal(read().paused,false);assert.equal(read().drifting,true);key('keyup','Space');key('keyup','ArrowRight');step();assert.equal(read().drifting,false);

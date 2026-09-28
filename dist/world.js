@@ -4,6 +4,8 @@ import {roadWidth} from './transit-geometry.js';
 import {createRoadSurface} from './road-surface.js';
 import {createET5} from './car-model.js';
 import {addMunkvoll,addTransit,addMunkvollDetails} from './munkvoll.js';
+import {createTrafficLights} from './traffic-lights.js';
+import {createRainbowTrail} from './rainbow-trail.js';
 import {addLandmark,addLandmarkGround} from './landmarks.js';
 import {buildingStyles,addKiwi} from './building-details.js';
 import {createCameraControls} from './camera-controls.js';
@@ -104,7 +106,11 @@ export function createWorld(canvas, data) {
  function label(text,x,z,colour='#164e48',scale=10){const c=document.createElement('canvas');c.width=512;c.height=128;const ctx=c.getContext('2d');ctx.fillStyle=colour;ctx.beginPath();ctx.roundRect(4,6,504,108,24);ctx.fill();ctx.strokeStyle='#fff5d9';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#fff9e8';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 32px sans-serif';ctx.fillText(text,256,61,465);const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;const mat=new T.SpriteMaterial({map:tex,depthTest:true});const s=new T.Sprite(mat);s.position.set(x,height(x,z)+7,z);s.scale.set(scale,scale/4,1);s.matrixAutoUpdate=false;s.updateMatrix();scene.add(s);return s;}
  const labels=[];labels.push(label('⌂  Hjemme',0,0,'#654d3e',10));for(const p of data.pois)if(['supermarket','school','kindergarten','fuel','bakery'].includes(p.type))labels.push(label(p.name,p.x,p.z,p.type==='kindergarten'?'#c98938':'#3b6955',p.name.length>19?17:13));
  const goalPos=data.nodes[data.goal];const goalRing=new T.Mesh(new T.TorusGeometry(4,.18,6,48),new T.MeshBasicMaterial({color:'#ffe17a'}));goalRing.rotation.x=Math.PI/2;goalRing.position.set(goalPos[0],height(...goalPos)+.7,goalPos[1]);scene.add(goalRing);labels.push(label('⚑  Her er barnehagen!',...goalPos,'#c58b29',14));
- const {car,wheels}=createET5(T);scene.add(car);
+ const trafficLights=createTrafficLights({T,scene,height,data});
+ const {car,wheels,paint}=createET5(T);scene.add(car);
+ // Paint colour (a reward). Black keeps the original deep metallic look; brighter colours are less metallic so they read as colour.
+ function setCarColour(hex){paint.color.set(hex);const c=paint.color,dark=Math.max(c.r,c.g,c.b)<.06;paint.metalness=dark?.72:.38;paint.roughness=dark?.24:.3;car.userData.colour=hex;}
+ const trail=createRainbowTrail({T,scene});
  // Soft contact shadow remains visible with economical mobile shadows.
  const shc=document.createElement('canvas');shc.width=64;shc.height=64;const sc=shc.getContext('2d'),gr=sc.createRadialGradient(32,32,6,32,32,32);gr.addColorStop(0,'rgba(24,40,35,.48)');gr.addColorStop(1,'rgba(24,40,35,0)');sc.fillStyle=gr;sc.fillRect(0,0,64,64);const sm=new T.Mesh(new T.PlaneGeometry(3.4,6),new T.MeshBasicMaterial({map:new T.CanvasTexture(shc),transparent:true,depthWrite:false}));sm.rotation.x=-Math.PI/2;scene.add(sm);
  const confetti=[];const cg=new T.BoxGeometry(.12,.04,.24);for(let i=0;i<75;i++){const m=new T.Mesh(cg,new T.MeshBasicMaterial({color:['#ffd66c','#6ad2c9','#e99584','#fff5cf'][i%4]}));m.visible=false;scene.add(m);confetti.push(m);}
@@ -115,7 +121,7 @@ export function createWorld(canvas, data) {
  function setTurnArrow(info){if(!info){turnArrow.visible=false;return;}paintTurnArrow(info.symbol,info.label);turnArrow.visible=true;}
  const look=new T.Vector3(),target=new T.Vector3();let initialized=false,overview=false;
  const up=new T.Vector3(0,1,0),horizontal=new T.Vector3(),orbitDirection=new T.Vector3(),camLook=new T.Vector3(),facing=new T.Euler(0,0,0,'YXZ'),rot=new T.Quaternion();
- const follows={high:{back:26,up:22,ahead:13},intro:{back:14,up:7,ahead:2},follow:{back:14,up:7.8,ahead:8}};
+ const follows={high:{back:26,up:22,ahead:13},intro:{back:14,up:7,ahead:2},introCar:{back:14,up:7,ahead:2},follow:{back:14,up:7.8,ahead:8}};
  // Adaptive resolution, judged over ~1.5 s: when many frames are slow (under ~45 fps) the pixel ratio steps down; with steady headroom it steps
  // back up. A step up that proves too slow makes the next try wait twice as long.
  const maxRatio=renderer.getPixelRatio(),minRatio=Math.min(maxRatio,.8);let frameAt=0,frames=0,slowFrames=0,fastFrames=0,frameTime=0,raiseAt=0,raisedAt=-1e9,backoff=8000;
@@ -128,6 +134,7 @@ export function createWorld(canvas, data) {
  }
  function update(dt,pos,tangent,velocity,mode,finished,time,carFacing=tangent){
  adaptResolution();
+ trail.update(dt,pos,carFacing);trafficLights.update(dt,pos);
  car.position.copy(pos);const yaw=Math.atan2(-carFacing.x,-carFacing.z);rot.setFromEuler(facing.set(Math.atan2(carFacing.y,Math.hypot(carFacing.x,carFacing.z)),yaw,0));car.quaternion.slerp(rot,1-Math.exp(-dt*9));wheels.forEach(w=>w.rotation.x-=velocity*dt/.39);
  sm.position.set(pos.x,height(pos.x,pos.z)+.25,pos.z);sm.rotation.z=-yaw;turnArrow.position.set(pos.x,pos.y+6.2+Math.sin(time*3)*.22,pos.z);turnArrow.scale.setScalar(4.5+Math.sin(time*3)*.16);if(finished)turnArrow.visible=false;
  const follow=follows[mode]||follows.follow;
@@ -138,6 +145,8 @@ export function createWorld(canvas, data) {
  camLook.copy(pos).addScaledVector(orbitDirection,orbit.active?0:follow.ahead);camLook.y+=1;
  // Face the home's photographed west-facing gables before setting off.
  if(mode==='intro'&&!orbit.active){target.set(-27,height(-27,-15)+5,-15);camLook.set(0,height(-7,-3)+2.4,0);}
+ // With the colour picker on the start screen, turn a little left so the parked car shows beside the card, house still in view.
+ if(mode==='introCar'&&!orbit.active){target.set(-27,height(-27,-15)+5,-15);camLook.set(2.8,height(-7,-3)+2.4,-11.3);}
  if(!initialized){camera.position.copy(target);look.copy(camLook);initialized=true;}else{camera.position.lerp(target,1-Math.exp(-dt*3));look.lerp(camLook,1-Math.exp(-dt*4));}camera.lookAt(look);
  sun.position.set(pos.x-70,pos.y+160,pos.z-90);sun.target.position.copy(pos);sun.target.updateMatrixWorld();
  for(const c of chunks){const d=Math.hypot(c.x-pos.x,c.z-pos.z);c.mesh.visible=d<680;c.mesh.castShadow=d<110;}
@@ -147,5 +156,5 @@ export function createWorld(canvas, data) {
  renderer.render(scene,camera);
  }
  function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
- resize();window.addEventListener('resize',resize);return {height,rawHeight,carHeight,scene,camera,renderer,car,update,resize,setTurnArrow,resetCamera(){initialized=false;orbit.reset();}};
+ resize();window.addEventListener('resize',resize);return {height,rawHeight,carHeight,scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setTrail:trail.setOn,trafficLights,resetCamera(){initialized=false;orbit.reset();trail.clear();}};
 }

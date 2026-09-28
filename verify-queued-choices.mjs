@@ -49,7 +49,8 @@ assert.ok(replanned,'A roundabout exit was queued');assert.ok(roundaboutUndo,'A 
 console.log(`Whole trip on queued choices: ${queuedTurns} queued, up to ${maxQueued} at once, 0 stops, crossing speeds ${crossings.join('/')} km/h: OK`);
 
 // Keyboard arrows queue as well; undoing a roundabout or restarting clears the queue.
-element('again').onclick();act('choose_road',{edgeId:recommended(read().choices)});waitUpcoming();
+element('again').onclick();if(read().state==='intro')act('start_drive'); // the first arrival unlocks a reward and returns to the start screen
+act('choose_road',{edgeId:recommended(read().choices)});waitUpcoming();
 const keyFor={Venstre:'ArrowLeft',Høyre:'ArrowRight','Rett frem':'ArrowUp',Snu:'ArrowDown'},pick=read().upcoming[0];
 listeners.get('keydown')({key:keyFor[pick.direction],code:keyFor[pick.direction],repeat:false,preventDefault(){}});assert.equal(read().queued.map(q=>q.id).join(),String(pick.id));
 element('again').onclick();assert.equal(read().queued.length,0);assert.equal(turnArrow,null);

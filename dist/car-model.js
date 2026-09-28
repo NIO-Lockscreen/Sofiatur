@@ -62,9 +62,10 @@ export function createET5(T){
  line([[-.85,.967,2.11],[-.7,.985,2.22],[0,.996,2.25],[.7,.985,2.22],[.85,.967,2.11]],.025,paint);
  box(1.19,.12,.035,rubber,0,.365,-2.398);box(1.41,.13,.06,trim,0,.27,2.34);
  for(const x of [-.5,-.25,0,.25,.5])box(.024,.10,.21,rubber,x,.24,2.30);
- function decal(text,w,h,x,y,z,front=false){const c=document.createElement('canvas');c.width=512;c.height=128;const q=c.getContext('2d');q.fillStyle=text==='SOFIA'?'#f0f2e9':'#15191d';q.fillRect(0,0,512,128);q.fillStyle=text==='SOFIA'?'#24333a':'#d8e1e4';q.font='500 68px sans-serif';q.textAlign='center';q.textBaseline='middle';q.fillText(text,256,67,470);const tx=new T.CanvasTexture(c);tx.colorSpace=T.SRGBColorSpace;const o=mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:tx,side:T.DoubleSide}),x,y,z);if(front)o.rotation.y=Math.PI;}
+ // The number plate has its own white background; the chrome badges sit straight on the paint, whatever its colour.
+ function decal(text,w,h,x,y,z,front=false){const plate=text==='SOFIA',c=document.createElement('canvas');c.width=512;c.height=128;const q=c.getContext('2d');if(plate){q.fillStyle='#f0f2e9';q.fillRect(0,0,512,128);}else q.clearRect(0,0,512,128);q.fillStyle=plate?'#24333a':'#d8e1e4';q.font='500 68px sans-serif';q.textAlign='center';q.textBaseline='middle';q.fillText(text,256,67,470);const tx=new T.CanvasTexture(c);tx.colorSpace=T.SRGBColorSpace;const o=mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:tx,side:T.DoubleSide,transparent:!plate}),x,y,z);if(front)o.rotation.y=Math.PI;}
  decal('SOFIA',.53,.13,0,.58,2.401);decal('N I O',.33,.083,0,.764,2.403);decal('ET5',.11,.047,-.54,.70,2.40);decal('SOFIA',.53,.13,0,.52,-2.404,true);
  // Simple geometric NIO bonnet emblem.
  line([[-.04,.838,-2.20],[-.036,.857,-2.20],[0,.869,-2.20],[.036,.857,-2.20],[.04,.838,-2.20]],.006,silver);
- car.userData={model:'NIO ET5 sedan',length:4.79,width:1.96,wheelbase:2.888};return {car,wheels};
+ car.userData={model:'NIO ET5 sedan',length:4.79,width:1.96,wheelbase:2.888};return {car,wheels,paint};
 }
