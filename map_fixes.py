@@ -33,6 +33,72 @@ def merge_close_junctions(edges, limit=12):
     return [(s['from'], s['to']) for s in links]
 
 
+def _edge(data, path, name, eid):
+    pts = [data['nodes'][n] for n in path]
+    length = round(sum(((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) ** .5 for a, b in zip(pts, pts[1:])), 2)
+    return {'from': path[0], 'to': path[-1], 'path': path, 'length': length, 'name': name, 'restricted': False,
+            'roundabout': False, 'id': eid, 'cost': round(length * 1.8, 2)}
+
+
+def _next_id(data):
+    return max(e['id'] for e in data['edges']) + 1
+
+
+def add_school_parking_spur(data):
+    """The Palermo traffic lights have a fourth arm: the service road north to the Byåsen skole parking (OSM way
+    169742455). Service roads are left out of the road network, so the junction only had three roads; this adds the
+    arm up to the parking, which makes left, straight on and right possible from every approach."""
+    if any(e['name'] == 'Byåsen skole' for e in data['edges']):
+        return
+    road = next(r for r in data['roads'] if str(r['id']) == '169742455')
+    junction = next(n for n, p in data['nodes'].items() if p == road['p'][0])
+    path = [junction]
+    for i, p in enumerate(road['p'][1:9], 1):
+        n = f'skoleparkering-{i}'
+        data['nodes'][n] = p
+        path.append(n)
+    eid = _next_id(data)
+    data['edges'] += [_edge(data, path, 'Byåsen skole', eid), _edge(data, path[::-1], 'Bøckmans veg', eid + 1)]
+
+
+def add_kiwi_parking(data):
+    """KIWI Dalgård's customer parking (OSM 526443211), reached by Drivhusvegen from General Bangs veg just after the
+    roundabout. General Bangs veg gets a junction at the entrance (OSM node 6673481580), and a short road leads to a
+    parking place in the lot, where the game unlocks the KIWI paint."""
+    if 'kiwi-parkering' in data['nodes']:
+        return
+    entrance = '6673481580'
+    drive = next(r for r in data['roads'] if str(r['id']) == '526443225')
+    # Drivhusvegen from its west end at General Bangs veg: (769,193) -> (771,196) -> (775,203) -> (781,208) -> (798,237)
+    west = drive['p'][::-1]
+    assert data['nodes'][entrance] == west[0]
+    a, b = west[3], west[4]
+    park = [round(a[0] + (b[0] - a[0]) * .4, 2), round(a[1] + (b[1] - a[1]) * .4, 2)]
+    path = [entrance]
+    for i, p in enumerate(west[1:4], 1):
+        data['nodes'][f'kiwi-{i}'] = p
+        path.append(f'kiwi-{i}')
+    data['nodes']['kiwi-parkering'] = park
+    path.append('kiwi-parkering')
+    eid = _next_id(data)
+    new = [_edge(data, path, 'KIWI', eid), _edge(data, path[::-1], 'General Bangs veg', eid + 1)]
+    eid += 2
+    # Split the General Bangs veg edges that pass the entrance, so it becomes a junction.
+    for e in [e for e in data['edges'] if entrance in e['path'][1:-1]]:
+        k = e['path'].index(entrance)
+        second = dict(e, path=e['path'][k:], id=eid)
+        eid += 1
+        first = dict(e, path=e['path'][:k + 1])
+        for part in (first, second):
+            pts = [data['nodes'][n] for n in part['path']]
+            part['length'] = round(sum(((q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2) ** .5 for p, q in zip(pts, pts[1:])), 2)
+            part['cost'] = round(e['cost'] * part['length'] / e['length'], 2)
+            part['from'], part['to'] = part['path'][0], part['path'][-1]
+        data['edges'][data['edges'].index(e)] = first
+        new.append(second)
+    data['edges'] += new
+
+
 if __name__ == '__main__':
     # Apply to the built map in place (the terrain and everything else are kept as they are).
     import json
@@ -40,5 +106,7 @@ if __name__ == '__main__':
     path = Path('dist/map.json')
     data = json.loads(path.read_text())
     merged = merge_close_junctions(data['edges'])
+    add_school_parking_spur(data)
+    add_kiwi_parking(data)
     path.write_text(json.dumps(data, ensure_ascii=False, separators=(',', ':')))
     print(len(merged), 'junction links merged:', merged)

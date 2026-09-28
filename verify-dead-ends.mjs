@@ -18,7 +18,9 @@ for(let i=0;i<12;i++){await Promise.resolve();frame();}await init;
 
 // Independent check: from the chosen road, the kindergarten or home is reachable without driving back through the junction.
 const adjacency=new Map();for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);}
-function leadsOn(from,blocked){const seen=new Set([...blocked,from]),todo=[from];if(blocked.includes(from))return false;while(todo.length){const n=todo.pop();if(n===data.goal||n===data.start)return true;for(const e of adjacency.get(n)||[])if(!seen.has(e.to)){seen.add(e.to);todo.push(e.to);}}return false;}
+// KIWI's parking counts as a place to go, like home and the kindergarten.
+const destinations=new Set([data.goal,data.start,'kiwi-parkering']);
+function leadsOn(from,blocked){const seen=new Set([...blocked,from]),todo=[from];if(blocked.includes(from))return false;while(todo.length){const n=todo.pop();if(destinations.has(n))return true;for(const e of adjacency.get(n)||[])if(!seen.has(e.to)){seen.add(e.to);todo.push(e.to);}}return false;}
 function ring(n){const nodes=[];while(!nodes.includes(n)){nodes.push(n);const next=(adjacency.get(n)||[]).find(e=>e.roundabout);if(!next)break;n=next.to;}return nodes;}
 
 // Explore every junction reachable from home, following every offered road and every automatic drive.
@@ -28,11 +30,12 @@ while(queue.length){
  const roads=env.test.enter(e),s=env.test.read();
  if(s.state==='driving'){automatic++;queue.push(roads[0]);continue;}
  assert.equal(s.state,'decision');decisions++;
- assert.ok(s.currentNode===data.start||s.choices.some(c=>c.direction!=='Snu'),`Led into a blindvei at ${s.currentNode}`);
+ // The school parking is reached only from the Palermo lights, where every road is offered on purpose.
+ assert.ok(s.currentNode===data.start||['kiwi-parkering','skoleparkering-8'].includes(s.currentNode)||s.choices.some(c=>c.direction!=='Snu'),`Led into a blindvei at ${s.currentNode}`);
  for(const c of roads){
   const shown=s.choices.find(x=>x.id===c.id);offered++;
-  if(!shown.recommended)assert.ok(leadsOn(c.to,c.roundaboutPlan?ring(s.currentNode):[s.currentNode]),`${c.name} at ${s.currentNode} is a blindvei`);
-  queue.push(c);
+  if(!shown.recommended&&s.currentNode!=='91783986')assert.ok(leadsOn(c.to,c.roundaboutPlan?ring(s.currentNode):[s.currentNode]),`${c.name} at ${s.currentNode} is a blindvei`);
+  if(s.currentNode!=='91783986'||leadsOn(c.to,[s.currentNode]))queue.push(c); // extra Palermo roads are checked below
  }
 }
 console.log(`Blindveier: ${decisions} reachable junctions offer ${offered} roads, none a dead end; ${automatic} single-road junctions drive on automatically.`);
@@ -83,3 +86,12 @@ const junctionOf=new Map();for(const e of data.edges){if(!junctionOf.has(e.from)
 const short=data.edges.filter(e=>!e.roundabout&&!e.stub&&e.length<12&&junctionOf.get(e.from)?.size>2&&junctionOf.get(e.to)?.size>2&&![...adjacency.get(e.from),...adjacency.get(e.to)].some(x=>x.roundabout));
 assert.deepEqual(short.map(e=>e.id),[],'No two junctions under 12 m apart ask separately');
 console.log(`Gamle Oslovei: ${osloveiState.choices.map(c=>c.direction+' '+c.street).join(', ')}; no junction pairs under 12 m: OK`);
+
+// The Palermo traffic lights offer left, straight on and right from every road in, also with blindveier off.
+element('deadEnds').onchange({target:{value:'off'}});
+for(const e of data.edges.filter(e=>e.to==='91783986')){env.test.enter(e);const dirs=env.test.read().choices.map(c=>c.direction);
+ for(const d of ['Venstre','Rett frem','Høyre'])assert.ok(dirs.includes(d),`${d} from ${e.name} at the Palermo lights: ${dirs}`);}
+// KIWI: just after the roundabout the parking can be chosen; it is not a blindvei.
+env.test.enter(data.edges.find(e=>e.to==='6673481580'&&e.from==='5119347221'));const kiwiChoices=env.test.read().choices;
+assert.ok(kiwiChoices.some(c=>c.street==='KIWI'&&c.direction==='Høyre'),`KIWI offered: ${kiwiChoices.map(c=>c.direction+' '+c.street)}`);
+console.log(`Palermo lights: left, straight on and right from all ${data.edges.filter(e=>e.to==='91783986').length} roads in; KIWI parking offered after the roundabout: OK`);

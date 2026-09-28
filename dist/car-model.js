@@ -67,5 +67,10 @@ export function createET5(T){
  decal('SOFIA',.53,.13,0,.58,2.401);decal('N I O',.33,.083,0,.764,2.403);decal('ET5',.11,.047,-.54,.70,2.40);decal('SOFIA',.53,.13,0,.52,-2.404,true);
  // Simple geometric NIO bonnet emblem.
  line([[-.04,.838,-2.20],[-.036,.857,-2.20],[0,.869,-2.20],[.036,.857,-2.20],[.04,.838,-2.20]],.006,silver);
- car.userData={model:'NIO ET5 sedan',length:4.79,width:1.96,wheelbase:2.888};return {car,wheels,paint};
+ // Secret KIWI paint (unlocked by parking at KIWI Dalgård): the shop's logo on both front doors, hidden until chosen.
+ const kiwi=[];{const c=document.createElement('canvas');c.width=512;c.height=160;const q=c.getContext('2d');q.clearRect(0,0,512,160);q.fillStyle='#1f2424';q.beginPath();q.roundRect?.(6,10,500,140,34);if(!q.roundRect)q.rect(6,10,500,140);q.fill();
+  q.fillStyle='#8dc63f';q.font='900 104px Arial';q.textAlign='center';q.textBaseline='middle';q.fillText('KIWI',210,84);q.fillStyle='#ffffff';q.font='bold 32px Arial';q.fillText('mini',420,62);q.fillText('pris',420,104);
+  const tx=new T.CanvasTexture(c);tx.colorSpace=T.SRGBColorSpace;const m=new T.MeshBasicMaterial({map:tx,transparent:true,side:T.FrontSide});
+  for(const side of [-1,1]){const o=new T.Mesh(new T.PlaneGeometry(1.25,.39),m);o.position.set(side*.99,.6,.12);o.rotation.y=side*Math.PI/2;o.visible=false;car.add(o);kiwi.push(o);}}
+ car.userData={model:'NIO ET5 sedan',length:4.79,width:1.96,wheelbase:2.888};return {car,wheels,paint,skins:{kiwi}};
 }

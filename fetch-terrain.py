@@ -1,5 +1,5 @@
 import json,math,urllib.parse,subprocess,concurrent.futures,pathlib
-D=json.load(open('dist/map.json'));lon,lat=D['origin'];sx=111320*math.cos(math.radians(lat)); step=40; x0=-240;z0=-720;nx=64;nz=40
+D=json.load(open('dist/map.json'));lon,lat=D['origin'];sx=111320*math.cos(math.radians(lat)); step=40; x0=-800;z0=-1080;nx=78;nz=49 # widened west and north for Lianvatnet and Kyvatnet
 points=[[round(lon+(x0+i*step)/sx,7),round(lat-(z0+j*step)/111320,7)] for j in range(nz) for i in range(nx)]
 pathlib.Path('terrain-cache').mkdir(exist_ok=True)
 def task(item):

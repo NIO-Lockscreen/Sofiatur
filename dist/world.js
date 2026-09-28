@@ -15,7 +15,11 @@ export { T };
 export function createWorld(canvas, data) {
  const terrain=data.terrain;
  const verticalExaggeration=1.45,verticalDatum=160;
- function rawHeight(x,z){const a=Math.max(0,Math.min(terrain.nx-1.001,(x-terrain.x0)/terrain.step)),b=Math.max(0,Math.min(terrain.nz-1.001,(z-terrain.z0)/terrain.step)),i=Math.floor(a),j=Math.floor(b),u=a-i,v=b-j,h=terrain.heights;return (h[j*terrain.nx+i]*(1-u)+h[j*terrain.nx+i+1]*u)*(1-v)+(h[(j+1)*terrain.nx+i]*(1-u)+h[(j+1)*terrain.nx+i+1]*u)*v;}
+ // Lakes added by add-lakes.py (OSM multipolygons) lie flat at their level: the ground inside them is lowered to it.
+ const lakes=data.areas.filter(a=>a.level!=null).map(a=>({...a,holes:a.holes||[],box:[Math.min(...a.p.map(v=>v[0])),Math.min(...a.p.map(v=>v[1])),Math.max(...a.p.map(v=>v[0])),Math.max(...a.p.map(v=>v[1]))]}));
+ function inRing(ring,x,z){let inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const [ax,az]=ring[j],[bx,bz]=ring[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)inside=!inside;}return inside;}
+ function lakeAt(x,z){for(const l of lakes)if(x>l.box[0]&&x<l.box[2]&&z>l.box[1]&&z<l.box[3]&&inRing(l.p,x,z)&&!l.holes.some(h=>inRing(h,x,z)))return l;return null;}
+ function rawHeight(x,z){if(lakes.length){const lake=lakeAt(x,z);if(lake)return lake.level;}const a=Math.max(0,Math.min(terrain.nx-1.001,(x-terrain.x0)/terrain.step)),b=Math.max(0,Math.min(terrain.nz-1.001,(z-terrain.z0)/terrain.step)),i=Math.floor(a),j=Math.floor(b),u=a-i,v=b-j,h=terrain.heights;return (h[j*terrain.nx+i]*(1-u)+h[j*terrain.nx+i+1]*u)*(1-v)+(h[(j+1)*terrain.nx+i]*(1-u)+h[(j+1)*terrain.nx+i+1]*u)*v;}
  function height(x,z){return verticalDatum+(rawHeight(x,z)-verticalDatum)*verticalExaggeration;}
  const scene=new T.Scene();scene.background=new T.Color('#bfdfed');scene.fog=new T.Fog('#bfdfed',165,510);
  // Small procedural sky/ground reflection map keeps the black sedan's curvature
@@ -44,7 +48,10 @@ export function createWorld(canvas, data) {
  const groundStep=8;for(let z=terrain.z0;z<terrain.z0+(terrain.nz-1)*terrain.step;z+=groundStep)for(let x=terrain.x0;x<terrain.x0+(terrain.nx-1)*terrain.step;x+=groundStep){let s=groundStep;let c=['#93b96e','#96bc71','#99bd73','#91b56c'][Math.abs(Math.floor(x/40)*7+Math.floor(z/40)*11)%4];quad(bucket(x,z),[x,height(x,z),z],[x+s,height(x+s,z),z],[x+s,height(x+s,z+s),z+s],[x,height(x,z+s),z+s],c);}
 
  const greens={forest:'#7fa562',wood:'#7fa562',grass:'#8fb96b',meadow:'#9ac47a',park:'#8fba68',pitch:'#7eaf68',playground:'#bcca8b',recreation_ground:'#9bbe70',allotments:'#9eb878',water:'#6daeb4'};
- for(const a of data.areas)if(a.type==='water')groundPoly(a.p,greens.water,.09);
+ for(const a of data.areas)if(a.type==='water'&&a.level==null)groundPoly(a.p,greens.water,.09);
+ // Lake surfaces are flat, a little above the lowered ground, with holes for the islands.
+ for(const l of lakes){const y=verticalDatum+(l.level-verticalDatum)*verticalExaggeration+.12,all=[...l.p,...l.holes.flat()];
+  for(const f of T.ShapeUtils.triangulateShape(l.p.map(v=>new T.Vector2(...v)),l.holes.map(h=>h.map(v=>new T.Vector2(...v)))))tri(bucket(all[f[0]][0],all[f[0]][1]),...f.map(i=>[all[i][0],y,all[i][1]]),'#4d9bc9');}
  const roadSegments=[];
  const roadSurface=createRoadSurface(data.roads,height),gravel=new Set(data.roads.filter(road=>['gravel','compacted','unpaved'].includes(road.surface)||(road.name==='Herlofsons veg'&&road.p.some(p=>Math.hypot(p[0],p[1])<58))));
  for(const q of roadSurface.quads)quad(bucket(q.x,q.z),...q.corners,q.kerb?'#b8bbae':gravel.has(q.road)?'#989789':'#737d7b');
@@ -95,19 +102,22 @@ export function createWorld(canvas, data) {
  const obstacles=new Map();function index(x,z,val){let k=Math.floor(x/40)+','+Math.floor(z/40);if(!obstacles.has(k))obstacles.set(k,[]);obstacles.get(k).push(val);}
  for(const r of roadSegments){const [a,b]=r;let len=Math.hypot(a[0]-b[0],a[1]-b[1]);for(let d=0;d<=len;d+=15){let t=len?d/len:0;index(a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,{road:r});}index(b[0],b[1],{road:r});}
  for(const b of houseBounds)for(let x=Math.floor(b[0]/40)*40;x<=b[2];x+=40)for(let z=Math.floor(b[1]/40)*40;z<=b[3];z+=40)index(x,z,{house:b});
- function clear(x,z){for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++){let a=obstacles.get((Math.floor(x/40)+dx)+','+(Math.floor(z/40)+dz))||[];for(const o of a){if(o.road&&distanceSegment(x,z,o.road[0],o.road[1])<o.road[2]/2+4)return false;if(o.house&&x>o.house[0]&&x<o.house[2]&&z>o.house[1]&&z<o.house[3])return false;}}return true;}
+ function clear(x,z){if(lakeAt(x,z))return false;for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++){let a=obstacles.get((Math.floor(x/40)+dx)+','+(Math.floor(z/40)+dz))||[];for(const o of a){if(o.road&&distanceSegment(x,z,o.road[0],o.road[1])<o.road[2]/2+4)return false;if(o.house&&x>o.house[0]&&x<o.house[2]&&z>o.house[1]&&z<o.house[3])return false;}}return true;}
  function cone(b,x,y,z,r,h,c,sides=7){for(let i=0;i<sides;i++){let a=i/sides*Math.PI*2,a2=(i+1)/sides*Math.PI*2;tri(b,[x+Math.cos(a)*r,y,z+Math.sin(a)*r],[x+Math.cos(a2)*r,y,z+Math.sin(a2)*r],[x,y+h,z],c);}}
  addLandmarkGround({height,bucket,quad,box,groundPoly,ribbon});
  addMunkvollDetails({T,scene,data,wallBase,bucket,quad,box});
  const homeShrubs=[[-15,1],[-12,4],[-9,6],[-6,8],[-3,9],[0,12],[3,10],[6,9],[9,8],[11,7],[-8,10],[-11,7]];for(const [x,z] of homeShrubs){const b=bucket(x,z),y=height(x,z);const g=new T.IcosahedronGeometry(1,1);g.scale(1.65,.85,1.45);g.translate(x,y+.7,z);const p=g.attributes.position;for(let i=0;i<p.count;i+=3)tri(b,...[0,1,2].map(j=>[p.getX(i+j),p.getY(i+j),p.getZ(i+j)]),'#688845');g.dispose();}
  for(let n=0;n<12000;n++){let x=-220+rnd()*2440,z=-700+rnd()*1520;if(!clear(x,z))continue;let y=height(x,z),h=3+rnd()*5,b=bucket(x,z);box(b,x,y+h*.3,z,.3,h*.6,.3,'#8c7152');if(rnd()<.6){cone(b,x,y+h*.25,z,h*.38,h*.7,'#538b60');cone(b,x,y+h*.54,z,h*.29,h*.55,'#689b64');}else{const geo=new T.IcosahedronGeometry(h*.35,0);geo.translate(x,y+h*.72,z);const at=geo.getAttribute('position');const cc=['#74a357','#8eb15f','#659850'][n%3];for(let i=0;i<at.count;i+=3)tri(b,[at.getX(i),at.getY(i),at.getZ(i)],[at.getX(i+1),at.getY(i+1),at.getZ(i+1)],[at.getX(i+2),at.getY(i+2),at.getZ(i+2)],cc);geo.dispose();}}
+ // Around the lakes, where the terrain grid was widened: the same trees, less dense.
+ for(let n=0;n<4000;n++){let x=terrain.x0+rnd()*(terrain.nx-1)*terrain.step,z=terrain.z0+rnd()*(terrain.nz-1)*terrain.step;if(x>-220&&x<2220&&z>-700&&z<820||!clear(x,z))continue;let y=height(x,z),h=3+rnd()*5,b=bucket(x,z);box(b,x,y+h*.3,z,.3,h*.6,.3,'#8c7152');if(rnd()<.6){cone(b,x,y+h*.25,z,h*.38,h*.7,'#538b60');cone(b,x,y+h*.54,z,h*.29,h*.55,'#689b64');}else{const geo=new T.IcosahedronGeometry(h*.35,0);geo.translate(x,y+h*.72,z);const at=geo.getAttribute('position');const cc=['#74a357','#8eb15f','#659850'][n%3];for(let i=0;i<at.count;i+=3)tri(b,[at.getX(i),at.getY(i),at.getZ(i)],[at.getX(i+1),at.getY(i+1),at.getZ(i+1)],[at.getX(i+2),at.getY(i+2),at.getZ(i+2)],cc);geo.dispose();}}
  const chunks=[];
  for(const b of buckets.values()){const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(b.p.slice(0,b.n),3));g.setAttribute('color',new T.BufferAttribute(b.c.slice(0,b.n),3));b.p=b.c=null;g.computeVertexNormals();g.computeBoundingSphere();const m=new T.Mesh(g,staticMaterial);m.receiveShadow=true;m.matrixAutoUpdate=false;m.updateMatrix();scene.add(m);chunks.push({mesh:m,x:b.x,z:b.z});}
  function label(text,x,z,colour='#164e48',scale=10){const c=document.createElement('canvas');c.width=512;c.height=128;const ctx=c.getContext('2d');ctx.fillStyle=colour;ctx.beginPath();ctx.roundRect(4,6,504,108,24);ctx.fill();ctx.strokeStyle='#fff5d9';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#fff9e8';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 32px sans-serif';ctx.fillText(text,256,61,465);const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;const mat=new T.SpriteMaterial({map:tex,depthTest:true});const s=new T.Sprite(mat);s.position.set(x,height(x,z)+7,z);s.scale.set(scale,scale/4,1);s.matrixAutoUpdate=false;s.updateMatrix();scene.add(s);return s;}
- const labels=[];labels.push(label('⌂  Hjemme',0,0,'#654d3e',10));for(const p of data.pois)if(['supermarket','school','kindergarten','fuel','bakery'].includes(p.type))labels.push(label(p.name,p.x,p.z,p.type==='kindergarten'?'#c98938':'#3b6955',p.name.length>19?17:13));
+ const labels=[];labels.push(label('⌂  Hjemme',0,0,'#654d3e',10));for(const l of lakes)if(l.label)labels.push(label('≈  '+l.name,...l.label,'#2f6f96',12));for(const p of data.pois)if(['supermarket','school','kindergarten','fuel','bakery'].includes(p.type))labels.push(label(p.name,p.x,p.z,p.type==='kindergarten'?'#c98938':'#3b6955',p.name.length>19?17:13));
  const goalPos=data.nodes[data.goal];const goalRing=new T.Mesh(new T.TorusGeometry(4,.18,6,48),new T.MeshBasicMaterial({color:'#ffe17a'}));goalRing.rotation.x=Math.PI/2;goalRing.position.set(goalPos[0],height(...goalPos)+.7,goalPos[1]);scene.add(goalRing);labels.push(label('⚑  Her er barnehagen!',...goalPos,'#c58b29',14));
  const trafficLights=createTrafficLights({T,scene,height,data});
- const {car,wheels,paint}=createET5(T);scene.add(car);
+ const {car,wheels,paint,skins}=createET5(T);scene.add(car);
+ function setCarSkin(name){for(const [k,list] of Object.entries(skins))for(const m of list)m.visible=k===name;car.userData.skin=name||null;}
  // Paint colour (a reward). Black keeps the original deep metallic look; brighter colours are less metallic so they read as colour.
  function setCarColour(hex){paint.color.set(hex);const c=paint.color,dark=Math.max(c.r,c.g,c.b)<.06;paint.metalness=dark?.72:.38;paint.roughness=dark?.24:.3;car.userData.colour=hex;}
  const trail=createRainbowTrail({T,scene});
@@ -156,5 +166,5 @@ export function createWorld(canvas, data) {
  renderer.render(scene,camera);
  }
  function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
- resize();window.addEventListener('resize',resize);return {height,rawHeight,carHeight,scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setTrail:trail.setOn,trafficLights,resetCamera(){initialized=false;orbit.reset();trail.clear();}};
+ resize();window.addEventListener('resize',resize);return {height,rawHeight,carHeight,scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setTrail:trail.setOn,trafficLights,resetCamera(){initialized=false;orbit.reset();trail.clear();}};
 }
