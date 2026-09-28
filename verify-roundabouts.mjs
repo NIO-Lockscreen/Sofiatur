@@ -4,11 +4,12 @@ import assert from 'node:assert/strict';
 import * as T from './dist/vendor/three.js';
 import {roundaboutChoices} from './dist/roundabouts.js';
 import {createFreeDrive} from './dist/free-drive.js';
+import {createMusic} from './dist/music.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8')),els=new Map();let callbacks=[],now=0;
 const canvasContext=new Proxy({},{get:()=>()=>{}});
 const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',style:{},children:[],classList:{add(){},remove(){},toggle(){}},setAttribute(){},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(){},getContext(){return canvasContext}});return els.get(id);};
 const env={T,roundaboutChoices,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener(){}},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){}})};
-env.createFreeDrive=createFreeDrive;
+env.createFreeDrive=createFreeDrive;env.createMusic=createMusic;
 const ctx=vm.createContext(env);
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
 const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,enter(e){current=e.to;previous=e.from;active=null;paused=false;state='decision';maxKmh=200;position.copy(point(current));heading.copy(endDirection(e,false));showDecision();},getActive:()=>active};})()`,ctx);
@@ -25,7 +26,7 @@ for(const entry of entries){
  env.test.enter(entry);
  if(env.test.read().state==='driving'){
   // Only one exit leads on; the car drives through the circle without asking.
-  const plan=env.test.getActive().e;assert.ok(plan.roundaboutPlan);assert.equal(element('worldArrows').children.length,0);assert.equal(element('undoRoundabout').hidden,true);
+  const plan=env.test.getActive().e;assert.ok(plan.roundaboutPlan);assert.ok(element('worldArrows').children.every(b=>b.className.includes('ahead')),'Only arrows for the next junction are shown');assert.equal(element('undoRoundabout').hidden,true);
   assert.ok(leadsOn(plan.to,ring(entry.to)),'Automatic exit is not a blindvei');automatic++;continue;
  }
  const exits=env.test.read().choices;

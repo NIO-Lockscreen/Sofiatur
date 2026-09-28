@@ -4,10 +4,11 @@ import assert from 'node:assert/strict';
 import * as T from './dist/vendor/three.js';
 import {roundaboutChoices} from './dist/roundabouts.js';
 import {createFreeDrive} from './dist/free-drive.js';
+import {createMusic} from './dist/music.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8')),els=new Map();let callbacks=[],now=0;
 const canvasContext=new Proxy({},{get:()=>()=>{}});
 const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',style:{},children:[],classList:{add(){},remove(){},toggle(){}},setAttribute(){},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(){},getContext(){return canvasContext}});return els.get(id);};
-const env={T,roundaboutChoices,createFreeDrive,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener(){}},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){}})};
+const env={T,roundaboutChoices,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener(){}},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){}})};
 const ctx=vm.createContext(env);
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
 // enter(e) arrives at the end of road e (home when null) and returns the offered roads, or the road the car took by itself.
@@ -38,7 +39,7 @@ console.log(`Blindveier: ${decisions} reachable junctions offer ${offered} roads
 
 // Vetle Vislies veg: straight ahead is a blindvei, so the car turns right onto Herlofsons veg by itself.
 const vetle=data.edges.find(e=>e.from==='201494485'&&e.to==='201497757');
-let [taken]=env.test.enter(vetle);assert.equal(env.test.read().state,'driving');assert.equal(taken.name,'Herlofsons veg');assert.equal(taken.to,'254330189');assert.equal(element('worldArrows').children.length,0);
+let [taken]=env.test.enter(vetle);assert.equal(env.test.read().state,'driving');assert.equal(taken.name,'Herlofsons veg');assert.equal(taken.to,'254330189');assert.ok(element('worldArrows').children.every(b=>b.className.includes('ahead')),'Only arrows for the next junction are shown');
 // Nordre Hallsetveg ahead is a blindvei, so the car follows Adolf Andreassens veg toward the kindergarten.
 [taken]=env.test.enter(data.edges.find(e=>e.from==='91783985'&&e.to==='254465339'));assert.equal(env.test.read().state,'driving');assert.equal(taken.name,'Adolf Andreassens veg');
 console.log('Right-or-blindvei junctions drive on automatically: OK');

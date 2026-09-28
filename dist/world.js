@@ -1,6 +1,7 @@
 import {addBuildingRoof} from './building-roofs.js';
 import {createJunctionBuildings,addJunctionDetails} from './junction-buildings.js';
 import {roadWidth} from './transit-geometry.js';
+import {createRoadSurface} from './road-surface.js';
 import {createET5} from './car-model.js';
 import {addMunkvoll,addTransit} from './munkvoll.js';
 import {addLandmark,addLandmarkGround} from './landmarks.js';
@@ -32,7 +33,7 @@ export function createWorld(canvas, data) {
  function quad(b,a,c,d,e,colour){tri(b,a,c,d,colour);tri(b,a,d,e,colour);}
  function box(b,cx,cy,cz,wx,wy,wz,colour,angle=0){let pts=[];for(let y of [-.5,.5])for(let z of [-.5,.5])for(let x of [-.5,.5])pts.push([cx+x*wx*Math.cos(angle)+z*wz*Math.sin(angle),cy+y*wy,cz-x*wx*Math.sin(angle)+z*wz*Math.cos(angle)]);for(let f of [[0,1,3,2],[4,6,7,5],[0,4,5,1],[2,3,7,6],[0,2,6,4],[1,5,7,3]])quad(b,...f.map(i=>pts[i]),colour);}
  function groundPoly(poly,colour,lift=.07){if(poly.length<3)return;let p=poly.slice();if(p[0][0]===p.at(-1)[0]&&p[0][1]===p.at(-1)[1])p.pop();const shapes=p.map(v=>new T.Vector2(v[0],v[1]));for(const f of T.ShapeUtils.triangulateShape(shapes,[])){const vertices=f.map(i=>[p[i][0],height(...p[i])+lift,p[i][1]]);tri(bucket(vertices[0][0],vertices[0][2]),...vertices,colour);}}
- function ribbon(points,width,colour,lift=.13){for(let j=0;j<points.length-1;j++){let a=points[j],b=points[j+1],len=Math.hypot(b[0]-a[0],b[1]-a[1]);if(len<.01)continue;let dx=(b[0]-a[0])/len,dz=(b[1]-a[1])/len;for(let d=0;d<len;d+=8){let e=Math.min(len,d+8),ax=a[0]+d*dx,az=a[1]+d*dz,bx=a[0]+e*dx,bz=a[1]+e*dz;quad(bucket(ax,az),[ax-dz*width/2,height(ax-dz*width/2,az+dx*width/2)+lift,az+dx*width/2],[ax+dz*width/2,height(ax+dz*width/2,az-dx*width/2)+lift,az-dx*width/2],[bx+dz*width/2,height(bx+dz*width/2,bz-dx*width/2)+lift,bz-dx*width/2],[bx-dz*width/2,height(bx-dz*width/2,bz+dx*width/2)+lift,bz+dx*width/2],colour);}}}
+ function ribbon(points,width,colour,lift=.13,ground=height){for(let j=0;j<points.length-1;j++){let a=points[j],b=points[j+1],len=Math.hypot(b[0]-a[0],b[1]-a[1]);if(len<.01)continue;let dx=(b[0]-a[0])/len,dz=(b[1]-a[1])/len;for(let d=0;d<len;d+=8){let e=Math.min(len,d+8),ax=a[0]+d*dx,az=a[1]+d*dz,bx=a[0]+e*dx,bz=a[1]+e*dz;quad(bucket(ax,az),[ax-dz*width/2,ground(ax-dz*width/2,az+dx*width/2)+lift,az+dx*width/2],[ax+dz*width/2,ground(ax+dz*width/2,az-dx*width/2)+lift,az-dx*width/2],[bx+dz*width/2,ground(bx+dz*width/2,bz-dx*width/2)+lift,bz-dx*width/2],[bx-dz*width/2,ground(bx-dz*width/2,bz+dx*width/2)+lift,bz+dx*width/2],colour);}}}
  // Terrain uses the same interpolated DTM surface as roads and the car.
  let seed=42;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}
  const groundStep=8;for(let z=terrain.z0;z<terrain.z0+(terrain.nz-1)*terrain.step;z+=groundStep)for(let x=terrain.x0;x<terrain.x0+(terrain.nx-1)*terrain.step;x+=groundStep){let s=groundStep;let c=['#93b96e','#96bc71','#99bd73','#91b56c'][Math.abs(Math.floor(x/40)*7+Math.floor(z/40)*11)%4];quad(bucket(x,z),[x,height(x,z),z],[x+s,height(x+s,z),z],[x+s,height(x+s,z+s),z+s],[x,height(x,z+s),z+s],c);}
@@ -40,9 +41,14 @@ export function createWorld(canvas, data) {
  const greens={forest:'#7fa562',wood:'#7fa562',grass:'#8fb96b',meadow:'#9ac47a',park:'#8fba68',pitch:'#7eaf68',playground:'#bcca8b',recreation_ground:'#9bbe70',allotments:'#9eb878',water:'#6daeb4'};
  for(const a of data.areas)if(a.type==='water')groundPoly(a.p,greens.water,.09);
  const roadSegments=[];
- for(const road of data.roads){const width=roadWidth(road);const nearHome=road.p.some(p=>Math.hypot(p[0],p[1])<58);const gravel=['gravel','compacted','unpaved'].includes(road.surface)||(nearHome&&road.name==='Herlofsons veg');ribbon(road.p,width+1.4,'#b8bbae',.3);ribbon(road.p,width,gravel?'#989789':'#737d7b',.39);
+ const roadSurface=createRoadSurface(data.roads,height),gravel=new Set(data.roads.filter(road=>['gravel','compacted','unpaved'].includes(road.surface)||(road.name==='Herlofsons veg'&&road.p.some(p=>Math.hypot(p[0],p[1])<58))));
+ for(const q of roadSurface.quads)quad(bucket(q.x,q.z),...q.corners,q.kerb?'#b8bbae':gravel.has(q.road)?'#989789':'#737d7b');
+ // The car rides 8 cm above the drawn road (wheel bottoms on the asphalt), on terrain elsewhere.
+ const roadTop=(x,z)=>roadSurface.heightAt(x,z)??height(x,z)+.39,carHeight=(x,z)=>roadTop(x,z)+.08;
+ for(const road of data.roads){const width=roadWidth(road);
  for(let i=0;i<road.p.length-1;i++)roadSegments.push([road.p[i],road.p[i+1],width]);
- if(road.mark){for(let i=0;i<road.p.length-1;i++){let a=road.p[i],b=road.p[i+1],l=Math.hypot(b[0]-a[0],b[1]-a[1]);for(let s=0;s<l-2;s+=9)ribbon([[a[0]+(b[0]-a[0])*s/l,a[1]+(b[1]-a[1])*s/l],[a[0]+(b[0]-a[0])*Math.min(l,s+3)/l,a[1]+(b[1]-a[1])*Math.min(l,s+3)/l]],.13,'#e8d797',.43);}}
+ // Centre-line dashes sit on the drawn road in 1.5 m pieces, so they neither float above nor sink into it.
+ if(road.mark){for(let i=0;i<road.p.length-1;i++){let a=road.p[i],b=road.p[i+1],l=Math.hypot(b[0]-a[0],b[1]-a[1]);const at=s=>[a[0]+(b[0]-a[0])*Math.min(l,s)/l,a[1]+(b[1]-a[1])*Math.min(l,s)/l];for(let s=0;s<l-2;s+=9)ribbon([at(s),at(s+1.5),at(s+3)],.13,'#e8d797',.04,roadTop);}}
  }
  addTransit({T,scene,data,height,bucket,quad,box,groundPoly,ribbon,roadSegments});
  const junctionBuildings=createJunctionBuildings(data);
@@ -91,7 +97,7 @@ export function createWorld(canvas, data) {
  // Soft contact shadow remains visible with economical mobile shadows.
  const shc=document.createElement('canvas');shc.width=64;shc.height=64;const sc=shc.getContext('2d'),gr=sc.createRadialGradient(32,32,6,32,32,32);gr.addColorStop(0,'rgba(24,40,35,.48)');gr.addColorStop(1,'rgba(24,40,35,0)');sc.fillStyle=gr;sc.fillRect(0,0,64,64);const sm=new T.Mesh(new T.PlaneGeometry(3.4,6),new T.MeshBasicMaterial({map:new T.CanvasTexture(shc),transparent:true,depthWrite:false}));sm.rotation.x=-Math.PI/2;scene.add(sm);
  const confetti=[];const cg=new T.BoxGeometry(.12,.04,.24);for(let i=0;i<75;i++){const m=new T.Mesh(cg,new T.MeshBasicMaterial({color:['#ffd66c','#6ad2c9','#e99584','#fff5cf'][i%4]}));m.visible=false;scene.add(m);confetti.push(m);}
- // A floating turn cue follows the car. It is only shown while Sofia is choosing a road.
+ // A floating turn cue follows the car. It shows the next road Sofia has chosen ahead.
  const arrowCanvas=document.createElement('canvas');arrowCanvas.width=256;arrowCanvas.height=256;const arrowCtx=arrowCanvas.getContext('2d');
  const arrowTexture=new T.CanvasTexture(arrowCanvas);arrowTexture.colorSpace=T.SRGBColorSpace;const arrowMat=new T.SpriteMaterial({map:arrowTexture,transparent:true,depthTest:false,depthWrite:false});const turnArrow=new T.Sprite(arrowMat);turnArrow.scale.set(4.8,4.8,1);turnArrow.visible=false;scene.add(turnArrow);
  function paintTurnArrow(symbol,label){arrowCtx.clearRect(0,0,256,256);arrowCtx.fillStyle='#f5c656';arrowCtx.beginPath();arrowCtx.arc(128,128,108,0,Math.PI*2);arrowCtx.fill();arrowCtx.strokeStyle='#fff8dd';arrowCtx.lineWidth=10;arrowCtx.stroke();arrowCtx.fillStyle='#173e3c';arrowCtx.textAlign='center';arrowCtx.textBaseline='middle';arrowCtx.font='bold 112px Arial';arrowCtx.fillText(symbol,128,120);arrowCtx.font='bold 22px Arial';arrowCtx.fillText(label.toUpperCase(),128,210);arrowTexture.needsUpdate=true;}
@@ -99,7 +105,7 @@ export function createWorld(canvas, data) {
  const look=new T.Vector3(),target=new T.Vector3();let initialized=false,overview=false;
  function update(dt,pos,tangent,velocity,mode,finished,time,carFacing=tangent){
  car.position.copy(pos);const yaw=Math.atan2(-carFacing.x,-carFacing.z);const rot=new T.Quaternion().setFromEuler(new T.Euler(Math.atan2(carFacing.y,Math.hypot(carFacing.x,carFacing.z)),yaw,0,'YXZ'));car.quaternion.slerp(rot,1-Math.exp(-dt*9));wheels.forEach(w=>w.rotation.x-=velocity*dt/.39);
- sm.position.set(pos.x,height(pos.x,pos.z)+.25,pos.z);sm.rotation.z=-yaw;turnArrow.position.set(pos.x,pos.y+7.3+Math.sin(time*3)*.22,pos.z);turnArrow.scale.setScalar(4.5+Math.sin(time*3)*.16);if(finished)turnArrow.visible=false;
+ sm.position.set(pos.x,height(pos.x,pos.z)+.25,pos.z);sm.rotation.z=-yaw;turnArrow.position.set(pos.x,pos.y+6.2+Math.sin(time*3)*.22,pos.z);turnArrow.scale.setScalar(4.5+Math.sin(time*3)*.16);if(finished)turnArrow.visible=false;
  const follow=mode==='high'?{back:26,up:22,ahead:13}:mode==='intro'?{back:14,up:7,ahead:2}:{back:14,up:7.8,ahead:8};
  const horizontal=new T.Vector3(tangent.x,0,tangent.z).normalize();if(horizontal.lengthSq()<.1)horizontal.set(0,0,-1);
  const orbitDirection=horizontal.clone().applyAxisAngle(new T.Vector3(0,1,0),orbit.yaw);
@@ -117,5 +123,5 @@ export function createWorld(canvas, data) {
  renderer.render(scene,camera);
  }
  function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
- resize();window.addEventListener('resize',resize);return {height,rawHeight,scene,camera,renderer,car,update,resize,setTurnArrow,resetCamera(){initialized=false;orbit.reset();}};
+ resize();window.addEventListener('resize',resize);return {height,rawHeight,carHeight,scene,camera,renderer,car,update,resize,setTurnArrow,resetCamera(){initialized=false;orbit.reset();}};
 }
