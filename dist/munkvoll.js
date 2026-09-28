@@ -2,7 +2,7 @@ import {createRailProfiles,placeBusStop,streetSegments,segmentIndex} from './tra
 // Photo-led landmarks, original geometry only. See docs/munkvoll-references.md.
 // The canvas keeps the sign's proportions, so short text on small plates (door numbers) is not squeezed thin.
 // Text is one line, or several lines given as [text, colour, relative size]; bg null leaves the plate see-through.
-function drawSign(T,scene,text,at,normal,w,h,fg='#f2f0e5',bg='#2c3032',serif=false){
+export function drawSign(T,scene,text,at,normal,w,h,fg='#f2f0e5',bg='#2c3032',serif=false){
  const lines=Array.isArray(text)?text:[[text,fg,1]],c=document.createElement('canvas'),cw=Math.max(160,Math.min(1024,Math.round(160*w/h)));c.width=cw;c.height=160;const q=c.getContext('2d');
  if(bg){q.fillStyle=bg;q.fillRect(0,0,cw,160);}else q.clearRect(0,0,cw,160);
  const total=lines.reduce((sum,l)=>sum+(l[2]??1),0);let top=0;q.textAlign='center';q.textBaseline='middle';
@@ -219,14 +219,17 @@ export function addVintageTram({T,scene,bucket,quad,box,centre,dir,base}){
 
 // Details on footprints that otherwise use the generic builder with photo-matched styles
 // (dist/junction-observations.js): Byåsen skole's name and red stair screens, and the Boreal workshop's door and sign.
-export function addMunkvollDetails({T,scene,data,wallBase,bucket,quad,box}){
- // A wall of a mapped footprint, found by a point near its middle, on the base and height the generic builder used.
- function wall(id,near){const building=data.buildings.find(x=>String(x.id)===id),base=wallBase.get(id);if(!building||!base)return null;const p=building.p.slice(0,-1),{y,h}=base;
+// A wall of a mapped footprint, found by a point near its middle, on the base and height the generic builder used.
+export function createFacades({data,wallBase,bucket,quad}){
+ return function wall(id,near){const building=data.buildings.find(x=>String(x.id)===id),base=wallBase.get(id);if(!building||!base)return null;const p=building.p.slice(0,-1),{y,h}=base;
   let best=null;for(let i=0;i<p.length;i++){const a=p[i],c=p[(i+1)%p.length],len=Math.hypot(c[0]-a[0],c[1]-a[1]);if(len<2)continue;const d=Math.hypot((a[0]+c[0])/2-near[0],(a[1]+c[1])/2-near[1]);if(!best||d<best.d)best={a,c,len,d};}
-  const {a,c,len}=best,dx=(c[0]-a[0])/len,dz=(c[1]-a[1])/len,cx=p.reduce((t,v)=>t+v[0],0)/p.length,cz=p.reduce((t,v)=>t+v[1],0)/p.length;
+  const {a,c,len}=best,dx=(c[0]-a[0])/len,dz=(c[1]-a[1])/len;
   let nx=-dz,nz=dx;const mx=(a[0]+c[0])/2,mz=(a[1]+c[1])/2;if(insidePolygon(p,mx+nx*.4,mz+nz*.4)){nx=-nx;nz=-nz;}
   const at=(d,yy,o)=>[a[0]+dx*d+nx*o,y+yy,a[1]+dz*d+nz*o];
-  return {len,y,h,at,normal:[nx,nz],angle:Math.atan2(-dz,dx),b:bucket(mx,mz),panel:(d,yy,w,h,col,o)=>quad(bucket(mx,mz),at(d-w/2,yy,o),at(d+w/2,yy,o),at(d+w/2,yy+h,o),at(d-w/2,yy+h,o),col)};}
+  return {len,y,h,at,normal:[nx,nz],angle:Math.atan2(-dz,dx),b:bucket(mx,mz),panel:(d,yy,w,h,col,o)=>quad(bucket(mx,mz),at(d-w/2,yy,o),at(d+w/2,yy,o),at(d+w/2,yy+h,o),at(d-w/2,yy+h,o),col)};};
+}
+export function addMunkvollDetails({T,scene,data,wallBase,bucket,quad,box}){
+ const wall=createFacades({data,wallBase,bucket,quad});
  // Byåsen skole: silver name and coat of arms high on the south wall, red corrugated screens at the west stair tower.
  const south=wall('89233532',[1692.9,100.3]);
  if(south){const top=south.h-.62;drawSign(T,scene,'BYÅSEN SKOLE',south.at(5.2,top,.14),south.normal,3.9,.46,'#e3e6e5',null);south.panel(2.75,top-.27,.34,.46,'#f1f2ee',.12);south.panel(2.75,top-.23,.26,.3,'#3d6fb3',.13);}

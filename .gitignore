@@ -9,3 +9,4 @@ byasen.osm
 address.json
 height-api.json
 height-test.json
+__pycache__/

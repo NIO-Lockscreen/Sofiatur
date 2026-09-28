@@ -8,6 +8,7 @@ import {createTrafficLights} from './traffic-lights.js';
 import {createRainbowTrail} from './rainbow-trail.js';
 import {addLandmark,addLandmarkGround} from './landmarks.js';
 import {buildingStyles,addKiwi} from './building-details.js';
+import {addDalgardSchool,addSportsGrounds,addDalgardDetails} from './dalgard.js';
 import {createCameraControls} from './camera-controls.js';
 import {SoftwareRenderer} from './software-renderer.js';
 import * as T from './vendor/three.js';
@@ -65,10 +66,12 @@ export function createWorld(canvas, data) {
  addTransit({T,scene,data,height,bucket,quad,box,groundPoly,ribbon,roadSegments});
  const junctionBuildings=createJunctionBuildings(data);
  const houseBounds=[[-22,-16,16,16],[1798,226,1861,268],[1790,270,1850,337],[1450,169,1648,285]];
+ // Pitches, the running track and car parks at Dalgård: drawn on the ground and kept free of trees.
+ houseBounds.push(...addSportsGrounds({T,data,height,bucket,tri,box,ribbon}));
  const wallBase=new Map(); // Wall base and height per footprint, for details added after the loop.
  for(const building of data.buildings){let p=building.p.slice(0,-1);if(p.length<3)continue;let cx=p.reduce((a,b)=>a+b[0],0)/p.length,cz=p.reduce((a,b)=>a+b[1],0)/p.length;
  let area=0;for(let i=0;i<p.length;i++)area+=p[i][0]*p[(i+1)%p.length][1]-p[(i+1)%p.length][0]*p[i][1];area=Math.abs(area/2);if(area<4)continue;
- const landmark=addMunkvoll({T,scene,building,height,bucket,tri,quad,box})||addLandmark({T,scene,building,height,bucket,tri,quad,box});if(landmark){houseBounds.push(landmark.bounds);continue;}
+ const landmark=addMunkvoll({T,scene,building,height,bucket,tri,quad,box})||addLandmark({T,scene,building,height,bucket,tri,quad,box})||addDalgardSchool({T,scene,data,building,height,bucket,tri,quad,box,groundPoly});if(landmark){houseBounds.push(landmark.bounds);continue;}
  if(String(building.id)==='526443228'){const result=addKiwi({T,scene,building,height,bucket,tri,quad,box,groundPoly,ribbon});houseBounds.push(result.bounds);continue;}
  const style={...buildingStyles[building.id],...junctionBuildings.style(building)};const t=building.t;const garage=['garage','garages','shed','carport'].includes(t.building)||area<35;
  const levels=style.levels||(parseFloat(t['building:levels'])||((t.building==='apartments'||area>800)?3:garage?1:2));
@@ -106,6 +109,7 @@ export function createWorld(canvas, data) {
  function cone(b,x,y,z,r,h,c,sides=7){for(let i=0;i<sides;i++){let a=i/sides*Math.PI*2,a2=(i+1)/sides*Math.PI*2;tri(b,[x+Math.cos(a)*r,y,z+Math.sin(a)*r],[x+Math.cos(a2)*r,y,z+Math.sin(a2)*r],[x,y+h,z],c);}}
  addLandmarkGround({height,bucket,quad,box,groundPoly,ribbon});
  addMunkvollDetails({T,scene,data,wallBase,bucket,quad,box});
+ addDalgardDetails({T,scene,data,wallBase,bucket,quad,box});
  const homeShrubs=[[-15,1],[-12,4],[-9,6],[-6,8],[-3,9],[0,12],[3,10],[6,9],[9,8],[11,7],[-8,10],[-11,7]];for(const [x,z] of homeShrubs){const b=bucket(x,z),y=height(x,z);const g=new T.IcosahedronGeometry(1,1);g.scale(1.65,.85,1.45);g.translate(x,y+.7,z);const p=g.attributes.position;for(let i=0;i<p.count;i+=3)tri(b,...[0,1,2].map(j=>[p.getX(i+j),p.getY(i+j),p.getZ(i+j)]),'#688845');g.dispose();}
  for(let n=0;n<12000;n++){let x=-220+rnd()*2440,z=-700+rnd()*1520;if(!clear(x,z))continue;let y=height(x,z),h=3+rnd()*5,b=bucket(x,z);box(b,x,y+h*.3,z,.3,h*.6,.3,'#8c7152');if(rnd()<.6){cone(b,x,y+h*.25,z,h*.38,h*.7,'#538b60');cone(b,x,y+h*.54,z,h*.29,h*.55,'#689b64');}else{const geo=new T.IcosahedronGeometry(h*.35,0);geo.translate(x,y+h*.72,z);const at=geo.getAttribute('position');const cc=['#74a357','#8eb15f','#659850'][n%3];for(let i=0;i<at.count;i+=3)tri(b,[at.getX(i),at.getY(i),at.getZ(i)],[at.getX(i+1),at.getY(i+1),at.getZ(i+1)],[at.getX(i+2),at.getY(i+2),at.getZ(i+2)],cc);geo.dispose();}}
  // Around the lakes, where the terrain grid was widened: the same trees, less dense.
@@ -113,7 +117,7 @@ export function createWorld(canvas, data) {
  const chunks=[];
  for(const b of buckets.values()){const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(b.p.slice(0,b.n),3));g.setAttribute('color',new T.BufferAttribute(b.c.slice(0,b.n),3));b.p=b.c=null;g.computeVertexNormals();g.computeBoundingSphere();const m=new T.Mesh(g,staticMaterial);m.receiveShadow=true;m.matrixAutoUpdate=false;m.updateMatrix();scene.add(m);chunks.push({mesh:m,x:b.x,z:b.z});}
  function label(text,x,z,colour='#164e48',scale=10){const c=document.createElement('canvas');c.width=512;c.height=128;const ctx=c.getContext('2d');ctx.fillStyle=colour;ctx.beginPath();ctx.roundRect(4,6,504,108,24);ctx.fill();ctx.strokeStyle='#fff5d9';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#fff9e8';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 32px sans-serif';ctx.fillText(text,256,61,465);const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;const mat=new T.SpriteMaterial({map:tex,depthTest:true});const s=new T.Sprite(mat);s.position.set(x,height(x,z)+7,z);s.scale.set(scale,scale/4,1);s.matrixAutoUpdate=false;s.updateMatrix();scene.add(s);return s;}
- const labels=[];labels.push(label('⌂  Hjemme',0,0,'#654d3e',10));for(const l of lakes)if(l.label)labels.push(label('≈  '+l.name,...l.label,'#2f6f96',12));for(const p of data.pois)if(['supermarket','school','kindergarten','fuel','bakery'].includes(p.type))labels.push(label(p.name,p.x,p.z,p.type==='kindergarten'?'#c98938':'#3b6955',p.name.length>19?17:13));
+ const labels=[];labels.push(label('⌂  Hjemme',0,0,'#654d3e',10));for(const l of lakes)if(l.label)labels.push(label('≈  '+l.name,...l.label,'#2f6f96',12));for(const p of data.pois)if(['supermarket','school','kindergarten','fuel','bakery','sports_centre'].includes(p.type))labels.push(label(p.name,p.x,p.z,p.type==='kindergarten'?'#c98938':p.type==='sports_centre'?'#2f5f8a':'#3b6955',p.name.length>19?17:13));
  const goalPos=data.nodes[data.goal];const goalRing=new T.Mesh(new T.TorusGeometry(4,.18,6,48),new T.MeshBasicMaterial({color:'#ffe17a'}));goalRing.rotation.x=Math.PI/2;goalRing.position.set(goalPos[0],height(...goalPos)+.7,goalPos[1]);scene.add(goalRing);labels.push(label('⚑  Her er barnehagen!',...goalPos,'#c58b29',14));
  const trafficLights=createTrafficLights({T,scene,height,data});
  const {car,wheels,paint,skins}=createET5(T);scene.add(car);

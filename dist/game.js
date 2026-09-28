@@ -59,7 +59,7 @@ function renderWorldChoices(list=choices,h=heading,pick=e=>choose(e.id,true),ahe
 function ringNodes(n){const ring=new Set();while(n!==undefined&&!ring.has(n)){ring.add(n);n=(adjacency.get(n)||[]).find(e=>e.roundabout)?.to;}return ring;}
 // Blindvei: a road from which neither the kindergarten nor home can be reached without driving back through the junction or turning around.
 function computeOpenRoads(){
- const target=n=>n===data.goal||n===data.start||n===kiwiParking; // KIWI's parking is a place to go, not a blindvei
+ const target=n=>n===data.goal||n===data.start||n===kiwiParking||n===ishallParking; // KIWI's and the ice rink's car parks are places to go, not blindveier
  const leadsOn=e=>{if(e.roundabout)return true;const seen=(adjacency.get(e.from)||[]).some(x=>x.roundabout)?ringNodes(e.from):new Set([e.from]);if(seen.has(e.to))return false;seen.add(e.to);const todo=[e.to];while(todo.length){const n=todo.pop();if(target(n))return true;for(const x of adjacency.get(n)||[])if(!seen.has(x.to)){seen.add(x.to);todo.push(x.to);}}return false;};
  const through=data.edges.filter(leadsOn),before=new Map();
  for(const x of through){const h=endDirection(x,false);for(const y of adjacency.get(x.to)||[])if(y.to!==x.from&&directionInfo(y,h).label!=='Snu'){if(!before.has(y))before.set(y,[]);before.get(y).push(x);}}
@@ -146,7 +146,7 @@ function undoRoundabout(){
  active=null;distance=0;speed=0;state='decision';world.resetCamera();$('street').textContent='Rundkjøring';showDecision();say('Prøv en annen avkjørsel!');
 }
 $('undoRoundabout').onclick=undoRoundabout;
-function arrive(){if(!active)return;previous=active.e.arrivalFrom??active.e.from;current=active.e.to;if(current===kiwiParking)parkAtKiwi();position.copy(point(current));heading.copy(active.curve.getTangentAt(1));if(!active.ahead&&active.floor<=2.4)speed=0;active=null;state='decision';showDecision();}
+function arrive(){if(!active)return;previous=active.e.arrivalFrom??active.e.from;current=active.e.to;if(current===kiwiParking)parkAtKiwi();if(current===ishallParking)parkAtIshall();position.copy(point(current));heading.copy(active.curve.getTangentAt(1));if(!active.ahead&&active.floor<=2.4)speed=0;active=null;state='decision';showDecision();}
 function finish(){state='finished';roundaboutUndo=null;queue=[];preview=null;$('undoRoundabout').hidden=true;clearWorldChoices();world.setTurnArrow(null);speed=0;ui.decision.hidden=true;ui.mini.hidden=true;ui.finish.hidden=false;document.body.classList.remove('choosing');$('remaining').textContent='Fremme!';$('finishSummary').textContent=`${(travelled/1000).toLocaleString('nb-NO',{maximumFractionDigits:1})} km gjennom nabolaget · ${turns} veivalg`;$('pause').disabled=true;
  arrivals++;saveProgress();newReward=arrivals===1?'colour':arrivals===2?'trail':null;if(newReward==='trail')applyRewards();
  const reward={colour:['🎨 Ny overraskelse! Nå kan du velge farge på bilen. Fargene finner du på startskjermen.','Velg farge på bilen 🎨',' Nå kan du velge farge på bilen!'],trail:['🌈 Ny overraskelse! Bilen har fått et regnbuespor. Du kan slå det av og på på startskjermen.','Prøv regnbuesporet 🌈',' Og nå har bilen fått et regnbuespor!']}[newReward];
@@ -182,6 +182,8 @@ $('music').value=musicOn?'on':'off';$('deadEnds').value=showDeadEnds?'on':'off';
 const carColours=[['Svart','#14171c'],['Rød','#c62828'],['Rosa','#ec6aa8'],['Lilla','#7b4cc2'],['Blå','#1f63c6'],['Turkis','#17a2a0'],['Grønn','#3b9a43'],['Gul','#f3c531'],['Oransje','#f07b22'],['Hvit','#eef0ef']];
 // A secret: parking at KIWI Dalgård unlocks a KIWI-green car with the shop's logo on the doors (colour 'kiwi').
 const kiwiParking='kiwi-parkering';let kiwiUnlocked=false;
+// Dalgårdvegen ends at Dalgård ishall and the sports grounds; the car park beside the hall is a place to drive to.
+const ishallParking='ishall-parkering';
 function saveProgress(){try{localStorage.setItem('sofiatur.fremgang',JSON.stringify({arrivals,colour:carColour,trail:trailOn?'on':'off',kiwi:kiwiUnlocked?'on':'off'}));}catch{}}
 try{const saved=JSON.parse(localStorage.getItem('sofiatur.fremgang'))||{};arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour)||saved.colour==='kiwi'&&kiwiUnlocked)carColour=saved.colour;trailOn=saved.trail!=='off';}catch{}
 const swatches=carColours.map(([name,hex])=>{const b=document.createElement('button');b.type='button';b.className='swatch';b.title=name;b.setAttribute('aria-label',name);b.style.background=hex;b.onclick=()=>pickColour(hex);return b;});
@@ -199,6 +201,7 @@ function parkAtKiwi(){
  kiwiUnlocked=true;carColour='kiwi';saveProgress();applyRewards();showRewards();
  toast('🥝 Hemmelig KIWI-bil låst opp!');say('Du parkerte ved KIWI! Nå har du låst opp en hemmelig KIWI-bil!');
 }
+function parkAtIshall(){toast('🏒 Framme ved Dalgård ishall');say('Vi er framme ved Dalgård ishall og idrettsparken!');}
 $('customColour').oninput=e=>pickColour(e.target.value);
 $('trail').onchange=e=>{trailOn=!!e.target.checked;saveProgress();applyRewards();};
 $('music').onchange=e=>{musicOn=e.target.value==='on';saveSettings();if(musicOn&&sound)music.play();else music.stop();};

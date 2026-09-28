@@ -110,6 +110,6 @@ merge_close_junctions(edges) # junctions a few metres apart are asked as one
 if Path('dist/map.json').exists():
  old=json.loads(Path('dist/map.json').read_text())
  if 'terrain' in old:data['terrain']=old['terrain']
-add_school_parking_spur(data);add_kiwi_parking(data) # extra arms: Palermo lights, KIWI parking
+add_school_parking_spur(data);add_kiwi_parking(data) # extra arms: Palermo lights, KIWI parking (Dalgård ishall: add-dalgard.py)
 Path('dist/map.json').write_text(json.dumps(data,ensure_ascii=False,separators=(',',':')))
 print('counts',len(edges),len(buildings),len(roadout),len(pois));print('POIS',pois)

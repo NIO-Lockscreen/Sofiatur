@@ -5,7 +5,7 @@ import {addBuildingRoof} from './dist/building-roofs.js';
 import {createJunctionBuildings} from './dist/junction-buildings.js';
 import {junctionObservations} from './dist/junction-observations.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json')),j=createJunctionBuildings(data);
-assert.equal(j.nodes.length,162);assert.ok(j.near.size>1100);
+assert.equal(j.nodes.length,163);assert.ok(j.near.size>1100);
 for(const id of Object.keys(junctionObservations))assert.ok(data.buildings.some(b=>b.id===id),'Reference building exists '+id);
 // Every style sourced from a listing is documented with the photos used (older entries carry a photo label instead of a URL).
 const matches=JSON.parse(fs.readFileSync('docs/junction-photo-matches.json'));

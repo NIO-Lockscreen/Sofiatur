@@ -18,8 +18,8 @@ for(let i=0;i<12;i++){await Promise.resolve();frame();}await init;
 
 // Independent check: from the chosen road, the kindergarten or home is reachable without driving back through the junction.
 const adjacency=new Map();for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);}
-// KIWI's parking counts as a place to go, like home and the kindergarten.
-const destinations=new Set([data.goal,data.start,'kiwi-parkering']);
+// KIWI's parking and the car park at Dalgård ishall count as places to go, like home and the kindergarten.
+const destinations=new Set([data.goal,data.start,'kiwi-parkering','ishall-parkering']);
 function leadsOn(from,blocked){const seen=new Set([...blocked,from]),todo=[from];if(blocked.includes(from))return false;while(todo.length){const n=todo.pop();if(destinations.has(n))return true;for(const e of adjacency.get(n)||[])if(!seen.has(e.to)){seen.add(e.to);todo.push(e.to);}}return false;}
 function ring(n){const nodes=[];while(!nodes.includes(n)){nodes.push(n);const next=(adjacency.get(n)||[]).find(e=>e.roundabout);if(!next)break;n=next.to;}return nodes;}
 
@@ -31,14 +31,15 @@ while(queue.length){
  if(s.state==='driving'){automatic++;queue.push(roads[0]);continue;}
  assert.equal(s.state,'decision');decisions++;
  // The school parking is reached only from the Palermo lights, where every road is offered on purpose.
- assert.ok(s.currentNode===data.start||['kiwi-parkering','skoleparkering-8'].includes(s.currentNode)||s.choices.some(c=>c.direction!=='Snu'),`Led into a blindvei at ${s.currentNode}`);
+ assert.ok(s.currentNode===data.start||['kiwi-parkering','ishall-parkering','skoleparkering-8'].includes(s.currentNode)||s.choices.some(c=>c.direction!=='Snu'),`Led into a blindvei at ${s.currentNode}`);
  for(const c of roads){
   const shown=s.choices.find(x=>x.id===c.id);offered++;
   if(!shown.recommended&&s.currentNode!=='91783986')assert.ok(leadsOn(c.to,c.roundaboutPlan?ring(s.currentNode):[s.currentNode]),`${c.name} at ${s.currentNode} is a blindvei`);
   if(s.currentNode!=='91783986'||leadsOn(c.to,[s.currentNode]))queue.push(c); // extra Palermo roads are checked below
  }
 }
-console.log(`Blindveier: ${decisions} reachable junctions offer ${offered} roads, none a dead end; ${automatic} single-road junctions drive on automatically.`);
+const ishallRoad=data.edges.find(e=>e.to==='ishall-parkering');assert.ok(seen.has(ishallRoad.id),'Dalgård ishall can be reached with blindveier off');
+console.log(`Blindveier: ${decisions} reachable junctions offer ${offered} roads, none a dead end; ${automatic} single-road junctions drive on automatically; Dalgård ishall reachable.`);
 
 // Vetle Vislies veg: straight ahead is a blindvei, so the car turns right onto Herlofsons veg by itself.
 const vetle=data.edges.find(e=>e.from==='201494485'&&e.to==='201497757');
@@ -94,4 +95,10 @@ for(const e of data.edges.filter(e=>e.to==='91783986')){env.test.enter(e);const 
 // KIWI: just after the roundabout the parking can be chosen; it is not a blindvei.
 env.test.enter(data.edges.find(e=>e.to==='6673481580'&&e.from==='5119347221'));const kiwiChoices=env.test.read().choices;
 assert.ok(kiwiChoices.some(c=>c.street==='KIWI'&&c.direction==='Høyre'),`KIWI offered: ${kiwiChoices.map(c=>c.direction+' '+c.street)}`);
-console.log(`Palermo lights: left, straight on and right from all ${data.edges.filter(e=>e.to==='91783986').length} roads in; KIWI parking offered after the roundabout: OK`);
+// Dalgårdvegen runs all the way down to Dalgård ishall: from the Granlivegen junction it is offered towards the hall,
+// and where the service road turns off to the car park, 'Dalgård ishall' is a choice.
+const granli=env.test.enter(data.edges.find(e=>e.name==='Anders Wigens veg'&&e.to==='195972167'));
+assert.ok(granli.some(c=>c.name==='Dalgårdvegen'&&c.to==='280511856'),`Dalgårdvegen towards the ice rink offered: ${granli.map(c=>c.name+' '+c.to)}`);
+env.test.enter(data.edges.find(e=>e.name==='Dalgårdvegen'&&e.from==='280511856'&&e.to==='1727120658'));const ishall=env.test.read().choices;
+assert.ok(ishall.some(c=>c.street==='Dalgård ishall'),`Dalgård ishall offered: ${ishall.map(c=>c.direction+' '+c.street)}`);
+console.log(`Palermo lights: left, straight on and right from all ${data.edges.filter(e=>e.to==='91783986').length} roads in; KIWI parking offered after the roundabout; Dalgårdvegen to Dalgård ishall (${ishall.map(c=>c.direction+' '+c.street).join(', ')}): OK`);

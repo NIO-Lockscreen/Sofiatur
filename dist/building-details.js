@@ -28,7 +28,13 @@ export const buildingStyles={
  '89233446':{wall:'#bfc2b1',roof:'#55584d',levels:2,height:6.4,siding:true,source:'svv-school-west'},
  '186841234':{wall:'#f0eeea',roof:'#946849',levels:2,siding:true,source:'svv-munkvoll'},
  '169707628':{wall:'#dbd8bd',roof:'#656659',levels:2,siding:true,source:'svv-byasen'},
- '1036716339':{wall:'#dbd8bd',roof:'#656659',levels:2,siding:true,source:'svv-byasen'}
+ '1036716339':{wall:'#dbd8bd',roof:'#656659',levels:2,siding:true,source:'svv-byasen'},
+ // Dalgårdstunet (2024): hus A light sand render, five storeys over the Extra shop; hus B gold-khaki cladding, four storeys.
+ '1312240278':{wall:'#e8dcbb',roof:'#3b3f41',levels:5,height:16.4,flat:true,source:'dalgardstunet-prospekt'},
+ '1312240279':{wall:'#b6a26b',roof:'#3b3f41',levels:4,height:13.4,flat:true,balconies:'south',source:'dalgardstunet-prospekt'},
+ // Bunnpris Ugla: light walls, dark roofs (aerial); the facade itself is not photographed.
+ '191198632':{wall:'#e4dfd2',roof:'#45494a',levels:2,source:'dalgard-aerial'},
+ '1037053709':{wall:'#e4dfd2',roof:'#45494a',levels:1,height:3.6,source:'dalgard-aerial'}
 };
 
 export function addKiwi({T,scene,building,height,bucket,tri,quad,box,groundPoly,ribbon}){

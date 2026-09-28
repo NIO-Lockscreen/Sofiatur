@@ -44,6 +44,25 @@ def _next_id(data):
     return max(e['id'] for e in data['edges']) + 1
 
 
+def _split_at(data, node, eid):
+    """Split the edges that pass through node, so it becomes a junction. Returns the new second halves (ids from
+    eid on); the first halves replace the original edges."""
+    new = []
+    for e in [e for e in data['edges'] if node in e['path'][1:-1]]:
+        k = e['path'].index(node)
+        second = dict(e, path=e['path'][k:], id=eid)
+        eid += 1
+        first = dict(e, path=e['path'][:k + 1])
+        for part in (first, second):
+            pts = [data['nodes'][n] for n in part['path']]
+            part['length'] = round(sum(((q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2) ** .5 for p, q in zip(pts, pts[1:])), 2)
+            part['cost'] = round(e['cost'] * part['length'] / e['length'], 2)
+            part['from'], part['to'] = part['path'][0], part['path'][-1]
+        data['edges'][data['edges'].index(e)] = first
+        new.append(second)
+    return new
+
+
 def add_school_parking_spur(data):
     """The Palermo traffic lights have a fourth arm: the service road north to the Byåsen skole parking (OSM way
     169742455). Service roads are left out of the road network, so the junction only had three roads; this adds the
@@ -84,18 +103,35 @@ def add_kiwi_parking(data):
     new = [_edge(data, path, 'KIWI', eid), _edge(data, path[::-1], 'General Bangs veg', eid + 1)]
     eid += 2
     # Split the General Bangs veg edges that pass the entrance, so it becomes a junction.
-    for e in [e for e in data['edges'] if entrance in e['path'][1:-1]]:
-        k = e['path'].index(entrance)
-        second = dict(e, path=e['path'][k:], id=eid)
-        eid += 1
-        first = dict(e, path=e['path'][:k + 1])
-        for part in (first, second):
-            pts = [data['nodes'][n] for n in part['path']]
-            part['length'] = round(sum(((q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2) ** .5 for p, q in zip(pts, pts[1:])), 2)
-            part['cost'] = round(e['cost'] * part['length'] / e['length'], 2)
-            part['from'], part['to'] = part['path'][0], part['path'][-1]
-        data['edges'][data['edges'].index(e)] = first
-        new.append(second)
+    new += _split_at(data, entrance, eid)
+    data['edges'] += new
+
+
+def add_ishall_parking(data):
+    """Dalgård ishall at the end of Dalgårdvegen. Its car park is reached by a short service road (OSM 1368418204)
+    and the parking aisle along the hall's west side (OSM 160676281). Service roads are not in the road network, so
+    Dalgårdvegen gets a junction where the service road leaves it, and a road leads to a parking place in front of
+    the hall, which the game treats as a place to go (offered even with blindveier hidden). The aisle is missing in
+    the extract; add-dalgard.py adds it and then calls this."""
+    roads = {str(r['id']): r['p'] for r in data['roads']}
+    if 'ishall-parkering' in data['nodes'] or '160676281' not in roads:
+        return
+    access = roads['1368418204']  # (873,626) -> (877,622) -> (877,621)
+    aisle = roads['160676281']    # (877,621) -> (881,610) -> (882,604) -> (887,589)
+    entrance = next(n for e in data['edges'] if e['name'] == 'Dalgårdvegen' for n in e['path'][1:-1]
+                    if data['nodes'][n] == access[0])
+    assert abs(aisle[0][0] - access[-1][0]) + abs(aisle[0][1] - access[-1][1]) < .1
+    a, b = aisle[2], aisle[3]  # the parking place: halfway along the hall's west side, in the middle of the car park
+    park = [round(a[0] + (b[0] - a[0]) * .5, 2), round(a[1] + (b[1] - a[1]) * .5, 2)]
+    path = [entrance]
+    for i, p in enumerate(access[1:] + aisle[1:3], 1):
+        data['nodes'][f'ishall-{i}'] = p
+        path.append(f'ishall-{i}')
+    data['nodes']['ishall-parkering'] = park
+    path.append('ishall-parkering')
+    eid = _next_id(data)
+    new = [_edge(data, path, 'Dalgård ishall', eid), _edge(data, path[::-1], 'Dalgårdvegen', eid + 1)]
+    new += _split_at(data, entrance, eid + 2)
     data['edges'] += new
 
 
@@ -108,5 +144,6 @@ if __name__ == '__main__':
     merged = merge_close_junctions(data['edges'])
     add_school_parking_spur(data)
     add_kiwi_parking(data)
+    add_ishall_parking(data)
     path.write_text(json.dumps(data, ensure_ascii=False, separators=(',', ':')))
     print(len(merged), 'junction links merged:', merged)
