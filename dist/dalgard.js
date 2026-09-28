@@ -1,6 +1,6 @@
 import {drawSign,createFacades} from './munkvoll.js';
-// Dalgård: the school, the sports grounds at Dalgård idrettspark and the shops by the school (Extra at Dalgårdstunet,
-// Bunnpris Ugla). Footprints, pitches and car parks are OSM (add-dalgard.py); roof forms, colours and signs follow
+// Dalgård: the school, the sports grounds at Dalgård idrettspark and Extra at Dalgårdstunet by the school (Bunnpris
+// Ugla, across Odd Husbys veg: stavset.js). Footprints, pitches and car parks are OSM (add-dalgard.py); roof forms, colours and signs follow
 // the photographs and the aerial listed in docs/dalgard-references.md. Dimensions are visual estimates.
 
 // Dalgård skole: brown brick, one storey, large low-pitched hipped roofs in light grey metal with dark timber
@@ -134,8 +134,6 @@ export function addDalgardDetails({T,scene,data,wallBase,bucket,quad,box}){
  for(const f of [street,square]){if(!f)continue;const run=f===street?Math.min(30,f.len-2):f.len-2;
   f.panel(1+run/2,.25,run,3.35,'#6f5c49',.1);for(let d=1.4;d<1+run-.4;d+=2.6){f.panel(d+1.2,.4,2.2,2.9,'#35444a',.14);f.panel(d+1.2,3.02,2.3,.08,'#2c2f31',.16);}
   extra(f.at(f===street?7:f.len/2,4.25,.2),f.normal,7.2,1.8);}
- // Bunnpris Ugla: yellow sign with black letters (the chain's logo) above the entrance at the car park.
- const bp=wall('191198632',[488.6,503.2]);if(bp){bp.panel(bp.len/2,.3,Math.min(6,bp.len-1),2.6,'#3b4a4f',.12);drawSign(T,scene,'BUNNPRIS',bp.at(bp.len/2,3.25,.18),bp.normal,Math.min(5.2,bp.len-.8),.95,'#141414','#f4cc1c');}
  // Dalgård ishall: the name on the west front, facing the car park where the road from Dalgårdvegen ends.
  const hall=wall('89233555',[902.8,584.9]);if(hall)drawSign(T,scene,'DALGÅRD ISHALL',hall.at(hall.len/2,Math.min(hall.h-1.2,5.4),.2),hall.normal,12,1.4,'#ffffff','#1f4b7a');
  function extra(at,normal,w,h){

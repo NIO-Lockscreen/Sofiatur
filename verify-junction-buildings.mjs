@@ -5,7 +5,8 @@ import {addBuildingRoof} from './dist/building-roofs.js';
 import {createJunctionBuildings} from './dist/junction-buildings.js';
 import {junctionObservations} from './dist/junction-observations.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json')),j=createJunctionBuildings(data);
-assert.equal(j.nodes.length,163);assert.ok(j.near.size>1100);
+// 163 junctions in the original box, 54 more on the way south to Stavset (map_fixes.SOUTH).
+assert.equal(j.nodes.filter(n=>n.p[1]<730).length,163);assert.equal(j.nodes.length,217);assert.ok(j.near.size>1100);
 for(const id of Object.keys(junctionObservations))assert.ok(data.buildings.some(b=>b.id===id),'Reference building exists '+id);
 // Every style sourced from a listing is documented with the photos used (older entries carry a photo label instead of a URL).
 const matches=JSON.parse(fs.readFileSync('docs/junction-photo-matches.json'));

@@ -18,8 +18,8 @@ for(let i=0;i<12;i++){await Promise.resolve();frame();}await init;
 
 // Independent check: from the chosen road, the kindergarten or home is reachable without driving back through the junction.
 const adjacency=new Map();for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);}
-// KIWI's parking and the car park at Dalgård ishall count as places to go, like home and the kindergarten.
-const destinations=new Set([data.goal,data.start,'kiwi-parkering','ishall-parkering']);
+// The car parks at KIWI, Dalgård ishall, Rema 1000 Stavset and Bunnpris count as places to go, like home and the kindergarten.
+const destinations=new Set([data.goal,data.start,'kiwi-parkering','ishall-parkering','rema-parkering','bunnpris-parkering']);
 function leadsOn(from,blocked){const seen=new Set([...blocked,from]),todo=[from];if(blocked.includes(from))return false;while(todo.length){const n=todo.pop();if(destinations.has(n))return true;for(const e of adjacency.get(n)||[])if(!seen.has(e.to)){seen.add(e.to);todo.push(e.to);}}return false;}
 function ring(n){const nodes=[];while(!nodes.includes(n)){nodes.push(n);const next=(adjacency.get(n)||[]).find(e=>e.roundabout);if(!next)break;n=next.to;}return nodes;}
 
@@ -31,7 +31,7 @@ while(queue.length){
  if(s.state==='driving'){automatic++;queue.push(roads[0]);continue;}
  assert.equal(s.state,'decision');decisions++;
  // The school parking is reached only from the Palermo lights, where every road is offered on purpose.
- assert.ok(s.currentNode===data.start||['kiwi-parkering','ishall-parkering','skoleparkering-8'].includes(s.currentNode)||s.choices.some(c=>c.direction!=='Snu'),`Led into a blindvei at ${s.currentNode}`);
+ assert.ok(s.currentNode===data.start||['kiwi-parkering','ishall-parkering','rema-parkering','bunnpris-parkering','skoleparkering-8'].includes(s.currentNode)||s.choices.some(c=>c.direction!=='Snu'),`Led into a blindvei at ${s.currentNode}`);
  for(const c of roads){
   const shown=s.choices.find(x=>x.id===c.id);offered++;
   if(!shown.recommended&&s.currentNode!=='91783986')assert.ok(leadsOn(c.to,c.roundaboutPlan?ring(s.currentNode):[s.currentNode]),`${c.name} at ${s.currentNode} is a blindvei`);

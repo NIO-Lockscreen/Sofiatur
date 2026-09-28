@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET,json,math,heapq,collections
-from map_fixes import merge_close_junctions,add_school_parking_spur,add_kiwi_parking
+from map_fixes import merge_close_junctions,add_school_parking_spur,add_kiwi_parking,in_south,SOUTH
 from pathlib import Path
 r=ET.parse('byasen.osm').getroot(); lat0=63.39945456;lon0=10.32727325
 sx=111320*math.cos(math.radians(lat0)); sz=111320
@@ -22,6 +22,11 @@ olaf_link={'id':'olaf-grilstads-link','ids':['35682743','11254607435'],'tags':{'
 ways.append(olaf_link);roads.append(olaf_link)
 for w in roads:
  if w['id'] in ['1214632503','24575743']:w['tags']['name']='Adolf Andreassens veg'
+# Byåsveien's lanes at the Kystadlia roundabout part at a splitter island, but these two ways carry no oneway tag: in to
+# the circle (1443998971) and out of it (1443998972), each in its drawing direction. Without it the car could leave the
+# circle up the lane that comes in.
+for w in roads:
+ if w['id'] in ['1443998971','1443998972']:w['tags']['oneway']='yes'
 # Include named roads and public access roads; small Hallset access lanes are scenery only.
 graph=collections.defaultdict(list)
 school_access={'1366229200','89285927','89285932'}
@@ -60,7 +65,7 @@ def pathfind(start,end):
 route,rw,length=pathfind(start,end); byid={w['id']:w for w in ways}
 print('ROUTE',round(length),[(byid[w]['tags'].get('name','access'),w) for i,w in enumerate(rw) if not i or w!=rw[i-1]])
 # Only roads within the chosen Byåsen district extent. Keep a full connected subgraph around route.
-valid={n for n in graph if -180<nodes[n]['x']<2180 and -620<nodes[n]['z']<730}
+valid={n for n in graph if -180<nodes[n]['x']<2180 and -620<nodes[n]['z']<730 or in_south(nodes[n]['x'],nodes[n]['z'])}
 # retain component reachable from start via bidirectional adjacency
 und=collections.defaultdict(set)
 for a in valid:
@@ -75,7 +80,7 @@ while todo:
 critical={n for n in seen if len(und[n])!=2}|{start,end}
 # collapse graph chains to edges; retain orientation legality by walking outbound
 edges=[]
-for a in critical:
+for a in sorted(critical): # sorted: the same edge ids on every run
  for b,d,wid in graph[a]:
   if b not in seen:continue
   path=[a,b];total=d;names=[byid[wid]['tags'].get('name','Lokalvei')];cur=b;prev=a;wids=[wid]
@@ -90,19 +95,19 @@ for i,e in enumerate(edges):e['id']=i
 buildings=[];areas=[];pois=[]
 for w in ways:
  pts=[nodes[n] for n in w['ids']];cx=sum(p['x'] for p in pts)/len(pts);cz=sum(p['z'] for p in pts)/len(pts);t=w['tags']
- if not(-220<cx<2220 and -700<cz<820):continue
+ if not(-220<cx<2220 and -700<cz<820 or in_south(cx,cz)):continue
  poly=[[round(p['x'],2),round(p['z'],2)] for p in pts]
  if 'building' in t:buildings.append({'id':w['id'],'p':poly,'t':{k:v for k,v in t.items() if k in ['building','building:levels','building:material','building:facade:material','height','name','roof:shape','roof:colour','roof:direction','roof:height','roof:levels','roof:material','roof:angle','building:colour','amenity','shop']}})
  if t.get('landuse') in ['forest','grass','meadow','recreation_ground','allotments'] or t.get('natural') in ['water','wood'] or t.get('leisure') in ['pitch','park','playground']:areas.append({'p':poly,'type':t.get('natural',t.get('landuse',t.get('leisure'))),'name':t.get('name','')})
  if t.get('name') and (t.get('shop') or t.get('amenity') in ['school','kindergarten','fuel']):pois.append({'x':round(cx,2),'z':round(cz,2),'name':t['name'],'type':t.get('shop',t.get('amenity'))})
 for n,p in nodes.items():
  t=p['tags']
- if -220<p['x']<2220 and -700<p['z']<820 and t.get('name') and (t.get('shop') or t.get('amenity') in ['school','kindergarten','fuel']):pois.append({'x':round(p['x'],2),'z':round(p['z'],2),'name':t['name'],'type':t.get('shop',t.get('amenity'))})
+ if (-220<p['x']<2220 and -700<p['z']<820 or in_south(p['x'],p['z'])) and t.get('name') and (t.get('shop') or t.get('amenity') in ['school','kindergarten','fuel']):pois.append({'x':round(p['x'],2),'z':round(p['z'],2),'name':t['name'],'type':t.get('shop',t.get('amenity'))})
 nodeout={n:[round(nodes[n]['x'],2),round(nodes[n]['z'],2)] for e in edges for n in e['path']}
 roadout=[{'id':w['id'],'p':[[round(nodes[n]['x'],2),round(nodes[n]['z'],2)] for n in w['ids']],'name':w['tags'].get('name',''),'type':w['tags']['highway'],'surface':w['tags'].get('surface','asphalt'),'mark':w['tags'].get('lane_markings')!='no' and w['tags']['highway'] in ['secondary','primary']} for w in roads if any(n in nodeout for n in w['ids']) or any(1450<nodes[n]['x']<2160 and 220<nodes[n]['z']<490 for n in w['ids'])]
-data={'origin':[lon0,lat0],'nodes':nodeout,'edges':edges,'start':start,'goal':end,'home':[0,0],'destination':[round(gx,2),round(gz,2)],'routeLength':round(length),'roads':roadout,'buildings':buildings,'areas':areas,'pois':pois,'bounds':[-220,-700,2220,820],'source':{'map':'© OpenStreetMap contributors, ODbL','terrain':'Kartverket DTM1, CC BY 4.0','date':'2026-09-24'}}
-data['rails']=[{'id':w['id'],'type':w['tags']['railway'],'bridge':w['tags'].get('bridge') not in [None,'no'],'layer':int(w['tags'].get('layer','0')),'gauge':float(w['tags'].get('gauge','1000').split(';')[0])/1000,'p':[[round(nodes[n]['x'],2),round(nodes[n]['z'],2)] for n in w['ids']]} for w in ways if w['tags'].get('railway') in ['tram','rail','light_rail'] and any(-220<nodes[n]['x']<2220 and -700<nodes[n]['z']<820 for n in w['ids'])]
-data['stops']=[{'id':n,'p':[round(p['x'],2),round(p['z'],2)],'name':p['tags'].get('name','Holdeplass'),'tram':p['tags'].get('railway')=='tram_stop'} for n,p in nodes.items() if -220<p['x']<2220 and -700<p['z']<820 and (p['tags'].get('highway')=='bus_stop' or p['tags'].get('railway')=='tram_stop')]
+data={'origin':[lon0,lat0],'nodes':nodeout,'edges':edges,'start':start,'goal':end,'home':[0,0],'destination':[round(gx,2),round(gz,2)],'routeLength':round(length),'roads':roadout,'buildings':buildings,'areas':areas,'pois':pois,'bounds':[-220,-700,2220,1470],'south':[list(p) for p in SOUTH],'source':{'map':'© OpenStreetMap contributors, ODbL','terrain':'Kartverket DTM1, CC BY 4.0','date':'2026-09-24'}}
+data['rails']=[{'id':w['id'],'type':w['tags']['railway'],'bridge':w['tags'].get('bridge') not in [None,'no'],'layer':int(w['tags'].get('layer','0')),'gauge':float(w['tags'].get('gauge','1000').split(';')[0])/1000,'p':[[round(nodes[n]['x'],2),round(nodes[n]['z'],2)] for n in w['ids']]} for w in ways if w['tags'].get('railway') in ['tram','rail','light_rail'] and any(-220<nodes[n]['x']<2220 and -700<nodes[n]['z']<820 or in_south(nodes[n]['x'],nodes[n]['z']) for n in w['ids'])]
+data['stops']=[{'id':n,'p':[round(p['x'],2),round(p['z'],2)],'name':p['tags'].get('name','Holdeplass'),'tram':p['tags'].get('railway')=='tram_stop'} for n,p in nodes.items() if (-220<p['x']<2220 and -700<p['z']<820 or in_south(p['x'],p['z'])) and (p['tags'].get('highway')=='bus_stop' or p['tags'].get('railway')=='tram_stop')]
 data['source']['goal']='East entrance traced from user-marked map, 2026-09-25; approximate geometry.'
 preferred={'Herlofsons veg','Per Sivles veg','Uglavegen','Gamle Oslovei','General Bangs veg','Arnt Smistads veg','Selsbakkvegen','Nordre Hallsetveg','Lokalvei'}
 for e in edges:e['cost']=round(e['length']*(8 if e.get('restricted') else 1 if e['name'] in preferred else 1.8),2)

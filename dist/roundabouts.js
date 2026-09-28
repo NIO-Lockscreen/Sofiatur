@@ -17,7 +17,7 @@ export function roundaboutChoices(entry, previous, adjacency, distances) {
     last=next[0];segments.push(last);
    }
    const path=[entry];for(const e of segments)path.push(...e.path.slice(1));
-   plans.push({id:-exit.id-1,from:entry,to:last.to,path,name:segments.slice(ring.length).find(e=>e.name!=='Lokalvei')?.name||'Avkjørsel',length:segments.reduce((s,e)=>s+e.length,0),cost:segments.reduce((s,e)=>s+(e.cost||e.length),0),roundaboutPlan:true,exitNumber:plans.length+1,exitEdge:last,arrivalFrom:last.from,ringLength:ring.reduce((s,e)=>s+e.length,0),segments});
+   plans.push({id:-exit.id-1,from:entry,to:last.to,path,name:segments.slice(ring.length).find(e=>e.name!=='Lokalvei')?.name||'Avkjørsel',length:segments.reduce((s,e)=>s+e.length,0),cost:segments.reduce((s,e)=>s+(e.cost||e.length),0),roundaboutPlan:true,exitNumber:plans.length+1,exitEdge:last,arrivalFrom:last.from,uTurn:segments.some(s=>s.to===previous),ringLength:ring.reduce((s,e)=>s+e.length,0),segments});
   }
   const next=(adjacency.get(node)||[]).find(e=>e.roundabout);
   if(!next)break;ring.push(next);node=next.to;

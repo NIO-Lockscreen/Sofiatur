@@ -32,9 +32,9 @@ export const buildingStyles={
  // Dalgårdstunet (2024): hus A light sand render, five storeys over the Extra shop; hus B gold-khaki cladding, four storeys.
  '1312240278':{wall:'#e8dcbb',roof:'#3b3f41',levels:5,height:16.4,flat:true,source:'dalgardstunet-prospekt'},
  '1312240279':{wall:'#b6a26b',roof:'#3b3f41',levels:4,height:13.4,flat:true,balconies:'south',source:'dalgardstunet-prospekt'},
- // Bunnpris Ugla: light walls, dark roofs (aerial); the facade itself is not photographed.
- '191198632':{wall:'#e4dfd2',roof:'#45494a',levels:2,source:'dalgard-aerial'},
- '1037053709':{wall:'#e4dfd2',roof:'#45494a',levels:1,height:3.6,source:'dalgard-aerial'}
+ // The old house behind Bunnpris Ugla (user's photo): white vertical boards, dark red window frames, dark tiled gable
+ // roof. The shop in front of it is modelled in stavset.js.
+ '191198632':{wall:'#efeee7',roof:'#36312e',levels:2,siding:true,frame:'#8e2b27',gabled:true,roofRise:3.4,chimney:true,source:'bunnpris-photos'}
 };
 
 export function addKiwi({T,scene,building,height,bucket,tri,quad,box,groundPoly,ribbon}){

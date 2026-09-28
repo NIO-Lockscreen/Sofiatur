@@ -51,8 +51,8 @@ assert.ok(points.every(p=>Math.abs(p[1]-height(p[0],p[2])-.1)<.02||Math.abs(p[1]
 const lanes=ribbons.filter(r=>r.w===.07).length;assert.ok(lanes>=4,`Lane lines on the track (${lanes})`);
 console.log(`Dalgård idrettspark: ${areas.length} grounds (track with ${lanes} lane lines, ${soccer.length} football pitches with goals, tennis, padel, car parks), all clear of trees: OK`);
 
-// Shop signs: Extra on Dalgårdstunet towards Anders Wigens veg and the square, Bunnpris at its entrance, the ice rink's name.
-const wallBase=new Map(['1312240278','1312240279','191198632','1037053709','89233555'].map(id=>[id,{y:Math.max(...building(id).p.map(v=>height(...v))),h:id==='1312240278'?16.4:id==='89233555'?9:7}]));
+// Shop signs: Extra on Dalgårdstunet towards Anders Wigens veg and the square, the ice rink's name (Bunnpris: verify-stavset.mjs).
+const wallBase=new Map(['1312240278','1312240279','89233555'].map(id=>[id,{y:Math.max(...building(id).p.map(v=>height(...v))),h:id==='1312240278'?16.4:id==='89233555'?9:7}]));
 points=[];addDalgardDetails({T,scene,data,wallBase,bucket,quad,box});
 const streets=streetSegments(data.roads);
 const facing=(sign,owner)=>{const n=new T.Vector3(0,0,1).applyEuler(sign.rotation);assert.ok(!insideAny(sign.position.x+n.x*3,sign.position.z+n.z*3),`${sign.name} faces out of ${owner}`);
@@ -60,8 +60,8 @@ const facing=(sign,owner)=>{const n=new T.Vector3(0,0,1).applyEuler(sign.rotatio
 const extra=named('Extra');assert.equal(extra.length,2,'Extra on the street side and the square');for(const s of extra)facing(s,'1312240278');
 const street=extra.find(s=>{const n=new T.Vector3(0,0,1).applyEuler(s.rotation);return streets.some(([a,b])=>projectPoint([s.position.x+n.x*9,s.position.z+n.z*9],a,b).distance<6);});
 assert.ok(street,'One Extra sign looks onto Anders Wigens veg');
-const [bunnpris]=named('BUNNPRIS');facing(bunnpris,'191198632');const [ishall]=named('DALGÅRD ISHALL');facing(ishall,'89233555');
-console.log('Signs: Extra (street and square), Bunnpris, Dalgård ishall, each on the outside of its building: OK');
+assert.equal(named('BUNNPRIS').length,0,'Bunnpris is drawn with its shop (stavset.js)');const [ishall]=named('DALGÅRD ISHALL');facing(ishall,'89233555');
+console.log('Signs: Extra (street and square), Dalgård ishall, each on the outside of its building: OK');
 
 // Dalgårdvegen runs down to Dalgård ishall: a road to a parking place in the car park beside the hall.
 const park=data.nodes['ishall-parkering'],spur=data.edges.find(e=>e.to==='ishall-parkering');

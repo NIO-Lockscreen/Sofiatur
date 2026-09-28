@@ -1,5 +1,19 @@
 import collections
 
+# South to Stavset (28 September 2026): Odd Husbys veg down to the roundabout at Stavset senter, and Byåsveien back
+# north through the roundabouts at Lysverkvegen and Kystadlia, with the Kystad houses between them. Local metres
+# (x east, z south of home); roads, buildings and areas in here are kept, south of the original box.
+SOUTH = [(140, 730), (-30, 1017), (-110, 1161), (-130, 1250), (-130, 1470), (380, 1470), (700, 1360), (1100, 1110),
+         (1200, 730)]
+
+
+def in_south(x, z):
+    inside = False
+    for (ax, az), (bx, bz) in zip(SOUTH[-1:] + SOUTH[:-1], SOUTH):
+        if (az > z) != (bz > z) and x < (bx - ax) * (z - az) / (bz - az) + ax:
+            inside = not inside
+    return inside
+
 
 def merge_close_junctions(edges, limit=12):
     """Two junctions a few metres apart look like one junction on screen, but each asked on its own: at Gamle
@@ -133,6 +147,53 @@ def add_ishall_parking(data):
     new = [_edge(data, path, 'Dalgård ishall', eid), _edge(data, path[::-1], 'Dalgårdvegen', eid + 1)]
     new += _split_at(data, entrance, eid + 2)
     data['edges'] += new
+
+
+def _add_place(data, entrance, points, name, back, prefix):
+    """A road from the junction node entrance through points (local x, z) to a parking place at the last point, and
+    back. entrance becomes a junction if it lies inside an edge."""
+    path = [entrance]
+    for i, p in enumerate(points[:-1], 1):
+        data['nodes'][f'{prefix}-{i}'] = p
+        path.append(f'{prefix}-{i}')
+    data['nodes'][f'{prefix}-parkering'] = points[-1]
+    path.append(f'{prefix}-parkering')
+    eid = _next_id(data)
+    new = [_edge(data, path, name, eid), _edge(data, path[::-1], back, eid + 1)]
+    new += _split_at(data, entrance, eid + 2)
+    data['edges'] += new
+
+
+def add_rema_parking(data, coords, service, aisle):
+    """Rema 1000 Stavset at Stavset senter. Its customer car park (OSM 89061200) lies in front of the shops and is
+    reached from Nedre Stavsetvegen by the service road along the centre's east side (OSM 18939739) and a parking
+    aisle that loops through the car park (OSM 89061191). Nedre Stavsetvegen gets a junction where the service road
+    leaves it; the road follows the service road and the aisle round the loop to a parking place in front of Rema's
+    entrance. coords maps the OSM node ids of both ways to local points."""
+    if 'rema-parkering' in data['nodes']:
+        return
+    entrance = service[0]
+    assert entrance in data['nodes'], 'Nedre Stavsetvegen passes the service road'
+    joint = next(n for n in service if n == aisle[-1])  # the aisle's south end on the service road
+    way = service[1:service.index(joint) + 1] + aisle[-2::-1]  # along the service road, then the loop backwards
+    turn = way.index(aisle[2])  # the loop's west end, then east along the shop fronts
+    a, b = coords[way[turn]], coords[aisle[1]]
+    length = ((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) ** .5
+    park = [round(a[0] + (b[0] - a[0]) * 8 / length, 2), round(a[1] + (b[1] - a[1]) * 8 / length, 2)]
+    _add_place(data, entrance, [coords[n] for n in way[:turn + 1]] + [park], 'Rema 1000', 'Nedre Stavsetvegen', 'rema')
+
+
+def add_bunnpris_parking(data, coords, link, aisle):
+    """Bunnpris Ugla's car park (OSM 207829382) lies between Odd Husbys veg and the shop. The mapped way in is from
+    the end of Granlivegen: a short link (OSM 1364292850) and the aisle along the shop front (OSM 23390718). The road
+    ends at a parking place in the aisle, in front of the canopy over the entrance."""
+    if 'bunnpris-parkering' in data['nodes']:
+        return
+    end, joint = link[-1], link[0]
+    assert end in data['nodes'] and aisle[-1] == joint, 'Granlivegen ends at the link into the car park'
+    a, b = coords[joint], coords[aisle[-2]]
+    park = [round(a[0] + (b[0] - a[0]) * .45, 2), round(a[1] + (b[1] - a[1]) * .45, 2)]
+    _add_place(data, end, [coords[joint], park], 'Bunnpris', 'Granlivegen', 'bunnpris')
 
 
 if __name__ == '__main__':
