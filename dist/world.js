@@ -28,8 +28,11 @@ export function createWorld(canvas, data) {
  const staticMaterial=new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide});
  const buckets=new Map();const colorCache=new Map();
  function col(c){if(!colorCache.has(c))colorCache.set(c,new T.Color(c));return colorCache.get(c);}
- function bucket(x,z){let k=Math.floor(x/160)+','+Math.floor(z/160);if(!buckets.has(k))buckets.set(k,{x:Math.floor(x/160)*160+80,z:Math.floor(z/160)*160+80,p:[],c:[]});return buckets.get(k);}
- function tri(b,a,c,d,colour){b.p.push(...a,...c,...d);const q=col(colour);for(let i=0;i<3;i++)b.c.push(q.r,q.g,q.b);}
+ function bucket(x,z){let k=Math.floor(x/160)+','+Math.floor(z/160);if(!buckets.has(k))buckets.set(k,{x:Math.floor(x/160)*160+80,z:Math.floor(z/160)*160+80,p:new Float32Array(2304),c:new Float32Array(2304),n:0});return buckets.get(k);}
+ // Chunks collect straight into growing Float32Arrays: about half the memory of plain arrays and no conversion afterwards.
+ function tri(b,a,c,d,colour){let n=b.n;if(n+9>b.p.length){const p=new Float32Array(b.p.length*2),q=new Float32Array(b.p.length*2);p.set(b.p);q.set(b.c);b.p=p;b.c=q;}const p=b.p,cc=b.c,q=col(colour);
+  p[n]=a[0];p[n+1]=a[1];p[n+2]=a[2];p[n+3]=c[0];p[n+4]=c[1];p[n+5]=c[2];p[n+6]=d[0];p[n+7]=d[1];p[n+8]=d[2];
+  for(let i=n;i<n+9;i+=3){cc[i]=q.r;cc[i+1]=q.g;cc[i+2]=q.b;}b.n=n+9;}
  function quad(b,a,c,d,e,colour){tri(b,a,c,d,colour);tri(b,a,d,e,colour);}
  function box(b,cx,cy,cz,wx,wy,wz,colour,angle=0){let pts=[];for(let y of [-.5,.5])for(let z of [-.5,.5])for(let x of [-.5,.5])pts.push([cx+x*wx*Math.cos(angle)+z*wz*Math.sin(angle),cy+y*wy,cz-x*wx*Math.sin(angle)+z*wz*Math.cos(angle)]);for(let f of [[0,1,3,2],[4,6,7,5],[0,4,5,1],[2,3,7,6],[0,2,6,4],[1,5,7,3]])quad(b,...f.map(i=>pts[i]),colour);}
  function groundPoly(poly,colour,lift=.07){if(poly.length<3)return;let p=poly.slice();if(p[0][0]===p.at(-1)[0]&&p[0][1]===p.at(-1)[1])p.pop();const shapes=p.map(v=>new T.Vector2(v[0],v[1]));for(const f of T.ShapeUtils.triangulateShape(shapes,[])){const vertices=f.map(i=>[p[i][0],height(...p[i])+lift,p[i][1]]);tri(bucket(vertices[0][0],vertices[0][2]),...vertices,colour);}}
@@ -71,13 +74,16 @@ export function createWorld(canvas, data) {
  if(style.balconies&&edgeLength>25){const dx=(c[0]-a[0])/edgeLength,dz=(c[1]-a[1])/edgeLength;let nx=-dz,nz=dx;if(nx*((a[0]+c[0])/2-cx)+nz*((a[1]+c[1])/2-cz)<0){nx=-nx;nz=-nz;}if(style.balconies==='south'?nz>.65:nx<-.65){const at=(d,yy,o)=>[a[0]+dx*d+nx*o,yy,a[1]+dz*d+nz*o];for(let floor=0;floor<3;floor++){const yy=y+.55+floor*2.65;for(let d=1;d<edgeLength-3;d+=7){const end=Math.min(d+6.6,edgeLength-1);quad(b,at(d,yy,0),at(end,yy,0),at(end,yy,1.55),at(d,yy,1.55),'#ddd7c7');quad(b,at(d,yy,1.55),at(end,yy,1.55),at(end,yy+.9,1.55),at(d,yy+.9,1.55),'#e7ddc9');for(let s=d;s<end;s+=.28){const p=at(s,yy+.48,1.59);box(b,p[0],p[1],p[2],.035,.87,.035,'#a89c84');}}}}}
  if(style.siding&&edgeLength>1){const dx=(c[0]-a[0])/edgeLength,dz=(c[1]-a[1])/edgeLength;for(let d=.3;d<edgeLength;d+=.48){const x=a[0]+dx*d,z=a[1]+dz*d;for(const sign of [-1,1])quad(b,[x-dz*.025*sign,y+.5,z+dx*.025*sign],[x+dx*.027-dz*.025*sign,y+.5,z+dz*.027+dx*.025*sign],[x+dx*.027-dz*.025*sign,y+h,z+dz*.027+dx*.025*sign],[x-dz*.025*sign,y+h,z+dx*.025*sign],'#'+new T.Color(colour).multiplyScalar(.82).getHexString());}box(b,(a[0]+c[0])/2,y+h-.04,(a[1]+c[1])/2,edgeLength,.14,.17,'#ecece5',Math.atan2(-dz,dx));}
  if(style.brick||style.horizontalSiding){for(let hy=y+.7;hy<y+h;hy+=style.horizontalSiding?.23:.32){const dx=(c[0]-a[0])/edgeLength,dz=(c[1]-a[1])/edgeLength;for(const sign of [-1,1])quad(b,[a[0]-dz*.025*sign,hy,a[1]+dx*.025*sign],[c[0]-dz*.025*sign,hy,c[1]+dx*.025*sign],[c[0]-dz*.025*sign,hy+.025,c[1]+dx*.025*sign],[a[0]-dz*.025*sign,hy+.025,a[1]+dx*.025*sign],style.horizontalSiding?'#c6c8bf':'#91897d');}}
- const len=Math.hypot(c[0]-a[0],c[1]-a[1]);if(len>3){const dx=(c[0]-a[0])/len,dz=(c[1]-a[1])/len;for(let f=0;f<levels;f++)for(let j=1;j<=Math.floor(len/3.7);j++){const q=j/(Math.floor(len/3.7)+1),wx=a[0]+(c[0]-a[0])*q,wz=a[1]+(c[1]-a[1])*q,wy=y+1.5+f*2.65;const half=garage?.45:.63;const wa=[wx-dx*half,wy,wz-dz*half],wb=[wx+dx*half,wy,wz+dz*half],wc=[wb[0],wy+1.04,wb[2]],wd=[wa[0],wy+1.04,wa[2]];const nx=-dz*.065,nz=dx*.065;quad(b,...[wa,wb,wc,wd].map(v=>[v[0]+nx,v[1],v[2]+nz]),'#fff6df');quad(b,...[wa,wb,wc,wd].map(v=>[v[0]-nx,v[1],v[2]-nz]),'#fff6df');const glass=[[-.46,.15],[.46,.15],[.46,.92],[-.46,.92]].map(v=>[wx+dx*v[0],wy+v[1],wz+dz*v[0]]);quad(b,...glass.map(v=>[v[0]+nx*2,v[1],v[2]+nz*2]),'#718b91');quad(b,...glass.map(v=>[v[0]-nx*2,v[1],v[2]-nz*2]),'#718b91');}}
+ const len=Math.hypot(c[0]-a[0],c[1]-a[1]);if(len>3){const dx=(c[0]-a[0])/len,dz=(c[1]-a[1])/len;
+ // Windows only on the outside of the wall: a copy facing into the building is never seen.
+ const out=insideFootprint(p,(a[0]+c[0])/2-dz*.3,(a[1]+c[1])/2+dx*.3)?-1:1;for(let f=0;f<levels;f++)for(let j=1;j<=Math.floor(len/3.7);j++){const q=j/(Math.floor(len/3.7)+1),wx=a[0]+(c[0]-a[0])*q,wz=a[1]+(c[1]-a[1])*q,wy=y+1.5+f*2.65;const half=garage?.45:.63;const wa=[wx-dx*half,wy,wz-dz*half],wb=[wx+dx*half,wy,wz+dz*half],wc=[wb[0],wy+1.04,wb[2]],wd=[wa[0],wy+1.04,wa[2]];const nx=-dz*.065*out,nz=dx*.065*out;quad(b,...[wa,wb,wc,wd].map(v=>[v[0]+nx,v[1],v[2]+nz]),'#fff6df');const glass=[[-.46,.15],[.46,.15],[.46,.92],[-.46,.92]].map(v=>[wx+dx*v[0],wy+v[1],wz+dz*v[0]]);quad(b,...glass.map(v=>[v[0]+nx*2,v[1],v[2]+nz*2]),'#718b91');}}
  }
  const roofTop=addBuildingRoof({T,p,cx,cz,y,h,style,t,area,b,tri,quad,colour,roofcolour});
 
- if(style.junction)addJunctionDetails({T,scene,building,p,cx,cz,y,h,levels,garage,style,roads:junctionBuildings.roads,height,bucket,tri,quad,box,roofTop});
+ if(style.junction)addJunctionDetails({T,scene,building,p,cx,cz,y,h,levels,garage,style,roads:junctionBuildings.roads,roadIndex:junctionBuildings.roadIndex,height,bucket,tri,quad,box,roofTop});
  if(area>55&&area<260&&(style.chimney||!style.source&&hash%4===0))box(b,cx+1,y+h+.7,cz+.5,.65,2,.7,'#a39c8d');
  }
+ function insideFootprint(poly,x,z){let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const [ax,az]=poly[j],[bx,bz]=poly[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)inside=!inside;}return inside;}
  function distanceSegment(x,z,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz||1)));return Math.hypot(x-a[0]-t*dx,z-a[1]-t*dz);}
  // A spatial index keeps decorative trees away from real roads and buildings.
  const obstacles=new Map();function index(x,z,val){let k=Math.floor(x/40)+','+Math.floor(z/40);if(!obstacles.has(k))obstacles.set(k,[]);obstacles.get(k).push(val);}
@@ -89,8 +95,8 @@ export function createWorld(canvas, data) {
  const homeShrubs=[[-15,1],[-12,4],[-9,6],[-6,8],[-3,9],[0,12],[3,10],[6,9],[9,8],[11,7],[-8,10],[-11,7]];for(const [x,z] of homeShrubs){const b=bucket(x,z),y=height(x,z);const g=new T.IcosahedronGeometry(1,1);g.scale(1.65,.85,1.45);g.translate(x,y+.7,z);const p=g.attributes.position;for(let i=0;i<p.count;i+=3)tri(b,...[0,1,2].map(j=>[p.getX(i+j),p.getY(i+j),p.getZ(i+j)]),'#688845');g.dispose();}
  for(let n=0;n<12000;n++){let x=-220+rnd()*2440,z=-700+rnd()*1520;if(!clear(x,z))continue;let y=height(x,z),h=3+rnd()*5,b=bucket(x,z);box(b,x,y+h*.3,z,.3,h*.6,.3,'#8c7152');if(rnd()<.6){cone(b,x,y+h*.25,z,h*.38,h*.7,'#538b60');cone(b,x,y+h*.54,z,h*.29,h*.55,'#689b64');}else{const geo=new T.IcosahedronGeometry(h*.35,0);geo.translate(x,y+h*.72,z);const at=geo.getAttribute('position');const cc=['#74a357','#8eb15f','#659850'][n%3];for(let i=0;i<at.count;i+=3)tri(b,[at.getX(i),at.getY(i),at.getZ(i)],[at.getX(i+1),at.getY(i+1),at.getZ(i+1)],[at.getX(i+2),at.getY(i+2),at.getZ(i+2)],cc);geo.dispose();}}
  const chunks=[];
- for(const b of buckets.values()){const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(b.p,3));g.setAttribute('color',new T.Float32BufferAttribute(b.c,3));g.computeVertexNormals();g.computeBoundingSphere();const m=new T.Mesh(g,staticMaterial);m.receiveShadow=true;scene.add(m);chunks.push({mesh:m,x:b.x,z:b.z});}
- function label(text,x,z,colour='#164e48',scale=10){const c=document.createElement('canvas');c.width=512;c.height=128;const ctx=c.getContext('2d');ctx.fillStyle=colour;ctx.beginPath();ctx.roundRect(4,6,504,108,24);ctx.fill();ctx.strokeStyle='#fff5d9';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#fff9e8';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 32px sans-serif';ctx.fillText(text,256,61,465);const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;const mat=new T.SpriteMaterial({map:tex,depthTest:true});const s=new T.Sprite(mat);s.position.set(x,height(x,z)+7,z);s.scale.set(scale,scale/4,1);scene.add(s);return s;}
+ for(const b of buckets.values()){const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(b.p.slice(0,b.n),3));g.setAttribute('color',new T.BufferAttribute(b.c.slice(0,b.n),3));b.p=b.c=null;g.computeVertexNormals();g.computeBoundingSphere();const m=new T.Mesh(g,staticMaterial);m.receiveShadow=true;m.matrixAutoUpdate=false;m.updateMatrix();scene.add(m);chunks.push({mesh:m,x:b.x,z:b.z});}
+ function label(text,x,z,colour='#164e48',scale=10){const c=document.createElement('canvas');c.width=512;c.height=128;const ctx=c.getContext('2d');ctx.fillStyle=colour;ctx.beginPath();ctx.roundRect(4,6,504,108,24);ctx.fill();ctx.strokeStyle='#fff5d9';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#fff9e8';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 32px sans-serif';ctx.fillText(text,256,61,465);const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;const mat=new T.SpriteMaterial({map:tex,depthTest:true});const s=new T.Sprite(mat);s.position.set(x,height(x,z)+7,z);s.scale.set(scale,scale/4,1);s.matrixAutoUpdate=false;s.updateMatrix();scene.add(s);return s;}
  const labels=[];labels.push(label('⌂  Hjemme',0,0,'#654d3e',10));for(const p of data.pois)if(['supermarket','school','kindergarten','fuel','bakery'].includes(p.type))labels.push(label(p.name,p.x,p.z,p.type==='kindergarten'?'#c98938':'#3b6955',p.name.length>19?17:13));
  const goalPos=data.nodes[data.goal];const goalRing=new T.Mesh(new T.TorusGeometry(4,.18,6,48),new T.MeshBasicMaterial({color:'#ffe17a'}));goalRing.rotation.x=Math.PI/2;goalRing.position.set(goalPos[0],height(...goalPos)+.7,goalPos[1]);scene.add(goalRing);labels.push(label('⚑  Her er barnehagen!',...goalPos,'#c58b29',14));
  const {car,wheels}=createET5(T);scene.add(car);
@@ -103,15 +109,28 @@ export function createWorld(canvas, data) {
  function paintTurnArrow(symbol,label){arrowCtx.clearRect(0,0,256,256);arrowCtx.fillStyle='#f5c656';arrowCtx.beginPath();arrowCtx.arc(128,128,108,0,Math.PI*2);arrowCtx.fill();arrowCtx.strokeStyle='#fff8dd';arrowCtx.lineWidth=10;arrowCtx.stroke();arrowCtx.fillStyle='#173e3c';arrowCtx.textAlign='center';arrowCtx.textBaseline='middle';arrowCtx.font='bold 112px Arial';arrowCtx.fillText(symbol,128,120);arrowCtx.font='bold 22px Arial';arrowCtx.fillText(label.toUpperCase(),128,210);arrowTexture.needsUpdate=true;}
  function setTurnArrow(info){if(!info){turnArrow.visible=false;return;}paintTurnArrow(info.symbol,info.label);turnArrow.visible=true;}
  const look=new T.Vector3(),target=new T.Vector3();let initialized=false,overview=false;
+ const up=new T.Vector3(0,1,0),horizontal=new T.Vector3(),orbitDirection=new T.Vector3(),camLook=new T.Vector3(),facing=new T.Euler(0,0,0,'YXZ'),rot=new T.Quaternion();
+ const follows={high:{back:26,up:22,ahead:13},intro:{back:14,up:7,ahead:2},follow:{back:14,up:7.8,ahead:8}};
+ // Adaptive resolution, judged over ~1.5 s: when many frames are slow (under ~45 fps) the pixel ratio steps down; with steady headroom it steps
+ // back up. A step up that proves too slow makes the next try wait twice as long.
+ const maxRatio=renderer.getPixelRatio(),minRatio=Math.min(maxRatio,.8);let frameAt=0,frames=0,slowFrames=0,fastFrames=0,frameTime=0,raiseAt=0,raisedAt=-1e9,backoff=8000;
+ function adaptResolution(){
+  const now=performance.now(),ms=now-frameAt;frameAt=now;if(!supported||ms>1000)return;frames++;frameTime+=ms;if(ms>22)slowFrames++;else if(ms<18)fastFrames++;if(frameTime<1500||frames<5)return;
+  const ratio=renderer.getPixelRatio();
+  if(slowFrames>frames*.3&&ratio>minRatio){if(now-raisedAt<6000)backoff=Math.min(backoff*2,120000);renderer.setPixelRatio(Math.max(minRatio,ratio-(frameTime/frames>40?.3:.15)));raiseAt=now+backoff;}
+  else if(fastFrames>frames*.9&&ratio<maxRatio&&now>raiseAt){renderer.setPixelRatio(Math.min(maxRatio,ratio+.1));raisedAt=now;raiseAt=now+3000;}
+  frames=slowFrames=fastFrames=frameTime=0;
+ }
  function update(dt,pos,tangent,velocity,mode,finished,time,carFacing=tangent){
- car.position.copy(pos);const yaw=Math.atan2(-carFacing.x,-carFacing.z);const rot=new T.Quaternion().setFromEuler(new T.Euler(Math.atan2(carFacing.y,Math.hypot(carFacing.x,carFacing.z)),yaw,0,'YXZ'));car.quaternion.slerp(rot,1-Math.exp(-dt*9));wheels.forEach(w=>w.rotation.x-=velocity*dt/.39);
+ adaptResolution();
+ car.position.copy(pos);const yaw=Math.atan2(-carFacing.x,-carFacing.z);rot.setFromEuler(facing.set(Math.atan2(carFacing.y,Math.hypot(carFacing.x,carFacing.z)),yaw,0));car.quaternion.slerp(rot,1-Math.exp(-dt*9));wheels.forEach(w=>w.rotation.x-=velocity*dt/.39);
  sm.position.set(pos.x,height(pos.x,pos.z)+.25,pos.z);sm.rotation.z=-yaw;turnArrow.position.set(pos.x,pos.y+6.2+Math.sin(time*3)*.22,pos.z);turnArrow.scale.setScalar(4.5+Math.sin(time*3)*.16);if(finished)turnArrow.visible=false;
- const follow=mode==='high'?{back:26,up:22,ahead:13}:mode==='intro'?{back:14,up:7,ahead:2}:{back:14,up:7.8,ahead:8};
- const horizontal=new T.Vector3(tangent.x,0,tangent.z).normalize();if(horizontal.lengthSq()<.1)horizontal.set(0,0,-1);
- const orbitDirection=horizontal.clone().applyAxisAngle(new T.Vector3(0,1,0),orbit.yaw);
+ const follow=follows[mode]||follows.follow;
+ horizontal.set(tangent.x,0,tangent.z).normalize();if(horizontal.lengthSq()<.1)horizontal.set(0,0,-1);
+ orbitDirection.copy(horizontal).applyAxisAngle(up,orbit.yaw);
  const orbitAngle=Math.atan2(follow.up,follow.back)+orbit.tilt,orbitDistance=Math.hypot(follow.back,follow.up);
  target.copy(pos).addScaledVector(orbitDirection,-Math.cos(orbitAngle)*orbitDistance);target.y=Math.max(pos.y+Math.sin(orbitAngle)*orbitDistance,height(target.x,target.z)+2.5);
- const camLook=pos.clone().addScaledVector(orbitDirection,orbit.active?0:follow.ahead);camLook.y+=1;
+ camLook.copy(pos).addScaledVector(orbitDirection,orbit.active?0:follow.ahead);camLook.y+=1;
  // Face the home's photographed west-facing gables before setting off.
  if(mode==='intro'&&!orbit.active){target.set(-27,height(-27,-15)+5,-15);camLook.set(0,height(-7,-3)+2.4,0);}
  if(!initialized){camera.position.copy(target);look.copy(camLook);initialized=true;}else{camera.position.lerp(target,1-Math.exp(-dt*3));look.lerp(camLook,1-Math.exp(-dt*4));}camera.lookAt(look);

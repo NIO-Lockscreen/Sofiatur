@@ -1,28 +1,32 @@
 import {junctionObservations} from './junction-observations.js';
-import {projectPoint,streetSegments} from './transit-geometry.js';
+import {projectPoint,streetSegments,segmentIndex} from './transit-geometry.js';
 
 export function createJunctionBuildings(data){
  const outgoing=new Map();for(const e of data.edges){if(!outgoing.has(e.from))outgoing.set(e.from,[]);outgoing.get(e.from).push(e);}
  const nodes=[...outgoing].filter(([n,es])=>new Set(es.map(e=>e.to)).size>2||es.some(e=>e.roundabout)||n===data.start).map(([id])=>({id,p:data.nodes[id]}));
- const roads=streetSegments(data.roads),near=new Set();
- for(const b of data.buildings)if(nodes.some(n=>b.p.some(p=>Math.hypot(p[0]-n.p[0],p[1]-n.p[1])<40)))near.add(b.id);
+ const roads=streetSegments(data.roads),roadIndex=segmentIndex(roads),near=new Set(),cells=new Map(),cell=n=>Math.floor(n/40);
+ for(const n of nodes){const k=cell(n.p[0])+','+cell(n.p[1]);if(!cells.has(k))cells.set(k,[]);cells.get(k).push(n);}
+ const nearNode=p=>{for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)for(const n of cells.get((cell(p[0])+i)+','+(cell(p[1])+j))||[])if(Math.hypot(p[0]-n.p[0],p[1]-n.p[1])<40)return true;return false;};
+ for(const b of data.buildings)if(b.p.some(nearNode))near.add(b.id);
  function style(building){const t=building.t,observed=junctionObservations[building.id]||{},detailed=near.has(building.id)||!!observed.source;
   const material=t['building:material']||t['building:facade:material'];
   return {junction:detailed,...(t['roof:height']?{roofRise:parseFloat(t['roof:height'])}:{}),...(material==='brick'?{brick:true}:{}),...observed};
  }
- return {nodes,near,roads,style};
+ return {nodes,near,roads,roadIndex,style};
 }
 
 // Original stylised joinery; exact colours and roof forms only come from mapped
 // tags or individually recorded photographs. Unseen doors/windows are estimates.
-export function addJunctionDetails({T,scene,building,p,cx,cz,y,h,levels,garage,style,roads,height,bucket,tri,quad,box,roofTop}){
+export function addJunctionDetails({T,scene,building,p,cx,cz,y,h,levels,garage,style,roads,roadIndex,height,bucket,tri,quad,box,roofTop}){
  const b=bucket(cx,cz),trim=style.trim||'#efeee6',glass=style.glass||'#52676d';
  let front=null;
  for(let i=0;i<p.length;i++){
   const a=p[i],c=p[(i+1)%p.length],len=Math.hypot(c[0]-a[0],c[1]-a[1]);if(len<2)continue;
   const dx=(c[0]-a[0])/len,dz=(c[1]-a[1])/len;let nx=-dz,nz=dx;if(nx*((a[0]+c[0])/2-cx)+nz*((a[1]+c[1])/2-cz)<0){nx=-nx;nz=-nz;}
   const at=(d,hy,o=.12)=>[a[0]+dx*d+nx*o,hy,a[1]+dz*d+nz*o],panel=(d,hy,w,hh,col,o=.12)=>quad(b,at(d-w/2,hy,o),at(d+w/2,hy,o),at(d+w/2,hy+hh,o),at(d-w/2,hy+hh,o),col);
-  const centre=at(len/2,y);let road=null;for(const [u,v] of roads){const q=projectPoint([centre[0],centre[2]],u,v);if((q.x-centre[0])*nx+(q.z-centre[2])*nz>0&&(!road||q.distance<road.distance))road=q;}
+  const centre=at(len/2,y);let road=null;const inFront=list=>{for(const [u,v] of list){const q=projectPoint([centre[0],centre[2]],u,v);if((q.x-centre[0])*nx+(q.z-centre[2])*nz>0&&(!road||q.distance<road.distance))road=q;}};
+  // Nearest road in front of the wall: nearby segments first, all roads only when none is within 60 m.
+  inFront(roadIndex.near(centre[0],centre[2],60));if(!road||road.distance>60){road=null;inFront(roads);}
   if(road&&len>4&&(!front||road.distance<front.distance))front={at,panel,len,distance:road.distance,dx,dz,nx,nz};
   if(style.upperWall)panel(len/2,y+h*.65,len,h*.35,style.upperWall,.08);
   if(style.lowerWall)panel(len/2,y+.5,len,Math.min(2.25,h-.5),style.lowerWall,.08);

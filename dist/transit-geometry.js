@@ -1,6 +1,14 @@
 export const roadWidth=road=>road.type==='service'?3.5:road.type==='residential'?5.2:6.5;
 export function projectPoint(p,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],l=dx*dx+dz*dz,t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dz)/(l||1))),x=a[0]+t*dx,z=a[1]+t*dz;return {x,z,t,distance:Math.hypot(p[0]-x,p[1]-z)};}
 export function streetSegments(roads){return roads.flatMap(r=>r.p.slice(1).map((p,i)=>[r.p[i],p,roadWidth(r)]));}
+// Grid of segments by the cells their bounding boxes cover: near(x,z,r) returns every segment that passes within r metres
+// (plus a few farther ones), so proximity checks look at nearby roads instead of all of them.
+export function segmentIndex(segments,cell=32){
+ const grid=new Map(),key=(i,j)=>i*65536+j;
+ for(const s of segments){const [a,b]=s;for(let i=Math.floor(Math.min(a[0],b[0])/cell);i<=Math.floor(Math.max(a[0],b[0])/cell);i++)for(let j=Math.floor(Math.min(a[1],b[1])/cell);j<=Math.floor(Math.max(a[1],b[1])/cell);j++){const k=key(i,j);if(!grid.has(k))grid.set(k,[]);grid.get(k).push(s);}}
+ return {near(x,z,r){const found=new Set();for(let i=Math.floor((x-r)/cell);i<=Math.floor((x+r)/cell);i++)for(let j=Math.floor((z-r)/cell);j<=Math.floor((z+r)/cell);j++)for(const s of grid.get(key(i,j))||[])found.add(s);return found;}};
+}
+const indexes=new WeakMap();const indexFor=segments=>{if(!indexes.has(segments))indexes.set(segments,segmentIndex(segments));return indexes.get(segments);};
 // Local u runs along the kerb, local v runs away from the carriageway.
 // Check the full shelter/sign footprint against all neighbouring road segments.
 export function placeBusStop(stop,segments){
@@ -10,7 +18,7 @@ export function placeBusStop(stop,segments){
   const offset=q.width/2+2.1+extra,x=q.x+nx*offset+tx*along,z=q.z+nz*offset+tz*along;
   const point=(u,v)=>[x+tx*u+nx*v,z+tz*u+nz*v];
   // Enclosing circle prevents even curved/junction road edges crossing the shelter.
-  const safe=segments.every(([a,b,w])=>projectPoint([x,z],a,b).distance>w/2+2.65);
+  let safe=true;for(const [a,b,w] of indexFor(segments).near(x,z,6))if(projectPoint([x,z],a,b).distance<=w/2+2.65){safe=false;break;}
   if(safe)return {x,z,angle:Math.atan2(-tz,tx),point,footprint:[point(-2.5,-1),point(2,-1),point(2,1),point(-2.5,1)]};
  }
  return null;

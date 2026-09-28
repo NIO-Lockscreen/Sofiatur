@@ -58,3 +58,13 @@ The car now rides on the drawn road. Roads are drawn as 8 m pieces laid on the t
 Arrows for the next open junction appear while the car drives. Tapping one (or using the arrow keys) queues that road, up to two junctions ahead; the hint and the floating cue over the car show the plan. The car does not slow down for a queued junction; it enters a roundabout at circle speed. Run `node verify-queued-choices.mjs` for the whole trip on queued choices.
 
 Soothing background music is generated with Web Audio in `dist/music.js` (pad chords, a soft bass and a music-box melody in F major), with no audio files. It starts with the drive, dips while the voice speaks and stops when the page is hidden. The ♫ button turns all sound (voice and music) on or off, and “Musikk” in settings turns only the music off.
+
+## Saved settings and performance · 28 September 2026
+“Musikk” and “Blindveier” are remembered in the browser (`localStorage`, key `sofiatur.innstillinger`). If storage is blocked, for example in private browsing, the game starts with the defaults. Run `node verify-settings.mjs`.
+
+Performance, measured in headless Chromium (SwiftShader) at iPad size; absolute numbers on a real iPad differ:
+- Loading takes 1.9 s instead of 5.5–6 s. Chunks are built straight into growing `Float32Array`s instead of plain arrays, and bus shelters, tram tracks and junction buildings look up nearby roads through a grid (`segmentIndex` in `transit-geometry.js`) instead of checking all 4,600 road segments. The generated geometry is unchanged.
+- JavaScript memory after loading is 21 MB instead of 258 MB (peak 31 MB instead of 266 MB); the old build kept all temporary geometry arrays alive.
+- Windows are drawn only on the outside of each wall. The copy facing into the building could never be seen. The scene has 1.16 million triangles instead of 1.41 million.
+- The pixel ratio adapts: when many frames take more than 22 ms it steps down (to at least 0.8), and with steady headroom it steps back up to at most 1.6.
+- Road curves are built once per road and reused, the minimap's roads and areas are painted once, static chunks skip per-frame matrix updates, and the camera no longer allocates objects every frame. The game's own JavaScript per frame dropped from 0.18 ms to 0.02 ms on average over the whole trip.

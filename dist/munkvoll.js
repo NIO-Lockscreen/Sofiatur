@@ -1,4 +1,4 @@
-import {createRailProfiles,placeBusStop,streetSegments} from './transit-geometry.js';
+import {createRailProfiles,placeBusStop,streetSegments,segmentIndex} from './transit-geometry.js';
 // Photo-led landmarks, original geometry only. See docs/munkvoll-references.md.
 export function addMunkvoll({T,scene,building,height,bucket,quad,tri,box}){
  const id=String(building.id);if(!['89233421','89233428','89233446','186840391','186841224','186841235'].includes(id))return null;
@@ -91,7 +91,7 @@ export function addTransit({T,scene,data,height,bucket,quad,box,groundPoly,ribbo
  }
  function railRibbon(rail,points,width,colour,lift){const [a,c]=points,len=Math.hypot(c[0]-a[0],c[1]-a[1]);if(len<.001)return;const nx=-(c[1]-a[1])/len*width/2,nz=(c[0]-a[0])/len*width/2,ya=railHeight(rail,...a)+lift,yc=railHeight(rail,...c)+lift;quad(bucket(...a),[a[0]+nx,ya,a[1]+nz],[a[0]-nx,ya,a[1]-nz],[c[0]-nx,yc,c[1]-nz],[c[0]+nx,yc,c[1]+nz],colour);}
 
- const nearRoad=(x,z)=>roadSegments.some(([a,c,w])=>{const dx=c[0]-a[0],dz=c[1]-a[1],t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz||1)));return Math.hypot(x-a[0]-t*dx,z-a[1]-t*dz)<w/2+1;});
+ const roadIndex=segmentIndex(roadSegments),nearRoad=(x,z)=>[...roadIndex.near(x,z,5)].some(([a,c,w])=>{const dx=c[0]-a[0],dz=c[1]-a[1],t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz||1)));return Math.hypot(x-a[0]-t*dx,z-a[1]-t*dz)<w/2+1;});
  // Metre-gauge Gråkallbanen rails follow actual OSM centre lines, including switches.
  for(const rail of data.rails||[]){let nextPole=0,travel=0;for(let i=0;i<rail.p.length-1;i++){const a=rail.p[i],c=rail.p[i+1],len=Math.hypot(c[0]-a[0],c[1]-a[1]);if(len<.01)continue;const dx=(c[0]-a[0])/len,dz=(c[1]-a[1])/len;railSegments.push([a,c,3.2]);
   for(let d=0;d<len;d+=1.7){const e=Math.min(len,d+1.7),x=a[0]+dx*d,z=a[1]+dz*d,xx=a[0]+dx*e,zz=a[1]+dz*e;if(rail.bridge||!nearRoad(x,z)){railRibbon(rail,[[x,z],[xx,zz]],2.6,'#a4a39a',.30);box(bucket(x,z),x,railHeight(rail,x,z)+.355,z,2,.11,.19,'#706456',Math.atan2(dx,dz));}
