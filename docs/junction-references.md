@@ -47,3 +47,27 @@ The OSM importer now retains roof direction/height/material and wall materials. 
 - **Ugla school flanking wing** — OSM 89285924. https://www.trondheim.kommune.no/org/oppvekst/skoler/ugla-skole/ Match: medium.
 - **Ugla school flanking wing** — OSM 1037053661. https://www.trondheim.kommune.no/org/oppvekst/skoler/ugla-skole/ Match: medium.
 - **General Bangs veg38** — OSM 221087561. https://partners.no/eiendom/154218 Match: high.
+
+## Detour junctions · 28 September 2026
+
+Buildings around junctions that are only reached on detours, starting with a right turn at the first junction outside home (eight junctions on Herlofsons veg, Vetle Vislies veg, Kristofer Uppdals veg, Leikåsvegen and Uglavegen). Method: footprints within 40 m of each junction from the map data; addresses from Kartverket's address API (point search) placed in the footprints; each address looked up on hjemla.no for floors, construction year and the FINN code of its latest listing; the FINN listing's exterior and drone photos inspected and matched by address, house form, road and neighbours. Statens vegvesen vegbilder only cover county roads here (Byåsveien), not these municipal streets.
+
+17 footprints in this pass have photo-informed styles: wall and roof colours, roof form and pitch, floors, cladding direction, trim, chimney, door colour. About 40 houses around the same junctions have no FINN listing found and keep the generic detail pass. Horizontal cladding now draws board joints in a darker shade of the wall instead of pale grey lines, which also affects the earlier matches with horizontal boards.
+
+- **Herlofsons veg 9A** — OSM 187112145. https://www.finn.no/realestate/homes/ad.html?finnkode=162387839 Match: high.
+- **Kristofer Uppdals veg 10** — OSM 188005884. https://www.finn.no/realestate/homes/ad.html?finnkode=142830992 Match: high.
+- **Kristofer Uppdals veg 13C/D** — OSM 1037054342. https://www.finn.no/realestate/homes/ad.html?finnkode=387991136 Match: high.
+- **Kristofer Uppdals veg 13A/B** — OSM 188007139. https://www.finn.no/realestate/homes/ad.html?finnkode=387991136 Match: medium.
+- **Kristofer Uppdals veg 24A/B** — OSM 188005897. https://www.finn.no/realestate/homes/ad.html?finnkode=366328088 Match: high.
+- **Kristofer Uppdals veg 27** — OSM 188005901. https://www.finn.no/realestate/homes/ad.html?finnkode=384849959 Match: high.
+- **Kristofer Uppdals veg 29** — OSM 1469247249. https://www.finn.no/realestate/homes/ad.html?finnkode=145051269 Match: high.
+- **Uglavegen 32A/B** — OSM 927828764. https://www.finn.no/realestate/homes/ad.html?finnkode=158276376 Match: high.
+- **Uglavegen 32A/B** — OSM 1037054278. https://www.finn.no/realestate/homes/ad.html?finnkode=409598490 Match: high.
+- **Uglavegen 32C** — OSM 188006432. https://www.finn.no/realestate/homes/ad.html?finnkode=147590794 Match: high.
+- **Garage attached to Uglavegen 32C** — OSM 1037053262. https://www.finn.no/realestate/homes/ad.html?finnkode=147590794 Match: medium.
+- **Uglavegen 37C** — OSM 187113239. https://www.finn.no/realestate/homes/ad.html?finnkode=147690999 Match: high.
+- **Uglavegen 37B** — OSM 1037054279. https://www.finn.no/realestate/homes/ad.html?finnkode=384707717 Match: high.
+- **Vetle Vislies veg 1** — OSM 923190359. https://www.finn.no/realestate/homes/ad.html?finnkode=149354923 Match: high.
+- **Vetle Vislies veg 10** — OSM 187112201. https://www.finn.no/realestate/homes/ad.html?finnkode=355923397 Match: high.
+- **Vetle Vislies veg 4A** — OSM 923190360. https://www.finn.no/realestate/homes/ad.html?finnkode=425286526 Match: high.
+- **Vetle Vislies veg 4B** — OSM 1037054286. https://www.finn.no/realestate/homes/ad.html?finnkode=340140975 Match: high.
