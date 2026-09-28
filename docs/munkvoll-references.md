@@ -54,6 +54,42 @@ not an architectural survey or a guarantee of present-day conditions.
   <https://commons.wikimedia.org/wiki/File:Trondheim_tram_5.jpg>.
   Tracks are taken from the OSM extract, not guessed from the old photograph.
 
+## Palermo junction and tram no. 29 · 28 September 2026
+
+- Statens vegvesen vegbilder, FV6656 (Bøckmans veg) 14 July 2025, images m02130–m02250 (f1)
+  and m02072–m02233 (f2), viewed through <https://vegbilder.atlas.vegvesen.no/>. They show:
+  - Palermo (Bøckmans veg 110, OSM 89233446): grey-green vertical boards, dark tiled roofs, white
+    barge boards. Sunny Beach Solstudio has a large dark board with yellow letters and an orange
+    sun badge on the west gable facing the junction ("Åpent 07–23 alle dager"), and a second sign
+    over its door on the north wall. Byåsen Fotklinikk's plate is by the east door. Earlier pale
+    grey colours are replaced.
+  - Sabrura (Bøckmans veg 113, OSM 186841226; the OSM point for the restaurant lies in this
+    footprint): dark green vertical boards, red-brown tiled gable roof, white window frames,
+    chimney. The round Sabrura badge and "TAKEAWAY" are on the east gable facing the side road.
+  - Lille Szechuan Byåsen (Bøckmans veg 113, OSM 186841234): white two-storey house with a
+    red-brown tiled roof. The name is painted in red and black on the east gable. There is a
+    timber balcony on the south side. The white annex (OSM 186841240) has a flat roof.
+  - Skolemuseum (OSM 295892550): white boarded school house, grey slate roof, dark green window
+    frames. Bøckmans veg 108/108B and the garage have grey-green boards and dark tiled roofs.
+    Bøckmans veg 115 is white with a red-brown roof.
+- Byåsen skole (OSM 89233532): <https://commons.wikimedia.org/wiki/File:By%C3%A5sen_skole.JPG>
+  (NAPkjersti, 12 February 2012, CC BY-SA 3.0), confirmed by the 2025 road images. It has
+  ochre-brown brick, flat roofs with grey metal edges and teal window frames. Silver "BYÅSEN
+  SKOLE" letters and the coat of arms are high on the south wall, and red corrugated screens
+  stand in front of the west stair tower. Sign and screen positions are estimated from the photo.
+- Boreal Bane Verksted (Vognhallvegen 1B, OSM 89233524): the user's photo (Street View
+  screenshot, winter) shows red-brown brick with concrete floor bands and pilasters. A tall dark
+  door on the east wall has a dark sign board: "BOREAL", "Lakk- og karosseriverksted",
+  "GråkallBanen". There are two rows of ribbon windows. The model's door width and sign size are
+  estimates.
+- Tram no. 29: the user's photo from the tram museum shows a cream-yellow lower body, blue window
+  band and lining, beige rounded roof, a roof searchlight and a pantograph. The destination box
+  reads "CHARTERVOGN", with a double door with narrow round-topped windows and "29" on the front
+  and sides. The model is 13.4 m long and 2.3 m wide, stylised and not a survey. It stands on OSM
+  spur 92540874 in the depot's asphalt service lane, north of the workshop door where the user
+  marked the yard, pulled 2.5 m back from the Selsbakkvegen crossing. The pantograph reaches just
+  under the modelled contact wire.
+
 ## Transit and NIO
 
 31 OSM railway ways, including Munkvoll loop/switches/depot approaches; actual
@@ -71,6 +107,6 @@ manual; model is a hand-built stylisation, not licensed manufacturer CAD.
 
 ## Verification
 
-`verify-game.mjs`, `verify-roundabouts.mjs`, `verify-camera.mjs`, and
+`verify-game.mjs`, `verify-roundabouts.mjs`, `verify-camera.mjs`, `verify-munkvoll.mjs` and
 `verify-local-landmarks.mjs`. Local scene renders inspect initial house-facing
 camera, ET5 front/rear, Munkvoll, garages and kindergarten. No physical iPad test.

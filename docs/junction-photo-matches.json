@@ -1325,5 +1325,93 @@
     "limits": [
       "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Charcoal horizontal cladding, low dark gabled roof, oak window frames, grey boarded balcony."
     ]
+  },
+  {
+    "id": [
+      "89233532"
+    ],
+    "address": "Byåsen skole, south wing by Bøckmans veg",
+    "source": "https://commons.wikimedia.org/wiki/File:By%C3%A5sen_skole.JPG",
+    "photos": [
+      "https://upload.wikimedia.org/wikipedia/commons/f/fa/By%C3%A5sen_skole.JPG",
+      "https://s3vegbilder.atlas.vegvesen.no/vegfoto-prod-w-2025/Planar/FV06656/S1/D1/F2_2025_07_14/FV06656_S1D1_m02133_f2.jpg",
+      "https://s3vegbilder.atlas.vegvesen.no/vegfoto-prod-w-2025/Planar/FV06656/S1/D1/F2_2025_07_14/FV06656_S1D1_m02093_f2.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "Wikimedia Commons photo by NAPkjersti, 12 Feb 2012, CC BY-SA 3.0; road images from 14 July 2025 confirm the same brick, red stair screens and sign. Ochre-brown brick, flat roofs with grey metal edges, teal window frames, silver BYÅSEN SKOLE letters and coat of arms on the south wall, red corrugated screens at the west stair tower. Sign and screen positions are estimated from the photo."
+    ]
+  },
+  {
+    "id": [
+      "295892550"
+    ],
+    "address": "Skolemuseum (old school house), Byåsen skole",
+    "source": "https://vegbilder.atlas.vegvesen.no/",
+    "photos": [
+      "https://s3vegbilder.atlas.vegvesen.no/vegfoto-prod-w-2025/Planar/FV06656/S1/D1/F1_2025_07_14/FV06656_S1D1_m02130_f1.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "Statens vegvesen vegbilder, FV6656 (Bøckmans veg), 14 July 2025; the image files open through vegbilder.atlas.vegvesen.no (signed links). Hex colours are visual estimates. White boarded single-storey house, grey slate gable roof, dark green window frames, two brick chimneys."
+    ]
+  },
+  {
+    "id": [
+      "186841240"
+    ],
+    "address": "Annex behind Bøckmans veg 113",
+    "source": "https://vegbilder.atlas.vegvesen.no/",
+    "photos": [
+      "https://s3vegbilder.atlas.vegvesen.no/vegfoto-prod-w-2025/Planar/FV06656/S1/D1/F1_2025_07_14/FV06656_S1D1_m02190_f1.jpg"
+    ],
+    "confidence": "medium",
+    "limits": [
+      "Statens vegvesen vegbilder, FV6656 (Bøckmans veg), 14 July 2025; the image files open through vegbilder.atlas.vegvesen.no (signed links). Hex colours are visual estimates. White single-storey annex with a flat roof beside the Lille Szechuan house; only partly visible."
+    ]
+  },
+  {
+    "id": [
+      "186841238"
+    ],
+    "address": "Bøckmans veg 115",
+    "source": "https://vegbilder.atlas.vegvesen.no/",
+    "photos": [
+      "https://s3vegbilder.atlas.vegvesen.no/vegfoto-prod-w-2025/Planar/FV06656/S1/D1/F1_2025_07_14/FV06656_S1D1_m02230_f1.jpg"
+    ],
+    "confidence": "medium",
+    "limits": [
+      "Statens vegvesen vegbilder, FV6656 (Bøckmans veg), 14 July 2025; the image files open through vegbilder.atlas.vegvesen.no (signed links). Hex colours are visual estimates. White boarded house, red-brown tiled roof, weathered timber balcony; roof form estimated from a partial view."
+    ]
+  },
+  {
+    "id": [
+      "189462748",
+      "1036715927"
+    ],
+    "address": "Bøckmans veg 108 and 108B",
+    "source": "https://vegbilder.atlas.vegvesen.no/",
+    "photos": [
+      "https://s3vegbilder.atlas.vegvesen.no/vegfoto-prod-w-2025/Planar/FV06656/S1/D1/F2_2025_07_14/FV06656_S1D1_m02133_f2.jpg",
+      "https://s3vegbilder.atlas.vegvesen.no/vegfoto-prod-w-2025/Planar/FV06656/S1/D1/F2_2025_07_14/FV06656_S1D1_m02113_f2.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "Statens vegvesen vegbilder, FV6656 (Bøckmans veg), 14 July 2025; the image files open through vegbilder.atlas.vegvesen.no (signed links). Hex colours are visual estimates. Grey-green vertical boards, dark tiled steep gable roofs, white barge boards, brick chimneys."
+    ]
+  },
+  {
+    "id": [
+      "189462755"
+    ],
+    "address": "Garage by Bøckmans veg 106/108",
+    "source": "https://vegbilder.atlas.vegvesen.no/",
+    "photos": [
+      "https://s3vegbilder.atlas.vegvesen.no/vegfoto-prod-w-2025/Planar/FV06656/S1/D1/F2_2025_07_14/FV06656_S1D1_m02093_f2.jpg"
+    ],
+    "confidence": "medium",
+    "limits": [
+      "Statens vegvesen vegbilder, FV6656 (Bøckmans veg), 14 July 2025; the image files open through vegbilder.atlas.vegvesen.no (signed links). Hex colours are visual estimates. Grey-green garage with a dark gable roof and two white doors."
+    ]
   }
 ]

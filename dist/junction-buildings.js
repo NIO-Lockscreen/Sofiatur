@@ -18,7 +18,7 @@ export function createJunctionBuildings(data){
 // Original stylised joinery; exact colours and roof forms only come from mapped
 // tags or individually recorded photographs. Unseen doors/windows are estimates.
 export function addJunctionDetails({T,scene,building,p,cx,cz,y,h,levels,garage,style,roads,roadIndex,height,bucket,tri,quad,box,roofTop}){
- const b=bucket(cx,cz),trim=style.trim||'#efeee6',glass=style.glass||'#52676d';
+ const b=bucket(cx,cz),trim=style.trim||'#efeee6',glass=style.glass||'#52676d',frames=style.frames||trim;
  let front=null;
  for(let i=0;i<p.length;i++){
   const a=p[i],c=p[(i+1)%p.length],len=Math.hypot(c[0]-a[0],c[1]-a[1]);if(len<2)continue;
@@ -39,7 +39,7 @@ export function addJunctionDetails({T,scene,building,p,cx,cz,y,h,levels,garage,s
   // Sashes and sills sit in the existing window openings; no extra windows.
   if(!garage)for(let f=0;f<levels;f++)for(let j=1;j<=Math.floor(len/3.7);j++){
    const d=len*j/(Math.floor(len/3.7)+1),hy=y+1.5+f*2.65;if(hy+.98>y+h)continue;
-   panel(d,hy+.15,.92,.77,glass,.14);panel(d,hy+.15,.045,.77,trim,.16);panel(d,hy+.5,.94,.04,trim,.16);panel(d,hy-.04,1.38,.08,trim,.17);
+   panel(d,hy+.15,.92,.77,glass,.14);panel(d,hy+.15,.045,.77,frames,.16);panel(d,hy+.5,.94,.04,frames,.16);panel(d,hy-.04,1.38,.08,trim,.17);
   }
   if(style.windowBand&&len>8){for(let f=0;f<levels;f++){const hy=y+.9+f*2.65;if(hy+1.8>y+h-.5)continue;panel(len/2,hy,len-1.1,1.8,glass,.22);for(let d=.55;d<len-.5;d+=2.1)panel(d,hy,.1,1.8,trim,.25);}}
   if(style.schoolEntrance&&Math.abs(a[0]-556.06)<.1&&Math.abs(c[0]-566.4)<.1){

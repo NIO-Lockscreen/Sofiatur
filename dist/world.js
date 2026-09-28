@@ -3,7 +3,7 @@ import {createJunctionBuildings,addJunctionDetails} from './junction-buildings.j
 import {roadWidth} from './transit-geometry.js';
 import {createRoadSurface} from './road-surface.js';
 import {createET5} from './car-model.js';
-import {addMunkvoll,addTransit} from './munkvoll.js';
+import {addMunkvoll,addTransit,addMunkvollDetails} from './munkvoll.js';
 import {addLandmark,addLandmarkGround} from './landmarks.js';
 import {buildingStyles,addKiwi} from './building-details.js';
 import {createCameraControls} from './camera-controls.js';
@@ -56,6 +56,7 @@ export function createWorld(canvas, data) {
  addTransit({T,scene,data,height,bucket,quad,box,groundPoly,ribbon,roadSegments});
  const junctionBuildings=createJunctionBuildings(data);
  const houseBounds=[[-22,-16,16,16],[1798,226,1861,268],[1790,270,1850,337],[1450,169,1648,285]];
+ const wallBase=new Map(); // Wall base and height per footprint, for details added after the loop.
  for(const building of data.buildings){let p=building.p.slice(0,-1);if(p.length<3)continue;let cx=p.reduce((a,b)=>a+b[0],0)/p.length,cz=p.reduce((a,b)=>a+b[1],0)/p.length;
  let area=0;for(let i=0;i<p.length;i++)area+=p[i][0]*p[(i+1)%p.length][1]-p[(i+1)%p.length][0]*p[i][1];area=Math.abs(area/2);if(area<4)continue;
  const landmark=addMunkvoll({T,scene,building,height,bucket,tri,quad,box})||addLandmark({T,scene,building,height,bucket,tri,quad,box});if(landmark){houseBounds.push(landmark.bounds);continue;}
@@ -64,6 +65,7 @@ export function createWorld(canvas, data) {
  const levels=style.levels||(parseFloat(t['building:levels'])||((t.building==='apartments'||area>800)?3:garage?1:2));
  const h=style.height||Math.min(26,parseFloat(t.height)||levels*2.65+(garage?.1:.5));
  const heights=p.map(v=>height(...v)).sort((a,b)=>a-b);const y=style.base==='low'?heights[Math.floor(heights.length*.25)]:Math.max(...heights);const base=Math.min(...p.map(v=>height(...v)))-.4;
+ wallBase.set(String(building.id),{y,h});
  const b=bucket(cx,cz);let hash=parseInt(building.id)%997;const palette=['#f0efea','#e1e2df','#ebeae1','#bfc4c0','#f4f0e5','#d9dbd7','#aaafa9','#7b4236','#575951','#e8e7df'];const colour=style.wall||t['building:colour']||palette[hash%palette.length];const roofcolour=style.roof||t['roof:colour']||['#3e4547','#494b4a','#68625a','#624b40','#545851'][hash%5];const shapes=p.map(v=>new T.Vector2(...v));
  // Board joints are a darker shade of the cladding, so dark houses do not get pale stripes.
  const boardLine=style.horizontalSiding?'#'+new T.Color(colour).multiplyScalar(.82).getHexString():'#91897d';
@@ -94,6 +96,7 @@ export function createWorld(canvas, data) {
  function clear(x,z){for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++){let a=obstacles.get((Math.floor(x/40)+dx)+','+(Math.floor(z/40)+dz))||[];for(const o of a){if(o.road&&distanceSegment(x,z,o.road[0],o.road[1])<o.road[2]/2+4)return false;if(o.house&&x>o.house[0]&&x<o.house[2]&&z>o.house[1]&&z<o.house[3])return false;}}return true;}
  function cone(b,x,y,z,r,h,c,sides=7){for(let i=0;i<sides;i++){let a=i/sides*Math.PI*2,a2=(i+1)/sides*Math.PI*2;tri(b,[x+Math.cos(a)*r,y,z+Math.sin(a)*r],[x+Math.cos(a2)*r,y,z+Math.sin(a2)*r],[x,y+h,z],c);}}
  addLandmarkGround({height,bucket,quad,box,groundPoly,ribbon});
+ addMunkvollDetails({T,scene,data,wallBase,bucket,quad,box});
  const homeShrubs=[[-15,1],[-12,4],[-9,6],[-6,8],[-3,9],[0,12],[3,10],[6,9],[9,8],[11,7],[-8,10],[-11,7]];for(const [x,z] of homeShrubs){const b=bucket(x,z),y=height(x,z);const g=new T.IcosahedronGeometry(1,1);g.scale(1.65,.85,1.45);g.translate(x,y+.7,z);const p=g.attributes.position;for(let i=0;i<p.count;i+=3)tri(b,...[0,1,2].map(j=>[p.getX(i+j),p.getY(i+j),p.getZ(i+j)]),'#688845');g.dispose();}
  for(let n=0;n<12000;n++){let x=-220+rnd()*2440,z=-700+rnd()*1520;if(!clear(x,z))continue;let y=height(x,z),h=3+rnd()*5,b=bucket(x,z);box(b,x,y+h*.3,z,.3,h*.6,.3,'#8c7152');if(rnd()<.6){cone(b,x,y+h*.25,z,h*.38,h*.7,'#538b60');cone(b,x,y+h*.54,z,h*.29,h*.55,'#689b64');}else{const geo=new T.IcosahedronGeometry(h*.35,0);geo.translate(x,y+h*.72,z);const at=geo.getAttribute('position');const cc=['#74a357','#8eb15f','#659850'][n%3];for(let i=0;i<at.count;i+=3)tri(b,[at.getX(i),at.getY(i),at.getZ(i)],[at.getX(i+1),at.getY(i+1),at.getZ(i+1)],[at.getX(i+2),at.getY(i+2),at.getZ(i+2)],cc);geo.dispose();}}
  const chunks=[];

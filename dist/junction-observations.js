@@ -956,5 +956,94 @@ export const junctionObservations={
   "horizontalSiding": true,
   "trim": "#c7a46b",
   "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=305335394"
+ },
+ "89233532": {
+  "wall": "#a0714f",
+  "brick": true,
+  "roof": "#6a6f72",
+  "roofShape": "flat",
+  "flat": true,
+  "parapet": "#8f989b",
+  "levels": 2,
+  "trim": "#8f989b",
+  "frames": "#2c4a4f",
+  "glass": "#3f5a60",
+  "source": "https://commons.wikimedia.org/wiki/File:By%C3%A5sen_skole.JPG"
+ },
+ "295892550": {
+  "wall": "#eceee9",
+  "roof": "#8d8f96",
+  "roofShape": "gabled",
+  "levels": 1,
+  "horizontalSiding": true,
+  "trim": "#f4f4ef",
+  "frames": "#2f4a3f",
+  "chimney": true,
+  "source": "https://vegbilder.atlas.vegvesen.no/"
+ },
+ "186841240": {
+  "wall": "#f1f0ea",
+  "roof": "#5a5d5f",
+  "roofShape": "flat",
+  "flat": true,
+  "levels": 1,
+  "siding": true,
+  "source": "https://vegbilder.atlas.vegvesen.no/"
+ },
+ "186841238": {
+  "wall": "#f1f0ea",
+  "roof": "#9a4a33",
+  "roofShape": "hipped",
+  "levels": 2,
+  "siding": true,
+  "trim": "#f4f4ef",
+  "source": "https://vegbilder.atlas.vegvesen.no/"
+ },
+ "189462748": {
+  "wall": "#7f8670",
+  "roof": "#48433f",
+  "roofShape": "gabled",
+  "levels": 1,
+  "roofRise": 3.2,
+  "siding": true,
+  "trim": "#ecebe4",
+  "chimney": true,
+  "source": "https://vegbilder.atlas.vegvesen.no/"
+ },
+ "1036715927": {
+  "wall": "#7f8670",
+  "roof": "#48433f",
+  "roofShape": "gabled",
+  "levels": 1,
+  "roofRise": 3.2,
+  "siding": true,
+  "trim": "#ecebe4",
+  "chimney": true,
+  "source": "https://vegbilder.atlas.vegvesen.no/"
+ },
+ "189462755": {
+  "wall": "#7f8670",
+  "roof": "#48433f",
+  "roofShape": "gabled",
+  "levels": 1,
+  "siding": true,
+  "trim": "#ecebe4",
+  "door": "#f1f0ea",
+  "source": "https://vegbilder.atlas.vegvesen.no/"
+ },
+ "89233524": {
+  "wall": "#8e4c36",
+  "brick": true,
+  "roof": "#55595b",
+  "roofShape": "flat",
+  "flat": true,
+  "parapet": "#b3b0a6",
+  "floorBands": "#aaa79d",
+  "levels": 2,
+  "height": 8.2,
+  "windowBand": true,
+  "trim": "#b3b0a6",
+  "glass": "#46555a",
+  "source": "user-photo-boreal-workshop"
  }
 };
