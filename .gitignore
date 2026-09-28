@@ -1,0 +1,11 @@
+node_modules/
+.vercel/
+.env
+.env.*
+.sites-runtime/
+*.tgz
+terrain-cache/
+byasen.osm
+address.json
+height-api.json
+height-test.json

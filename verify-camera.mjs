@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {createCameraControls} from './dist/camera-controls.js';
+const listeners={};let captured=null,visible=false;
+const canvas={addEventListener:(n,f)=>listeners[n]=f,setPointerCapture:id=>captured=id,hasPointerCapture:id=>captured===id,releasePointerCapture:()=>captured=null};
+const camera=createCameraControls(canvas,on=>visible=on);
+const event=(type,x,y,id=1,extra={})=>listeners[type]({pointerId:id,clientX:x,clientY:y,button:0,isPrimary:true,preventDefault(){},...extra});
+event('pointerdown',100,100);event('pointermove',102,101);assert.equal(camera.active,false,'tap jitter should not rotate');event('pointermove',240,100);assert.ok(camera.yaw<-.8);assert.ok(visible);
+const before=camera.yaw;event('pointerdown',10,10,2,{isPrimary:false});event('pointermove',700,500,2);assert.equal(camera.yaw,before,'second finger ignored');event('pointermove',240,900);assert.equal(camera.tilt,.65);event('pointerup',240,900);assert.equal(captured,null);
+event('pointermove',20,20);assert.equal(camera.yaw,before,'released drag stops');camera.reset();assert.equal(camera.yaw,0);assert.equal(camera.tilt,0);assert.equal(visible,false);
+event('pointerdown',300,300);event('pointermove',20,-500);assert.ok(camera.yaw>1.5);assert.equal(camera.tilt,-.26);event('pointercancel',20,-500);const stopped=camera.yaw;event('pointermove',900,900);assert.equal(camera.yaw,stopped);camera.reset();
+console.log('Camera: touch drag both ways, tap threshold, multitouch, tilt limits, release, cancel and reset OK');
