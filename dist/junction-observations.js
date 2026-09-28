@@ -422,5 +422,539 @@ export const junctionObservations={
   "horizontalSiding": true,
   "trim": "#3a3d3f",
   "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=340140975"
+ },
+ "188005871": {
+  "wall": "#4f5249",
+  "roof": "#3a3c3d",
+  "roofShape": "flat",
+  "flat": true,
+  "levels": 2,
+  "siding": true,
+  "trim": "#2e3032",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=122262893"
+ },
+ "188008402": {
+  "wall": "#c6c0b2",
+  "roof": "#4a4d50",
+  "roofShape": "flat",
+  "flat": true,
+  "levels": 3,
+  "horizontalSiding": true,
+  "trim": "#55595c",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=137663179"
+ },
+ "188008393": {
+  "wall": "#c6c0b2",
+  "roof": "#4a4d50",
+  "roofShape": "flat",
+  "flat": true,
+  "levels": 3,
+  "horizontalSiding": true,
+  "trim": "#55595c",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=258056589"
+ },
+ "188006411": {
+  "wall": "#857767",
+  "roof": "#3c3f42",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#eeede6",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=146159048"
+ },
+ "1037054314": {
+  "wall": "#857767",
+  "roof": "#3c3f42",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#eeede6",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=146159048"
+ },
+ "188008369": {
+  "wall": "#d4842e",
+  "roof": "#963a2c",
+  "roofShape": "gabled",
+  "levels": 2,
+  "trim": "#efeee8",
+  "horizontalSiding": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=155846468"
+ },
+ "188008371": {
+  "wall": "#5a3b2c",
+  "roof": "#4a4c4e",
+  "roofShape": "gabled",
+  "levels": 1,
+  "siding": true,
+  "trim": "#efeee8",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=254489257"
+ },
+ "927828760": {
+  "wall": "#8a4027",
+  "roof": "#55595c",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#4a4e51",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=303408677"
+ },
+ "188007938": {
+  "wall": "#3b3129",
+  "roof": "#a3a6a8",
+  "roofShape": "flat",
+  "flat": true,
+  "levels": 1,
+  "siding": true,
+  "trim": "#3b3129",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=312535705"
+ },
+ "188008422": {
+  "wall": "#e8e6dc",
+  "roof": "#4b4f52",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#f2f1ec",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=324982597"
+ },
+ "188006398": {
+  "wall": "#efeee8",
+  "roof": "#9a4b30",
+  "roofShape": "gabled",
+  "levels": 2,
+  "siding": true,
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=341901171"
+ },
+ "188008372": {
+  "wall": "#6b8fbf",
+  "roof": "#6d7275",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#f0efea",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=353346521"
+ },
+ "188006428": {
+  "wall": "#d6a33c",
+  "roof": "#45494c",
+  "roofShape": "gabled",
+  "levels": 2,
+  "siding": true,
+  "trim": "#f0efe8",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=368881851"
+ },
+ "188007017": {
+  "wall": "#e4dccb",
+  "roof": "#5b4c44",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#f2f1ec",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=373286388"
+ },
+ "188007088": {
+  "wall": "#d58a2d",
+  "roof": "#8c3d2c",
+  "roofShape": "gabled",
+  "levels": 2,
+  "siding": true,
+  "trim": "#f0efe8",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=464970804"
+ },
+ "927826924": {
+  "wall": "#8f3329",
+  "roof": "#46494c",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#f0efe8",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=90947573"
+ },
+ "1037053384": {
+  "wall": "#8f3329",
+  "roof": "#46494c",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#f0efe8",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=90947573"
+ },
+ "191319148": {
+  "wall": "#e0a52b",
+  "roof": "#3e4245",
+  "roofShape": "gabled",
+  "levels": 2,
+  "siding": true,
+  "trim": "#f1f0ea",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=432666996"
+ },
+ "1037054015": {
+  "wall": "#e0a52b",
+  "roof": "#3e4245",
+  "roofShape": "gabled",
+  "levels": 2,
+  "siding": true,
+  "trim": "#f1f0ea",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=432666996"
+ },
+ "187112157": {
+  "wall": "#3b3a37",
+  "roof": "#3a3d40",
+  "roofShape": "gabled",
+  "levels": 2,
+  "siding": true,
+  "trim": "#f0efe8",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=226593716"
+ },
+ "1037054290": {
+  "wall": "#303234",
+  "roof": "#4b4f52",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#2a2c2e",
+  "door": "#e2b22b",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=230695035"
+ },
+ "1037054288": {
+  "wall": "#303234",
+  "roof": "#4b4f52",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#2a2c2e",
+  "door": "#e2b22b",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=230695035"
+ },
+ "187113869": {
+  "wall": "#ecebe4",
+  "roof": "#a8322c",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=250871992"
+ },
+ "173680399": {
+  "wall": "#3f3a35",
+  "roof": "#3b3e41",
+  "roofShape": "gabled",
+  "roofRise": 1.0,
+  "levels": 1,
+  "siding": true,
+  "trim": "#efeee8",
+  "door": "#b3322b",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=252342308"
+ },
+ "1469752222": {
+  "wall": "#b0302b",
+  "roof": "#4e4a47",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#3a3c3e",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=270143281"
+ },
+ "191319140": {
+  "wall": "#d39936",
+  "roof": "#5a4034",
+  "roofShape": "gabled",
+  "levels": 2,
+  "siding": true,
+  "trim": "#efeee8",
+  "canopy": true,
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=348180707"
+ },
+ "187112093": {
+  "wall": "#efeee8",
+  "roof": "#6b6f72",
+  "roofShape": "gabled",
+  "levels": 1,
+  "siding": true,
+  "door": "#6d7276",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=370296637"
+ },
+ "927828762": {
+  "wall": "#9b958b",
+  "roof": "#44484b",
+  "roofShape": "gabled",
+  "levels": 2,
+  "siding": true,
+  "trim": "#f0efe8",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=371415363"
+ },
+ "1469752223": {
+  "wall": "#b8845a",
+  "roof": "#4a4d50",
+  "roofShape": "skillion",
+  "levels": 2,
+  "horizontalSiding": true,
+  "lowerWall": "#55585b",
+  "trim": "#3f4245",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=376091969"
+ },
+ "188005903": {
+  "wall": "#9a4026",
+  "roof": "#4a4c4f",
+  "roofShape": "gabled",
+  "roofRise": 1.2,
+  "levels": 1,
+  "siding": true,
+  "trim": "#efeee8",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=76455005"
+ },
+ "187112199": {
+  "wall": "#7b3b2f",
+  "brick": true,
+  "upperWall": "#8f979b",
+  "levels": 2,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=477195226"
+ },
+ "191320630": {
+  "wall": "#d8c6ab",
+  "roof": "#9a4a33",
+  "roofShape": "gabled",
+  "levels": 1,
+  "siding": true,
+  "trim": "#efeee8",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=109049243"
+ },
+ "1037054445": {
+  "wall": "#2f3133",
+  "roof": "#3a3d40",
+  "roofShape": "skillion",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#3b3e41",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=139176542"
+ },
+ "191319195": {
+  "wall": "#eeede6",
+  "roof": "#8b4434",
+  "roofShape": "gabled",
+  "levels": 1,
+  "horizontalSiding": true,
+  "trim": "#7a4b2c",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=148157894"
+ },
+ "191320636": {
+  "wall": "#4d3a2e",
+  "roof": "#3a3c3e",
+  "roofShape": "flat",
+  "flat": true,
+  "levels": 3,
+  "horizontalSiding": true,
+  "trim": "#f0efe8",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=192723019"
+ },
+ "1037054331": {
+  "wall": "#4d3a2e",
+  "roof": "#3a3c3e",
+  "roofShape": "flat",
+  "flat": true,
+  "levels": 3,
+  "horizontalSiding": true,
+  "trim": "#f0efe8",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=258047168"
+ },
+ "187112180": {
+  "wall": "#c2c5c3",
+  "roof": "#c4502f",
+  "roofShape": "gabled",
+  "roofRise": 3.0,
+  "levels": 1,
+  "siding": true,
+  "trim": "#f0efe8",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=356145008"
+ },
+ "1037053812": {
+  "wall": "#c2c5c3",
+  "roof": "#c4502f",
+  "roofShape": "gabled",
+  "roofRise": 3.0,
+  "levels": 1,
+  "siding": true,
+  "trim": "#f0efe8",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=356145008"
+ },
+ "188008385": {
+  "wall": "#f0efe9",
+  "roof": "#34373a",
+  "roofShape": "gabled",
+  "levels": 1,
+  "siding": true,
+  "trim": "#a3302a",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=356955251"
+ },
+ "191319200": {
+  "wall": "#b5672f",
+  "roof": "#3f3b38",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#f0efe8",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=360029652"
+ },
+ "1469325676": {
+  "wall": "#6f5b49",
+  "roof": "#3d4043",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#2d2f31",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=245430025"
+ },
+ "1469325677": {
+  "wall": "#6f5b49",
+  "roof": "#3d4043",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#2d2f31",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=245430025"
+ },
+ "191318188": {
+  "wall": "#8a9197",
+  "roof": "#3e4144",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#f0efe8",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=286543544"
+ },
+ "1469325670": {
+  "wall": "#a19a8f",
+  "roof": "#4a4d50",
+  "roofShape": "flat",
+  "flat": true,
+  "levels": 3,
+  "horizontalSiding": true,
+  "trim": "#2d2f31",
+  "parapet": "#6a6d70",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=353979479"
+ },
+ "1469325674": {
+  "wall": "#b0302a",
+  "roof": "#3f4245",
+  "roofShape": "gabled",
+  "levels": 2,
+  "siding": true,
+  "trim": "#f0efe8",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=354250969"
+ },
+ "191318157": {
+  "wall": "#6b6d6b",
+  "roof": "#44474a",
+  "roofShape": "gabled",
+  "levels": 2,
+  "siding": true,
+  "trim": "#f0efe8",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=308963444"
+ },
+ "191318179": {
+  "wall": "#e0bf62",
+  "roof": "#3f4245",
+  "roofShape": "gabled",
+  "roofRise": 3.0,
+  "levels": 1,
+  "horizontalSiding": true,
+  "trim": "#f0efe8",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=314019275"
+ },
+ "188007924": {
+  "wall": "#ebe9df",
+  "roof": "#43464a",
+  "roofShape": "gabled",
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#f2f1ec",
+  "chimney": true,
+  "door": "#2d2f31",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=465091733"
+ },
+ "1163311167": {
+  "wall": "#687850",
+  "roof": "#3a3d3f",
+  "roofShape": "flat",
+  "flat": true,
+  "levels": 3,
+  "siding": true,
+  "trim": "#2e3032",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=355180154"
+ },
+ "191320586": {
+  "wall": "#e2dbc7",
+  "roof": "#45484b",
+  "roofShape": "gabled",
+  "levels": 2,
+  "siding": true,
+  "trim": "#f0efe8",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=112842813"
+ },
+ "1037053978": {
+  "wall": "#e2dbc7",
+  "roof": "#45484b",
+  "roofShape": "gabled",
+  "levels": 2,
+  "siding": true,
+  "trim": "#f0efe8",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=112842813"
+ },
+ "191320606": {
+  "wall": "#d4cdc0",
+  "roof": "#3f4245",
+  "roofShape": "gabled",
+  "levels": 2,
+  "siding": true,
+  "trim": "#f0efe8",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=259752013"
+ },
+ "1037053962": {
+  "wall": "#d4cdc0",
+  "roof": "#3f4245",
+  "roofShape": "gabled",
+  "levels": 2,
+  "siding": true,
+  "trim": "#f0efe8",
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=259752013"
+ },
+ "191364523": {
+  "wall": "#efeee8",
+  "roof": "#46494c",
+  "roofShape": "gabled",
+  "levels": 1,
+  "siding": true,
+  "chimney": true,
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=159689281"
+ },
+ "455267653": {
+  "wall": "#363533",
+  "roof": "#3b3d3f",
+  "roofShape": "gabled",
+  "roofRise": 1.2,
+  "levels": 2,
+  "horizontalSiding": true,
+  "trim": "#c7a46b",
+  "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=305335394"
  }
 };

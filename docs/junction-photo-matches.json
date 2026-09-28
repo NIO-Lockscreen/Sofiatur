@@ -590,5 +590,740 @@
     "limits": [
       "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Orange-red half of the pair (the 4B listing features this half), flat roof, balconies."
     ]
+  },
+  {
+    "id": [
+      "188005871"
+    ],
+    "address": "Leikåsvegen 8",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=122262893",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2018/12/vertical-2/03/3/122/262/893_156297335.jpg",
+      "https://images.finncdn.no/dynamic/960w/2018/12/vertical-2/03/3/122/262/893_1337721554.jpg"
+    ],
+    "confidence": "medium",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Dark olive-grey vertical boards, flat roof, dark frames."
+    ]
+  },
+  {
+    "id": [
+      "188008402"
+    ],
+    "address": "Per Sivles veg 7E",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=137663179",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2019/1/vertical-2/09/9/137/663/179_519559616.jpg",
+      "https://images.finncdn.no/dynamic/960w/2019/1/vertical-2/09/9/137/663/179_1048970626.jpg",
+      "https://images.finncdn.no/dynamic/960w/2019/1/vertical-2/09/9/137/663/179_650396110.jpg"
+    ],
+    "confidence": "medium",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Greige horizontal cladding with oiled-wood panels, dark grey frames and balconies, flat roof."
+    ]
+  },
+  {
+    "id": [
+      "188008393"
+    ],
+    "address": "Per Sivles veg 7C",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=258056589",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2022/5/vertical-2/11/9/258/056/589_244259663.jpg",
+      "https://images.finncdn.no/dynamic/960w/2022/5/vertical-2/11/9/258/056/589_1856450275.jpg"
+    ],
+    "confidence": "medium",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Same block as 7E, greige and oiled-wood cladding, dark grey balcony rails."
+    ]
+  },
+  {
+    "id": [
+      "188006411",
+      "1037054314"
+    ],
+    "address": "Uglavegen 29D",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=146159048",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2019/4/vertical-2/29/8/146/159/048_421462088.jpg",
+      "https://images.finncdn.no/dynamic/960w/2019/4/vertical-2/29/8/146/159/048_353397804.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Taupe horizontal cladding, dark gabled roof, white frames, wooden veranda."
+    ]
+  },
+  {
+    "id": [
+      "188008369"
+    ],
+    "address": "Konrad Dahls veg 15A",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=155846468",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2019/10/vertical-2/25/8/155/846/468_671194843.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Ochre-orange timber, white trim, red-brown tiled gabled roof, balcony."
+    ]
+  },
+  {
+    "id": [
+      "188008371"
+    ],
+    "address": "Per Sivles veg 6B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=254489257",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2022/4/vertical-2/11/7/254/489/257_366833062.jpg",
+      "https://images.finncdn.no/dynamic/960w/2022/4/vertical-2/11/7/254/489/257_1849182026.jpg",
+      "https://images.finncdn.no/dynamic/960w/2022/4/vertical-2/11/7/254/489/257_1566285683.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Dark brown stained single storey over basement, oiled-wood lower panels, grey roof, white frames."
+    ]
+  },
+  {
+    "id": [
+      "927828760"
+    ],
+    "address": "Uglavegen 30F",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=303408677",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2023/5/vertical-2/22/7/303/408/677_1213392644.jpg",
+      "https://images.finncdn.no/dynamic/960w/2023/5/vertical-2/22/7/303/408/677_835535209.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Red-brown horizontal cladding, grey standing-seam roof with roof terrace, dark grey frames."
+    ]
+  },
+  {
+    "id": [
+      "188007938"
+    ],
+    "address": "Konrad Dahls veg 10",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=312535705",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2023/7/vertical-2/28/5/312/535/705_1045701388.jpg",
+      "https://images.finncdn.no/dynamic/960w/2023/7/vertical-2/28/5/312/535/705_2138028007.jpg",
+      "https://images.finncdn.no/dynamic/960w/2023/7/vertical-2/28/5/312/535/705_1022085983.jpg",
+      "https://images.finncdn.no/dynamic/960w/2023/7/vertical-2/28/5/312/535/705_557833100.jpg",
+      "https://images.finncdn.no/dynamic/960w/2023/7/vertical-2/28/5/312/535/705_552535777.jpg",
+      "https://images.finncdn.no/dynamic/960w/2023/7/vertical-2/28/5/312/535/705_761245271.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Low dark-brown vertical-board bungalow with flat light-grey roof (drone photos)."
+    ]
+  },
+  {
+    "id": [
+      "188008422"
+    ],
+    "address": "Per Sivles veg 8B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=324982597",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2023/12/vertical-2/28/7/324/982/597_977901913.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Cream horizontal cladding, dark gabled roof, white stacked balconies."
+    ]
+  },
+  {
+    "id": [
+      "188006398"
+    ],
+    "address": "Uglavegen 31A",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=341901171",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2024/2/vertical-2/27/1/341/901/171_969969053.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/2/vertical-2/27/1/341/901/171_1057936296.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. White vertical boards, red-brown tiled gabled roof, chimney."
+    ]
+  },
+  {
+    "id": [
+      "188008372"
+    ],
+    "address": "Konrad Dahls veg 5",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=353346521",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2024/5/vertical-2/16/1/353/346/521_27a62df1-f950-40ce-a7c9-560f0bd80d3c.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/5/vertical-2/16/1/353/346/521_63052c91-f9de-451d-a5b6-cb96f7ed1c2a.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Mid-blue horizontal cladding, white trim and balconies, grey gabled roof, black chimney."
+    ]
+  },
+  {
+    "id": [
+      "188006428"
+    ],
+    "address": "Uglavegen 28C",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=368881851",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2024/9/vertical-2/02/1/368/881/851_87a50e00-4583-48eb-b2ff-f1c2ff8d25eb.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/9/vertical-2/02/1/368/881/851_e996f28a-770d-4ea8-ae30-664aedf39817.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Yellow vertical boards, white trim, dark gabled roof, front balcony."
+    ]
+  },
+  {
+    "id": [
+      "188007017"
+    ],
+    "address": "Per Sivles veg 23",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=373286388",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2024/12/vertical-2/07/8/373/286/388_875b8797-780b-4dfd-80c8-c8c27d09bd9d.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/12/vertical-2/07/8/373/286/388_3470d4f4-7dc7-4c35-8cd5-60819a2f58e5.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/12/vertical-2/07/8/373/286/388_a0d1ab8e-142b-43b5-99dd-207fa07c5680.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/12/vertical-2/07/8/373/286/388_6ebd24b0-c4dd-446b-bff8-846b8946e54f.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Light beige horizontal boards, dark brown tiled gabled roof, white rendered basement."
+    ]
+  },
+  {
+    "id": [
+      "188007088"
+    ],
+    "address": "Ivar Aasens veg 4",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=464970804",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2026/5/vertical-2/26/4/464/970/804_d3d44df9-ca2a-4977-823d-c7819378d0f5.jpg",
+      "https://images.finncdn.no/dynamic/960w/2026/5/vertical-2/26/4/464/970/804_de6f0969-d962-4842-b9a3-252c38f11cfa.jpg",
+      "https://images.finncdn.no/dynamic/960w/2026/5/vertical-2/26/4/464/970/804_be10a5ec-34ee-485e-ac16-66ed905c6695.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Ochre-orange vertical boards, white trim, red-brown tiled gabled roof, chimney."
+    ]
+  },
+  {
+    "id": [
+      "927826924",
+      "1037053384"
+    ],
+    "address": "Konrad Dahls veg 7B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=90947573",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2017/2/vertical-2/17/3/909/475/73_1815277845.jpg"
+    ],
+    "confidence": "medium",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Norwegian red cladding, white trim, dark grey gabled roof, large veranda (winter photo)."
+    ]
+  },
+  {
+    "id": [
+      "191319148",
+      "1037054015"
+    ],
+    "address": "Olav Duuns veg 1A/1B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=432666996",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2025/10/vertical-2/18/6/432/666/996_5a94e2a1-8e94-4fe5-8c8c-a9540b6468e2.jpg",
+      "https://images.finncdn.no/dynamic/960w/2025/10/vertical-2/18/6/432/666/996_e76a0096-5dec-4894-adeb-883dd36d920c.jpg",
+      "https://images.finncdn.no/dynamic/960w/2025/10/vertical-2/18/6/432/666/996_da4eb3ef-7d5d-4030-966f-a05dedd98da2.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Bright yellow vertical boards, white trim, dark gabled roof, balconies."
+    ]
+  },
+  {
+    "id": [
+      "187112157"
+    ],
+    "address": "Uglavegen 34",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=226593716",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2021/8/vertical-2/12/6/226/593/716_1900982723.jpg",
+      "https://images.finncdn.no/dynamic/960w/2021/8/vertical-2/12/6/226/593/716_1411772062.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Near-black vertical boards, white frames, dark gabled roof, garage in the basement."
+    ]
+  },
+  {
+    "id": [
+      "1037054290",
+      "1037054288"
+    ],
+    "address": "Per Sivles veg 3A",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=230695035",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2021/9/vertical-2/03/5/230/695/035_533200182.jpg",
+      "https://images.finncdn.no/dynamic/960w/2021/9/vertical-2/03/5/230/695/035_1620366754.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Charcoal horizontal cladding, steep dark gabled roofs, black frames, yellow door."
+    ]
+  },
+  {
+    "id": [
+      "187113869"
+    ],
+    "address": "Konrad Dahls veg 30B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=250871992",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2022/5/vertical-2/13/2/250/871/992_1052306850.jpg",
+      "https://images.finncdn.no/dynamic/960w/2022/5/vertical-2/13/2/250/871/992_214182087.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. White cladding, red sheet-metal gabled roof, black chimney."
+    ]
+  },
+  {
+    "id": [
+      "173680399"
+    ],
+    "address": "Uglavegen 42B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=252342308",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2022/3/vertical-2/23/8/252/342/308_810972569.jpg",
+      "https://images.finncdn.no/dynamic/960w/2022/3/vertical-2/23/8/252/342/308_228498429.jpg",
+      "https://images.finncdn.no/dynamic/960w/2022/3/vertical-2/23/8/252/342/308_801718183.jpg",
+      "https://images.finncdn.no/dynamic/960w/2022/3/vertical-2/23/8/252/342/308_176784888.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Dark brown vertical boards, low-pitched dark gabled roof, white frames, red door and red posts."
+    ]
+  },
+  {
+    "id": [
+      "1469752222"
+    ],
+    "address": "Bragstads veg 2B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=270143281",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2022/8/vertical-2/22/1/270/143/281_2112725142.jpg",
+      "https://images.finncdn.no/dynamic/960w/2022/8/vertical-2/22/1/270/143/281_1069519181.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Red horizontal cladding, dark tiled gabled roof, dark frames, black chimney, concrete garage base."
+    ]
+  },
+  {
+    "id": [
+      "191319140"
+    ],
+    "address": "Olav Duuns veg 1D",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=348180707",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2024/4/vertical-2/12/7/348/180/707_d7d5246d-8e1c-4f97-a6a9-b99626ef83fe.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Ochre vertical boards, dark brown tiled gabled roof, white trim, gabled entrance porches."
+    ]
+  },
+  {
+    "id": [
+      "187112093"
+    ],
+    "address": "Vetle Vislies veg 3",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=370296637",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2025/1/vertical-2/22/7/370/296/637_603bd436-bc1e-45c8-8601-be3cc9640cc1.jpg",
+      "https://images.finncdn.no/dynamic/960w/2025/1/vertical-2/22/7/370/296/637_17c35451-3720-41ee-abe3-287d01d991bc.jpg",
+      "https://images.finncdn.no/dynamic/960w/2025/1/vertical-2/22/7/370/296/637_3e171864-7c3d-40a9-a023-fc3e1b3d5b3c.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. White vertical boards, grey tiled gabled roof, single storey, grey door (drone photo)."
+    ]
+  },
+  {
+    "id": [
+      "927828762"
+    ],
+    "address": "Leikåsvegen 2B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=371415363",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2024/9/vertical-2/30/3/371/415/363_1a3f1fb5-f9e4-4f8a-89c9-7cca0dc7d253.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/9/vertical-2/30/3/371/415/363_0247f897-dfae-4fce-bffb-42250f9b1438.jpg"
+    ],
+    "confidence": "medium",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Weathered grey vertical boards, white frames; roof not visible, dark like the neighbours."
+    ]
+  },
+  {
+    "id": [
+      "1469752223"
+    ],
+    "address": "Bragstads veg 2A",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=376091969",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2024/10/vertical-2/18/9/376/091/969_d3e89ea2-c17b-422b-be3f-839ce2a692dc.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/10/vertical-2/18/9/376/091/969_d1debd1a-10c3-4690-943c-bf59672e6b1b.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Natural-wood horizontal cladding, dark grey panel boxes and plinth, mono-pitch roof, dark frames."
+    ]
+  },
+  {
+    "id": [
+      "188005903"
+    ],
+    "address": "Per Sivles veg 30",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=76455005",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2016/6/vertical-2/09/5/764/550/05_2112208878.jpg"
+    ],
+    "confidence": "medium",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Rust-red boards, red veranda railing, low dark gabled roof, single storey over basement."
+    ]
+  },
+  {
+    "id": [
+      "187112199"
+    ],
+    "address": "Bragstads veg 26A",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=477195226",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2026/9/vertical-2/25/6/477/195/226_0dba6b40-5e23-40ca-88a5-1acd37efa3aa.jpg",
+      "https://images.finncdn.no/dynamic/960w/2026/9/vertical-2/25/6/477/195/226_75bc0185-c5a5-41ec-a5be-16db68acbc93.jpg"
+    ],
+    "confidence": "medium",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Red-brown brick ground floor, grey-blue boarded balcony band above."
+    ]
+  },
+  {
+    "id": [
+      "191320630"
+    ],
+    "address": "Nedre Ferstadveg 44",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=109049243",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2017/11/vertical-2/22/3/109/049/_463894663.jpg",
+      "https://images.finncdn.no/dynamic/960w/2017/11/vertical-2/22/3/109/049/_334469127.jpg",
+      "https://images.finncdn.no/dynamic/960w/2017/11/vertical-2/22/3/109/049/_781550310.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Linked single-storey houses in beige vertical boards, red-brown tiled gabled roofs, chimney."
+    ]
+  },
+  {
+    "id": [
+      "1037054445"
+    ],
+    "address": "Nordahl Griegs veg 2A",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=139176542",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2019/1/vertical-2/30/2/139/176/542_357906076.jpg",
+      "https://images.finncdn.no/dynamic/960w/2019/1/vertical-2/30/2/139/176/542_135141812.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Charcoal horizontal cladding, low mono-pitch roof, wide dark balconies, stone-block base."
+    ]
+  },
+  {
+    "id": [
+      "191319195"
+    ],
+    "address": "Uglavegen 10B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=148157894",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2019/5/vertical-2/22/4/148/157/894_2069025109.jpg",
+      "https://images.finncdn.no/dynamic/960w/2019/5/vertical-2/22/4/148/157/894_1733569348.jpg",
+      "https://images.finncdn.no/dynamic/960w/2019/5/vertical-2/22/4/148/157/894_318304195.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. White single-storey house, red-brown gabled roof, brown window frames, chimney (drone photos)."
+    ]
+  },
+  {
+    "id": [
+      "191320636"
+    ],
+    "address": "Uglahaugstien 19A",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=192723019",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2021/1/vertical-2/13/9/192/723/019_386250557.jpg",
+      "https://images.finncdn.no/dynamic/960w/2021/1/vertical-2/13/9/192/723/019_1443582169.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Dark brown horizontal cladding, flat roof, white frames, glass balconies, three storeys on the slope."
+    ]
+  },
+  {
+    "id": [
+      "1037054331"
+    ],
+    "address": "Uglahaugstien 19B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=258047168",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2022/5/vertical-2/22/8/258/047/168_1325403759.jpg",
+      "https://images.finncdn.no/dynamic/960w/2022/5/vertical-2/22/8/258/047/168_1907131158.jpg",
+      "https://images.finncdn.no/dynamic/960w/2022/5/vertical-2/22/8/258/047/168_437136193.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. The other half of 19A, dark brown cladding, glass balconies, garage in the grey plinth."
+    ]
+  },
+  {
+    "id": [
+      "187112180",
+      "1037053812"
+    ],
+    "address": "Arnebyvegen 4A",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=356145008",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2024/6/vertical-2/07/8/356/145/008_9f441bd8-5cb2-459c-8b70-cbd399c7b5cc.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/6/vertical-2/07/8/356/145/008_6ac3338d-e24d-43a8-880a-4ad53379888b.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/6/vertical-2/07/8/356/145/008_cce407f0-f21f-4518-9c01-d6f1bc9cfdd6.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Light grey vertical boards, steep orange-red tiled gabled roof, black chimney."
+    ]
+  },
+  {
+    "id": [
+      "188008385"
+    ],
+    "address": "Uglavegen 20A",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=356955251",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2024/6/vertical-2/12/1/356/955/251_14afe4bb-75bc-41fe-938b-6d2df4b8e585.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/6/vertical-2/12/1/356/955/251_b4b539cb-e6d3-4422-8006-ef24cbd77152.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/6/vertical-2/12/1/356/955/251_de907404-3c30-4a37-b8d6-5ccce5eb90f6.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. White vertical boards, black tiled gabled roof with red fascia boards and red window trim, red garage doors."
+    ]
+  },
+  {
+    "id": [
+      "191319200"
+    ],
+    "address": "Nordahl Griegs veg 4B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=360029652",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2024/9/vertical-2/28/2/360/029/652_31aad9a6-b9fe-4d17-9f58-a044c4e3f595.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/9/vertical-2/28/2/360/029/652_8294bbd1-5b2a-4cb9-91b1-9d753f006de2.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Orange oiled-wood horizontal cladding, dark roof with roof terrace, white frames."
+    ]
+  },
+  {
+    "id": [
+      "1469325676",
+      "1469325677"
+    ],
+    "address": "Olav Duuns veg 16B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=245430025",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2022/1/vertical-2/19/5/245/430/025_2132889190.jpg",
+      "https://images.finncdn.no/dynamic/960w/2022/1/vertical-2/19/5/245/430/025_195379693.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Brown-grey horizontal wood cladding, black frames, stepped dark gables, carport."
+    ]
+  },
+  {
+    "id": [
+      "191318188"
+    ],
+    "address": "Olav Duuns veg 21",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=286543544",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2023/1/vertical-2/05/4/286/543/544_1257042887.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Blue-grey horizontal boards, steep dark gabled roof, white frames."
+    ]
+  },
+  {
+    "id": [
+      "1469325670"
+    ],
+    "address": "Olav Aukrusts veg 16",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=353979479",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2024/5/vertical-2/22/9/353/979/479_3bdf7b38-0540-4dae-9f0a-7a2c64b3e481.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/5/vertical-2/22/9/353/979/479_c1c99983-9144-4c28-9ec2-01ca2ef01a26.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/5/vertical-2/22/9/353/979/479_321d3d40-3bed-4ddf-b9df-44b82d73c58b.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/5/vertical-2/22/9/353/979/479_3f824eb6-23db-40f7-b948-75ef4dfa5308.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Greige cladding in stepped flat-roofed boxes, black frames, roof terrace with pergola (drone photos)."
+    ]
+  },
+  {
+    "id": [
+      "1469325674"
+    ],
+    "address": "Olav Duuns veg 14",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=354250969",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2024/5/vertical-2/24/9/354/250/969_388ea449-2357-4059-b6a9-1276c7b5b9d7.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/5/vertical-2/24/9/354/250/969_44422d26-eada-4047-b971-c0bf51bf1d0d.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/5/vertical-2/24/9/354/250/969_c86eab17-710e-4273-89d7-5892cd4ede58.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/5/vertical-2/24/9/354/250/969_5d58fd1b-5cb4-4c43-9ff9-022b32cb5be8.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Norwegian red vertical boards, white trim, dark tiled gabled roof."
+    ]
+  },
+  {
+    "id": [
+      "191318157"
+    ],
+    "address": "Olav Duuns veg 25B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=308963444",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2023/8/vertical-2/07/4/308/963/444_579532435.jpg",
+      "https://images.finncdn.no/dynamic/960w/2023/8/vertical-2/07/4/308/963/444_289240750.jpg",
+      "https://images.finncdn.no/dynamic/960w/2023/8/vertical-2/07/4/308/963/444_774291015.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Grey vertical boards, dark gabled roof, white frames, double garage under a balcony."
+    ]
+  },
+  {
+    "id": [
+      "191318179"
+    ],
+    "address": "Olav Duuns veg 25",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=314019275",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2023/8/vertical-2/09/5/314/019/275_2129844187.jpg",
+      "https://images.finncdn.no/dynamic/960w/2023/8/vertical-2/09/5/314/019/275_1906617298.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Pale yellow boards, dark tiled gabled roof with loft, white trim, carport."
+    ]
+  },
+  {
+    "id": [
+      "188007924"
+    ],
+    "address": "Olav Duuns veg 26A/26B",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=465091733",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2026/5/vertical-2/28/3/465/091/733_211c2315-e0e6-423a-9fe9-19a8faf47b70.jpg",
+      "https://images.finncdn.no/dynamic/960w/2026/5/vertical-2/28/3/465/091/733_62aa6e6c-3de4-4b75-ba68-cbadb418549c.jpg",
+      "https://images.finncdn.no/dynamic/960w/2026/5/vertical-2/28/3/465/091/733_cee540a7-23bd-449b-a7e3-6e277aaeac27.jpg",
+      "https://images.finncdn.no/dynamic/960w/2026/5/vertical-2/28/3/465/091/733_1e0bbd56-d6a9-4028-999c-6b2db9f39f9c.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Off-white horizontal cladding, dark gabled roof, brown wooden balconies, black door."
+    ]
+  },
+  {
+    "id": [
+      "1163311167"
+    ],
+    "address": "Uglagjerdet 13",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=355180154",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2024/5/vertical-2/31/4/355/180/154_5be5c007-8dda-4bb5-a986-19acff59ba9b.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/5/vertical-2/31/4/355/180/154_55eb529b-5a77-4147-9a7f-3dc1e46d13e8.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/5/vertical-2/31/4/355/180/154_b7675112-6738-4981-9da9-83b8be372629.jpg",
+      "https://images.finncdn.no/dynamic/960w/2024/5/vertical-2/31/4/355/180/154_d2fb0e91-1cf0-44c9-8083-afc8c31893a7.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Row of flat-roofed boxes in moss-green, charcoal and rust-red vertical boards, dark frames."
+    ]
+  },
+  {
+    "id": [
+      "191320586",
+      "1037053978"
+    ],
+    "address": "Uglahaugstien 6/8",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=112842813",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2018/2/vertical-2/14/3/112/842/_1716912799.jpg",
+      "https://images.finncdn.no/dynamic/960w/2018/2/vertical-2/14/3/112/842/_1712846463.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Cream vertical boards, dark gabled roof, white trim, balconies, chimneys."
+    ]
+  },
+  {
+    "id": [
+      "191320606",
+      "1037053962"
+    ],
+    "address": "Uglahaugstien 2/4",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=259752013",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2022/5/vertical-2/25/3/259/752/013_1454203713.jpg",
+      "https://images.finncdn.no/dynamic/960w/2022/5/vertical-2/25/3/259/752/013_943700763.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Light greige vertical boards, dark gabled roof, white trim and balcony."
+    ]
+  },
+  {
+    "id": [
+      "191364523"
+    ],
+    "address": "Kvernhusstien 7",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=159689281",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2019/10/vertical-2/06/1/159/689/281_499866211.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. White vertical boards, dark tiled gabled roof, white balcony, single storey over basement."
+    ]
+  },
+  {
+    "id": [
+      "455267653"
+    ],
+    "address": "Nedre Ferstadveg 30",
+    "source": "https://www.finn.no/realestate/homes/ad.html?finnkode=305335394",
+    "photos": [
+      "https://images.finncdn.no/dynamic/960w/2023/12/vertical-2/03/4/305/335/394_1155179815.jpg",
+      "https://images.finncdn.no/dynamic/960w/2023/12/vertical-2/03/4/305/335/394_1562317619.jpg",
+      "https://images.finncdn.no/dynamic/960w/2023/12/vertical-2/03/4/305/335/394_1537126821.jpg",
+      "https://images.finncdn.no/dynamic/960w/2023/12/vertical-2/03/4/305/335/394_780502893.jpg"
+    ],
+    "confidence": "high",
+    "limits": [
+      "FINN listing photos inspected 28 Sept 2026; listing found via the address on hjemla.no. Hex colours are visual estimates. Charcoal horizontal cladding, low dark gabled roof, oak window frames, grey boarded balcony."
+    ]
   }
 ]

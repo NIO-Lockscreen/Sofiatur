@@ -7,6 +7,9 @@ import {junctionObservations} from './dist/junction-observations.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json')),j=createJunctionBuildings(data);
 assert.equal(j.nodes.length,161);assert.ok(j.near.size>1100);
 for(const id of Object.keys(junctionObservations))assert.ok(data.buildings.some(b=>b.id===id),'Reference building exists '+id);
+// Every style sourced from a listing is documented with the photos used (older entries carry a photo label instead of a URL).
+const matches=JSON.parse(fs.readFileSync('docs/junction-photo-matches.json'));
+for(const [id,s] of Object.entries(junctionObservations))if(s.source.startsWith('http'))assert.ok(matches.some(m=>m.id.includes(id)&&m.source===s.source&&m.photos.length),'Documented photo match '+id);
 for(const shape of ['gabled','hipped','skillion','flat'])for(const p of [[[-8,-4],[8,-4],[8,4],[-8,4]],[[-8,-4],[8,-4],[8,0],[0,0],[0,4],[-8,4]]]){
  const triangles=[],tri=(b,a,c,d)=>triangles.push([a,c,d]),quad=()=>{},polygonArea=Math.abs(p.reduce((sum,a,i)=>{const b=p[(i+1)%p.length];return sum+a[0]*b[1]-b[0]*a[1];},0)/2);
  const top=addBuildingRoof({T,p,cx:0,cz:0,y:100,h:6,style:{roofShape:shape,roofRise:3},t:{},area:polygonArea,b:{},tri,quad,colour:'#fff',roofcolour:'#555'});
