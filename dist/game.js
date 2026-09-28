@@ -3,7 +3,7 @@ import {createWorld,T} from './world.js';
 import {roundaboutChoices} from './roundabouts.js';
 const $=id=>document.getElementById(id);
 let world,data,state='loading',paused=false,sound=true,current,previous=null,active=null,distance=0,speed=0,travelled=0,turns=0,heading=new T.Vector3(0,0,1),position=new T.Vector3(),choices=[],best=null,totalInitial=0,maxKmh=200,camMode='follow',lastTime=performance.now(),time=0,mapClock=0,menuWasPaused=false;
-let roundaboutUndo=null,freeMode=false,free=null;
+let roundaboutUndo=null,freeMode=false,free=null,showDeadEnds=false,choicesStale=false;
 const keys=new Set(),touch=new Set(),heldPointers=new Map(),cameraHeading=new T.Vector3();
 function clearInputs(){keys.clear();touch.clear();heldPointers.clear();for(const id of ['freeLeft','freeRight','freeBrake','freeDrift'])$(id).classList.remove('held');}
 function freeInput(){return {left:keys.has('ArrowLeft')||keys.has('KeyA')||touch.has('left'),right:keys.has('ArrowRight')||keys.has('KeyD')||touch.has('right'),brake:keys.has('ArrowDown')||keys.has('KeyS')||touch.has('brake'),drift:keys.has('Space')||touch.has('drift')};}
@@ -48,29 +48,46 @@ function computeOpenRoads(){
  const todo=through.filter(e=>target(e.to));todo.forEach(e=>openRoads.add(e));
  while(todo.length)for(const x of before.get(todo.pop())||[])if(!openRoads.has(x)){openRoads.add(x);todo.push(x);}
 }
+function roadChoices(node,prev,h){
+ const outgoing=(adjacency.get(node)||[]).filter(e=>distances.has(e.to));let list,top;
+ if(outgoing.some(e=>e.roundabout)){
+  list=roundaboutChoices(node,prev,adjacency,distances);
+  top=list.reduce((a,e)=>!a||e.cost+distances.get(e.to)<a.cost+distances.get(a.to)?e:a,null);
+  if(!showDeadEnds)list=list.filter(e=>e===top||openRoads.has(e.segments.find(s=>!s.roundabout)));
+ }else{
+  top=optimal.get(node);
+  const open=showDeadEnds?outgoing:outgoing.filter(e=>e===top||openRoads.has(e));
+  let nonback=open.filter(e=>e.to!==prev&&directionInfo(e,h).label!=='Snu');
+  if(!nonback.length)nonback=open;
+  const seen=new Set();list=nonback.filter(e=>{if(seen.has(e.to))return false;seen.add(e.to);return true;}).sort((a,b)=>directionInfo(a,h).angle-directionInfo(b,h).angle);
+  if(top&&!list.some(e=>e.id===top.id)&&outgoing.some(e=>e.id===top.id))list.push(top);
+ }
+ return {list,top};
+}
+// With one road left (e.g. right, when straight ahead is a blindvei) the car drives on by itself.
+function autoRoad(list,prev,h){return list.length===1&&prev&&directionInfo(list[0],h).label!=='Snu'?list[0]:null;}
+// Where the car must slow down after e: metres past its end to the next real choice, and the speed to reach there.
+// With blindveier off the car keeps its speed through junctions it takes by itself; automatic roundabouts are entered at circle speed.
+function slowdownAfter(e,curve){
+ let ahead=0,node=e.to,prev=e.arrivalFrom??e.from,h=curve.getTangentAt(1);
+ while(ahead<55){
+  if(showDeadEnds||node===data.goal)return {ahead,floor:2.4};
+  const next=autoRoad(roadChoices(node,prev,h).list,prev,h);
+  if(!next)return {ahead,floor:2.4};if(next.roundaboutPlan)return {ahead,floor:25/3.6};
+  ahead+=next.length;node=next.to;prev=next.from;h=endDirection(next,false);
+ }
+ return {ahead:Infinity,floor:2.4};
+}
 function showDecision(){
  if(current===data.goal){finish();return;}
- const outgoing=(adjacency.get(current)||[]).filter(e=>distances.has(e.to));
- if(outgoing.some(e=>e.roundabout)){
-  choices=roundaboutChoices(current,previous,adjacency,distances);
-  best=choices.reduce((a,e)=>!a||e.cost+distances.get(e.to)<a.cost+distances.get(a.to)?e:a,null);
-  choices=choices.filter(e=>e===best||openRoads.has(e.segments.find(s=>!s.roundabout)));
- }else{
-  best=optimal.get(current);
-  const open=outgoing.filter(e=>e===best||openRoads.has(e));
-  let nonback=open.filter(e=>e.to!==previous&&directionInfo(e).label!=='Snu');
-  if(!nonback.length)nonback=open;
-  const seen=new Set();choices=nonback.filter(e=>{if(seen.has(e.to))return false;seen.add(e.to);return true;}).sort((a,b)=>directionInfo(a).angle-directionInfo(b).angle);
-  if(best&&!choices.some(e=>e.id===best.id)&&outgoing.some(e=>e.id===best.id))choices.push(best);
- }
- // With one road left (e.g. right, when straight ahead is a blindvei) the car drives on by itself.
- if(choices.length===1&&previous&&directionInfo(choices[0]).label!=='Snu'){choose(choices[0].id,false);return;}
+ choicesStale=false;({list:choices,top:best}=roadChoices(current,previous,heading));
+ const next=autoRoad(choices,previous,heading);if(next){choose(next.id,false);return;}
  state='decision';speed=0;ui.decision.hidden=true;ui.mini.hidden=true;document.body.classList.add('choosing');
  clearWorldChoices();renderWorldChoices();updateHud();
 }
 function choose(edgeId,manual=true){if(paused||state!=='decision')return false;const e=(manual?choices:[...choices,...(adjacency.get(current)||[])]).find(e=>e.id===Number(edgeId));if(!e)return false;if(manual&&!choices.some(x=>x.id===e.id))return false;
  if(manual&&e.roundaboutPlan){roundaboutUndo={current,previous,position:position.clone(),heading:heading.clone(),travelled,turns};$('undoRoundabout').hidden=false;}
- const pts=e.path.map(point);if(pts.length<2)return false;const curve=new T.CatmullRomCurve3(pts,false,'centripetal',.15);curve.arcLengthDivisions=Math.max(50,Math.ceil(e.length*2));const len=curve.getLength();const info=directionInfo(e);let ringDistance=0;if(e.roundaboutPlan){const exitPoint=point(e.segments.find(s=>!s.roundabout).from);let nearest=Infinity;for(let j=0;j<=500;j++){const u=j/500,d=curve.getPointAt(u).distanceToSquared(exitPoint);if(d<nearest){nearest=d;ringDistance=u*len;}}}active={e,curve,len,ringDistance};distance=0;state='driving';clearWorldChoices();world.setTurnArrow(null);ui.decision.hidden=true;ui.mini.hidden=false;document.body.classList.remove('choosing');$('street').textContent=e.name==='Lokalvei'?'Innkjøringen':e.name;
+ const pts=e.path.map(point);if(pts.length<2)return false;const curve=new T.CatmullRomCurve3(pts,false,'centripetal',.15);curve.arcLengthDivisions=Math.max(50,Math.ceil(e.length*2));const len=curve.getLength();const info=directionInfo(e);let ringDistance=0;if(e.roundaboutPlan){const exitPoint=point(e.segments.find(s=>!s.roundabout).from);let nearest=Infinity;for(let j=0;j<=500;j++){const u=j/500,d=curve.getPointAt(u).distanceToSquared(exitPoint);if(d<nearest){nearest=d;ringDistance=u*len;}}}active={e,curve,len,ringDistance,...slowdownAfter(e,curve)};distance=0;state='driving';clearWorldChoices();world.setTurnArrow(null);ui.decision.hidden=true;ui.mini.hidden=false;document.body.classList.remove('choosing');$('street').textContent=e.name==='Lokalvei'?'Innkjøringen':e.name;
  if(manual){turns++;say(e.roundaboutPlan?`Vi tar avkjørsel ${e.exitNumber}.`:(info.label==='Snu'?'Vi snur!':info.label+'. Da kjører vi!'));}
  return true;
 }
@@ -81,7 +98,7 @@ function undoRoundabout(){
  active=null;distance=0;speed=0;state='decision';world.resetCamera();$('street').textContent='Rundkjøring';showDecision();say('Prøv en annen avkjørsel!');
 }
 $('undoRoundabout').onclick=undoRoundabout;
-function arrive(){if(!active)return;previous=active.e.arrivalFrom??active.e.from;current=active.e.to;position.copy(point(current));heading.copy(active.curve.getTangentAt(1));active=null;speed=0;state='decision';showDecision();}
+function arrive(){if(!active)return;previous=active.e.arrivalFrom??active.e.from;current=active.e.to;position.copy(point(current));heading.copy(active.curve.getTangentAt(1));if(!active.ahead&&active.floor<=2.4)speed=0;active=null;state='decision';showDecision();}
 function finish(){state='finished';roundaboutUndo=null;$('undoRoundabout').hidden=true;clearWorldChoices();world.setTurnArrow(null);speed=0;ui.decision.hidden=true;ui.mini.hidden=true;ui.finish.hidden=false;document.body.classList.remove('choosing');$('remaining').textContent='Fremme!';$('finishSummary').textContent=`${(travelled/1000).toLocaleString('nb-NO',{maximumFractionDigits:1})} km gjennom nabolaget · ${turns} veivalg`;$('pause').disabled=true;say('Hurra Sofia! Du fant barnehagen! Så flink du er!');}
 function remaining(){let rem=0;if(active){rem=active.len-distance;for(const e of routeFrom(active.e.to))rem+=e.length;}else for(const e of routeFrom(current))rem+=e.length;return rem;}
 function updateHud(){const rem=remaining();$('remaining').textContent=freeMode?'Frikjøring · automatisk gass':rem>1000?`${(rem/1000).toLocaleString('nb-NO',{maximumFractionDigits:1})} km igjen`:`${Math.round(rem/10)*10} m igjen`;$('speed').textContent=Math.round(speed*3.6);const horizontal=Math.max(.01,Math.hypot(heading.x,heading.z));let slope=Math.round(100*heading.y/horizontal);if(world?.rawHeight){const hx=heading.x/horizontal,hz=heading.z/horizontal;const ahead=world.rawHeight(position.x+hx*2,position.z+hz*2),behind=world.rawHeight(position.x-hx*2,position.z-hz*2);slope=Math.round(100*(ahead-behind)/4);} $('slope').textContent=state==='free'&&free.car.drifting?'Drifter!':state==='decision'?'Vi velger vei':Math.abs(slope)<2?'Langs veien':slope>0?'↗ Oppoverbakke':'↘ Nedoverbakke';const realAltitude=world?.rawHeight?world.rawHeight(position.x,position.z):position.y;$('altitude').textContent=`${Math.round(realAltitude)} moh.${Math.abs(slope)>=2?' · '+Math.abs(slope)+' %':''}`;}
@@ -96,10 +113,11 @@ function drawMap(canvas,{local=false}={}){const ctx=canvas.getContext('2d'),w=ca
  if(!local){const home=transform(data.home),goal=transform(data.nodes[data.goal]),car=transform([position.x,position.z]);for(const [p,c,t] of [[home,'#75846a','⌂'],[goal,'#e8ba48','⚑']]){ctx.beginPath();ctx.arc(...p,14,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 19px sans-serif';ctx.fillText(t,p[0],p[1]+6);}ctx.save();ctx.translate(...car);ctx.rotate(Math.atan2(heading.x,-heading.z));ctx.fillStyle='#26697a';ctx.strokeStyle='white';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,-11);ctx.lineTo(8,9);ctx.lineTo(0,5);ctx.lineTo(-8,9);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
 }
 function drawJunction(){drawMap($('junctionMap'),{local:true});}
-function setPause(on){if(!['driving','decision','free'].includes(state))return;paused=on;if(on)clearInputs();$('pause').textContent=on?'▶':'Ⅱ';$('pause').setAttribute('aria-label',on?'Fortsett turen':'Pause');$('pause').classList.toggle('active',on);$('game').classList.toggle('paused',on);if(on&&'speechSynthesis'in window)speechSynthesis.cancel();}
+function setPause(on){if(!['driving','decision','free'].includes(state))return;paused=on;if(on)clearInputs();$('pause').textContent=on?'▶':'Ⅱ';$('pause').setAttribute('aria-label',on?'Fortsett turen':'Pause');$('pause').classList.toggle('active',on);$('game').classList.toggle('paused',on);if(!on&&choicesStale&&state==='decision')showDecision();if(on&&'speechSynthesis'in window)speechSynthesis.cancel();}
 function openMenu(){menuWasPaused=paused;setPause(true);$('menu').showModal();}
 $('closeMenu').onclick=()=>$('menu').close();$('menu').addEventListener('close',()=>{if(!menuWasPaused)setPause(false);});$('settings').onclick=openMenu;$('about').onclick=openMenu;$('pause').onclick=()=>setPause(!paused);$('sound').onclick=()=>{sound=!sound;$('sound').textContent=sound?'♫':'♪';$('sound').classList.toggle('active',!sound);$('sound').setAttribute('aria-label',sound?'Slå av stemmen':'Slå på stemmen');if(!sound&&'speechSynthesis'in window)speechSynthesis.cancel();if(sound)say('Hei Sofia!');};
 $('cameraMode').onchange=e=>camMode=e.target.value;$('start').onclick=start;$('again').onclick=()=>{reset();start();};$('restart').onclick=()=>{$('menu').close();reset();if(freeMode)start();};
+$('deadEnds').onchange=e=>{showDeadEnds=e.target.value==='on';if(active)Object.assign(active,slowdownAfter(active.e,active.curve));choicesStale=true;};
 $('driveMode').onchange=e=>{if(!world)return;freeMode=e.target.value==='free';$('recoverCar').hidden=!freeMode;menuWasPaused=false;reset();$('menu').close();start();};
 $('recoverCar').onclick=()=>{recoverFree();menuWasPaused=false;$('menu').close();setPause(false);};
 for(const [id,action] of [['freeLeft','left'],['freeRight','right'],['freeBrake','brake'],['freeDrift','drift']]){const el=$(id);el.addEventListener('pointerdown',e=>{if(state!=='free'||paused)return;e.preventDefault();el.setPointerCapture?.(e.pointerId);heldPointers.set(e.pointerId,action);touch.add(action);el.classList.add('held');});const release=e=>{heldPointers.delete(e.pointerId);if(![...heldPointers.values()].includes(action)){touch.delete(action);el.classList.remove('held');}};for(const type of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(type,release);}
@@ -111,7 +129,7 @@ window.addEventListener('blur',()=>{clearInputs();setPause(true);});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)setPause(true);lastTime=performance.now();});
 function animate(now){requestAnimationFrame(animate);const dt=Math.min(.045,Math.max(0,(now-lastTime)/1000));lastTime=now;time+=dt;if(!world)return;
  if(state==='free'&&!paused){travelled+=free.step(dt,freeInput());const c=free.car;speed=c.speed;position.set(c.x,free.altitude,c.z);const hx=Math.sin(c.yaw),hz=-Math.cos(c.yaw),slope=(world.height(c.x+hx,c.z+hz)-world.height(c.x-hx,c.z-hz))/2;heading.set(hx,slope,hz).normalize();$('freeDrift').classList.toggle('held',c.drifting);}
- if(state==='driving'&&!paused&&active){const remaining=active.len-distance;const out=(adjacency.get(active.e.to)||[]).filter(e=>e.to!==active.e.from);const stop=out.length!==1||active.e.to===data.goal;const targetSpeed=Math.min(maxKmh,active.e.roundaboutPlan&&distance<active.ringDistance+4?25:200)/3.6;const approachSpeed=remaining<55?Math.max(2.4,Math.sqrt(Math.max(0,remaining)*7.5)):targetSpeed;const maxspeed=Math.min(targetSpeed,approachSpeed);speed=T.MathUtils.damp(speed,maxspeed,5.5,dt);const step=Math.min(remaining,speed*dt);distance+=step;travelled+=step;const u=Math.min(1,distance/active.len);position.copy(active.curve.getPointAt(u));heading.copy(active.curve.getTangentAt(u));if(distance>=active.len-.015)arrive();}
+ if(state==='driving'&&!paused&&active){const remaining=active.len-distance;const targetSpeed=Math.min(maxKmh,active.e.roundaboutPlan&&distance<active.ringDistance+4?25:200)/3.6;const toSlow=remaining+active.ahead;const approachSpeed=toSlow<55?Math.max(active.floor,Math.sqrt(Math.max(0,toSlow)*7.5)):targetSpeed;const maxspeed=Math.min(targetSpeed,approachSpeed);speed=T.MathUtils.damp(speed,maxspeed,5.5,dt);const step=Math.min(remaining,speed*dt);distance+=step;travelled+=step;const u=Math.min(1,distance/active.len);position.copy(active.curve.getPointAt(u));heading.copy(active.curve.getTangentAt(u));if(distance>=active.len-.015)arrive();}
  cameraHeading.copy(heading);if(state==='free')cameraHeading.set(Math.sin(free.car.course),heading.y,-Math.cos(free.car.course)).normalize();
  world.update(dt,position,cameraHeading,paused?0:speed,(state==='intro'||travelled===0&&state==='decision')?'intro':camMode,state==='finished',time,heading);
  mapClock+=dt;if(mapClock>.16){mapClock=0;if(state!=='intro'&&state!=='finished')updateHud();if(!ui.mini.hidden&&!ui.drive.hidden)drawMap($('minimap'));}

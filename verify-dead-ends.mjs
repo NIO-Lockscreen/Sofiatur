@@ -11,7 +11,7 @@ const env={T,roundaboutChoices,createFreeDrive,console,performance:{now:()=>now}
 const ctx=vm.createContext(env);
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
 // enter(e) arrives at the end of road e (home when null) and returns the offered roads, or the road the car took by itself.
-const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,enter(e){current=e?e.to:data.start;previous=e?e.arrivalFrom??e.from:null;active=null;paused=false;state='decision';maxKmh=200;position.copy(point(current));heading.copy(e?endDirection(e,false):endDirection(optimal.get(current)));showDecision();return state==='driving'?[active.e]:choices;}};})()`,ctx);
+const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,enter(e){current=e?e.to:data.start;previous=e?e.arrivalFrom??e.from:null;active=null;paused=false;state='decision';maxKmh=200;position.copy(point(current));heading.copy(e?endDirection(e,false):endDirection(optimal.get(current)));showDecision();return state==='driving'?[active.e]:choices;},drive(e){current=e.from;previous=null;active=null;paused=false;state='decision';position.copy(point(current));heading.copy(endDirection(e));choices=[];choose(e.id,false);},active:()=>active};})()`,ctx);
 function frame(){now+=45;const q=callbacks.splice(0);q.forEach(cb=>cb(now));}
 for(let i=0;i<12;i++){await Promise.resolve();frame();}await init;
 
@@ -47,3 +47,21 @@ console.log('Right-or-blindvei junctions drive on automatically: OK');
 const home=env.test.enter(data.edges.find(e=>e.from==='206324584'&&e.to==='13644489026'));assert.equal(env.test.read().state,'decision');assert.ok(home.some(c=>c.to===data.start),'Home can still be chosen');
 const gate=data.edges.find(e=>e.to===data.goal);const kindergarten=env.test.enter(data.edges.find(e=>e.to===gate.from&&e.from!==data.goal));assert.equal(env.test.read().state,'decision');assert.ok(kindergarten.some(c=>c.to===data.goal),'The kindergarten entrance can be chosen');
 console.log('Home and kindergarten entrances remain choices: OK');
+
+// Speed: with blindveier off the car keeps its speed through the automatic right turn and first slows for the next real choice.
+function approach(e){env.test.drive(e);const speeds=[];let crossed=null;
+ for(let i=0;i<4000&&env.test.read().state==='driving';i++){frame();speeds.push(env.test.read().speedKmh);if(!crossed&&env.test.active()?.e!==e)crossed=speeds.at(-2);}
+ return {crossed,beforeChoice:speeds.at(-2),state:env.test.read().state};}
+let run=approach(vetle);
+assert.ok(run.crossed>=150,`Keeps speed into the automatic turn (${run.crossed} km/h)`);assert.equal(run.state,'decision');assert.ok(run.beforeChoice<=15,`Slows for the next real choice (${run.beforeChoice} km/h)`);
+console.log(`Blindveier off: ${run.crossed} km/h through the automatic turn, ${run.beforeChoice} km/h before the next choice: OK`);
+
+// Setting on: dead ends are offered again and the car slows at every junction, as before.
+element('deadEnds').onchange({target:{value:'on'}});
+const withDeadEnds=env.test.enter(vetle);assert.equal(env.test.read().state,'decision');assert.ok(withDeadEnds.some(c=>c.name==='Vetle Vislies veg'),'Blindvei offered when the setting is on');
+run=approach(vetle);assert.equal(run.state,'decision');assert.ok(run.beforeChoice<=15,'Slows for the blindvei choice');
+let roundaboutExits=0;for(const e of data.edges.filter(x=>!x.roundabout&&adjacency.get(x.to)?.some(y=>y.roundabout)&&!adjacency.get(x.from)?.some(y=>y.roundabout))){const exits=env.test.enter(e);assert.equal(env.test.read().state,'decision','Every roundabout entrance asks again');roundaboutExits+=exits.length;}
+// Switching off while a blindvei choice is shown applies when the game resumes.
+env.test.enter(vetle);element('pause').onclick();element('deadEnds').onchange({target:{value:'off'}});assert.equal(env.test.read().state,'decision');element('pause').onclick();
+assert.equal(env.test.read().state,'driving');assert.equal(env.test.active().e.name,'Herlofsons veg');
+console.log(`Setting on offers blindveier again (${roundaboutExits} roundabout exits); switching off applies on resume: OK`);
