@@ -15,6 +15,10 @@ nodes['sofia-kindergarten-gate']={'x':1856.0,'z':260.0,'tags':{}}
 nodes['sofia-kindergarten-bend']={'x':1879.0,'z':256.5,'tags':{}}
 entrance={'id':'sofia-kindergarten-access','ids':['11253710556','sofia-kindergarten-bend','sofia-kindergarten-gate'],'tags':{'highway':'service','name':'Barnehagens innkjøring','surface':'asphalt'}}
 ways.append(entrance);roads.append(entrance)
+# Olaf Grilstads veg meets Konrad Dahls veg and Per Sivles veg at Myrahallen, but in the extract its way stops 28 m
+# short of the junction (only a parking service road links them). Close the gap so the street can be driven from both ends.
+olaf_link={'id':'olaf-grilstads-link','ids':['35682743','11254607435'],'tags':{'highway':'residential','name':'Olaf Grilstads veg','surface':'asphalt'}}
+ways.append(olaf_link);roads.append(olaf_link)
 for w in roads:
  if w['id'] in ['1214632503','24575743']:w['tags']['name']='Adolf Andreassens veg'
 # Include named roads and public access roads; small Hallset access lanes are scenery only.

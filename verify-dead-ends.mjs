@@ -66,3 +66,9 @@ let roundaboutExits=0;for(const e of data.edges.filter(x=>!x.roundabout&&adjacen
 env.test.enter(vetle);element('pause').onclick();element('deadEnds').onchange({target:{value:'off'}});assert.equal(env.test.read().state,'decision');element('pause').onclick();
 assert.equal(env.test.read().state,'driving');assert.equal(env.test.active().e.name,'Herlofsons veg');
 console.log(`Setting on offers blindveier again (${roundaboutExits} roundabout exits); switching off applies on resume: OK`);
+
+// Olaf Grilstads veg runs from the Myrahallen junction (Konrad Dahls veg / Per Sivles veg) to Kyvannsvegen and can be chosen from both ends.
+element('deadEnds').onchange({target:{value:'off'}});
+const olafFrom=(from,to,end)=>{const roads=env.test.enter(data.edges.find(e=>e.from===from&&e.to===to)),s=env.test.read();const olaf=roads.find(c=>c.name==='Olaf Grilstads veg'&&c.to===end);assert.ok(olaf,`Olaf Grilstads veg offered at ${to} (from ${from}): ${roads.map(c=>c.name).join(', ')}`);return `${s.choices.find(c=>c.id===olaf.id)?.direction??'automatisk'}`;};
+const fromPerSivles=olafFrom('3706544739','13047829215','35682728'),fromKonradDahls=olafFrom('192622682','13047829215','35682728'),fromKyvannsvegen=olafFrom('1866474268','35682728','13047829215');
+console.log(`Olaf Grilstads veg from Per Sivles veg (${fromPerSivles}), Konrad Dahls veg (${fromKonradDahls}) and Kyvannsvegen (${fromKyvannsvegen}): OK`);
