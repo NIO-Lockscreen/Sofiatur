@@ -26,3 +26,4 @@
 .unlock{margin:14px 0 4px;padding:12px 14px;border-radius:14px;background:#fff1c4;color:#5d4c17;font-size:15px;font-weight:750;line-height:1.45;animation:reward-pop .6s ease-out}
 @keyframes reward-pop{0%{transform:scale(.8);opacity:0}60%{transform:scale(1.04);opacity:1}100%{transform:scale(1)}}
 @media(max-height:650px) and (min-width:701px){.rewards{margin:-8px 0 12px;padding:9px 12px}.reward-teaser{margin:-6px 0 10px}}
+.ahead-help{font-size:14px}

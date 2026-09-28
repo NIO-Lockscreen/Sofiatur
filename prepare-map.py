@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET,json,math,heapq,collections
+from map_fixes import merge_close_junctions
 from pathlib import Path
 r=ET.parse('byasen.osm').getroot(); lat0=63.39945456;lon0=10.32727325
 sx=111320*math.cos(math.radians(lat0)); sz=111320
@@ -105,6 +106,7 @@ data['stops']=[{'id':n,'p':[round(p['x'],2),round(p['z'],2)],'name':p['tags'].ge
 data['source']['goal']='East entrance traced from user-marked map, 2026-09-25; approximate geometry.'
 preferred={'Herlofsons veg','Per Sivles veg','Uglavegen','Gamle Oslovei','General Bangs veg','Arnt Smistads veg','Selsbakkvegen','Nordre Hallsetveg','Lokalvei'}
 for e in edges:e['cost']=round(e['length']*(8 if e.get('restricted') else 1 if e['name'] in preferred else 1.8),2)
+merge_close_junctions(edges) # junctions a few metres apart are asked as one
 if Path('dist/map.json').exists():
  old=json.loads(Path('dist/map.json').read_text())
  if 'terrain' in old:data['terrain']=old['terrain']

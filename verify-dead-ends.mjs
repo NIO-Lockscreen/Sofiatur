@@ -72,3 +72,14 @@ element('deadEnds').onchange({target:{value:'off'}});
 const olafFrom=(from,to,end)=>{const roads=env.test.enter(data.edges.find(e=>e.from===from&&e.to===to)),s=env.test.read();const olaf=roads.find(c=>c.name==='Olaf Grilstads veg'&&c.to===end);assert.ok(olaf,`Olaf Grilstads veg offered at ${to} (from ${from}): ${roads.map(c=>c.name).join(', ')}`);return `${s.choices.find(c=>c.id===olaf.id)?.direction??'automatisk'}`;};
 const fromPerSivles=olafFrom('3706544739','13047829215','35682728'),fromKonradDahls=olafFrom('192622682','13047829215','35682728'),fromKyvannsvegen=olafFrom('1866474268','35682728','13047829215');
 console.log(`Olaf Grilstads veg from Per Sivles veg (${fromPerSivles}), Konrad Dahls veg (${fromKonradDahls}) and Kyvannsvegen (${fromKyvannsvegen}): OK`);
+
+// Junctions a few metres apart are asked as one: at Gamle Oslovei (from the south) Kyvannsvegen up towards
+// Myra barnehage is offered as a left turn in the junction where the car stops, next to Nedre Ferstadveg.
+const oslovei=env.test.enter(data.edges.find(e=>e.to==='34036717'&&e.name==='Gamle Oslovei')),osloveiState=env.test.read();
+const osloveiRoads=Object.fromEntries(osloveiState.choices.map(c=>[c.direction,c.street]));
+assert.equal(osloveiRoads.Venstre,'Kyvannsvegen');assert.equal(osloveiRoads['Rett frem'],'Gamle Oslovei');assert.equal(osloveiRoads['Høyre'],'Nedre Ferstadveg');
+assert.ok(oslovei.find(c=>c.name==='Kyvannsvegen').path.includes('9316519359'),'The car still drives through both points');
+const junctionOf=new Map();for(const e of data.edges){if(!junctionOf.has(e.from))junctionOf.set(e.from,new Set());junctionOf.get(e.from).add(e.to);}
+const short=data.edges.filter(e=>!e.roundabout&&!e.stub&&e.length<12&&junctionOf.get(e.from)?.size>2&&junctionOf.get(e.to)?.size>2&&![...adjacency.get(e.from),...adjacency.get(e.to)].some(x=>x.roundabout));
+assert.deepEqual(short.map(e=>e.id),[],'No two junctions under 12 m apart ask separately');
+console.log(`Gamle Oslovei: ${osloveiState.choices.map(c=>c.direction+' '+c.street).join(', ')}; no junction pairs under 12 m: OK`);

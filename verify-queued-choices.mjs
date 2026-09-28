@@ -13,6 +13,12 @@ const read=()=>tools.get('read_drive_state').execute(),act=(name,input)=>tools.g
 function step(n=1){for(let i=0;i<n;i++){now+=45;const q=raf.splice(0);q.forEach(cb=>cb(now));}}
 const recommended=list=>list.find(c=>c.recommended)?.id??list[0].id;
 
+// Choosing ahead is a menu option, off by default: then no arrows show while driving and the car stops at the junction.
+act('start_drive');act('choose_road',{edgeId:recommended(read().choices)});for(let i=0;i<400&&read().state==='driving';i++){step();assert.equal(read().upcoming.length,0,'No arrows ahead while the option is off');}
+assert.equal(read().state,'decision','The car stops at the next junction');
+element('chooseAhead').onchange({target:{value:'on'}});element('restart').onclick();assert.equal(read().state,'intro');
+console.log('Choosing ahead is off by default: OK');
+
 const waitUpcoming=()=>{for(let i=0;i<3000&&read().state==='driving'&&!read().upcoming.length;i++)step();return read();};
 
 // A picked road lights up first; arrows for the next junction appear only once it is within 250 m; a tap queues it.
@@ -55,3 +61,9 @@ const keyFor={Venstre:'ArrowLeft',Høyre:'ArrowRight','Rett frem':'ArrowUp',Snu:
 listeners.get('keydown')({key:keyFor[pick.direction],code:keyFor[pick.direction],repeat:false,preventDefault(){}});assert.equal(read().queued.map(q=>q.id).join(),String(pick.id));
 element('again').onclick();assert.equal(read().queued.length,0);assert.equal(turnArrow,null);
 console.log('Keyboard queue and reset: OK');
+
+// Switching the option off while driving drops the queued road; the car stops at that junction again.
+element('again').onclick();if(read().state==='intro')act('start_drive');act('choose_road',{edgeId:recommended(read().choices)});s=waitUpcoming();act('choose_road',{edgeId:recommended(s.upcoming)});assert.equal(read().queued.length,1);
+element('chooseAhead').onchange({target:{value:'off'}});assert.equal(read().queued.length,0);assert.equal(turnArrow,null);
+for(let i=0;i<3000&&read().state==='driving';i++){step();assert.equal(read().upcoming.length,0);}assert.equal(read().state,'decision');
+console.log('Switching choosing ahead off while driving clears the queue: OK');

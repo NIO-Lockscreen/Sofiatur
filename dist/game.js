@@ -6,6 +6,7 @@ const $=id=>document.getElementById(id);
 let world,data,state='loading',paused=false,sound=true,current,previous=null,active=null,distance=0,speed=0,travelled=0,turns=0,heading=new T.Vector3(0,0,1),position=new T.Vector3(),choices=[],best=null,totalInitial=0,maxKmh=200,camMode='follow',lastTime=performance.now(),time=0,mapClock=0,menuWasPaused=false;
 let roundaboutUndo=null,freeMode=false,free=null,carHeight,showDeadEnds=false,choicesStale=false,musicOn=true,queue=[],preview=null,picked=null,pickedUntil=-9,aheadShown=false,planKey='';
 let arrivals=0,carColour='#14171c',trailOn=true,newReward=null;
+let chooseAhead=false; // Menu option: arrows for the next junction while driving, to queue up to two roads. Off by default.
 const music=createMusic();
 const keys=new Set(),touch=new Set(),heldPointers=new Map(),cameraHeading=new T.Vector3();
 function clearInputs(){keys.clear();touch.clear();heldPointers.clear();for(const id of ['freeLeft','freeRight','freeBrake','freeDrift'])$(id).classList.remove('held');}
@@ -23,7 +24,7 @@ function roadPoints(path){const pts=[];for(const n of path){const [x,z]=data.nod
 // Curves are built once per road; a roundabout plan's path depends on its entrance, so plans are keyed by entrance and exit.
 const curves=new Map();
 function roadCurve(e){const key=e.roundaboutPlan?e.from+'>'+e.id:e.id;let curve=curves.get(key);if(!curve){curve=new T.CatmullRomCurve3(roadPoints(e.path),false,'centripetal',.15);curve.arcLengthDivisions=Math.max(50,Math.ceil(e.length*2));curves.set(key,curve);}return curve;}
-function endDirection(e,start=true){const p=e.path.map(n=>data.nodes[n]);const a=start?p[0]:p[p.length-2],b=start?p[1]:p.at(-1);return new T.Vector3(b[0]-a[0],0,b[1]-a[1]).normalize();}
+function endDirection(e,start=true){const p=e.path.map(n=>data.nodes[n]),i=start?e.stub||0:p.length-2;const a=p[i],b=p[i+1];return new T.Vector3(b[0]-a[0],0,b[1]-a[1]).normalize();}
 function routeFrom(n){const route=[];const visited=new Set();while(n!==data.goal&&!visited.has(n)){visited.add(n);const e=optimal.get(n);if(!e)break;route.push(e);n=e.to;}return route;}
 function computeRoutes(){const reverse=new Map();for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);if(!reverse.has(e.to))reverse.set(e.to,[]);reverse.get(e.to).push(e);}distances.set(data.goal,0);const todo=[data.goal];while(todo.length){todo.sort((a,b)=>distances.get(b)-distances.get(a));const n=todo.pop(),d=distances.get(n);for(const e of reverse.get(n)||[]){const nd=d+(e.cost||e.length);if(nd<(distances.get(e.from)??Infinity)){distances.set(e.from,nd);optimal.set(e.from,e);if(!todo.includes(e.from))todo.push(e.from);}}}}
 function reset(){clearInputs();$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;picked=null;$('undoRoundabout').hidden=true;maxKmh=200;current=data.start;previous=null;active=null;distance=0;speed=0;travelled=0;turns=0;state='intro';paused=false;position.copy(point(current));heading.copy(endDirection(optimal.get(current)));totalInitial=routeFrom(current).reduce((n,e)=>n+e.length,0);ui.welcome.hidden=false;ui.drive.hidden=true;ui.decision.hidden=true;ui.finish.hidden=true;document.body.classList.remove('choosing');$('game').classList.remove('paused');$('pause').disabled=true;$('pause').textContent='Ⅱ';world.resetCamera();clearWorldChoices();world.setTurnArrow(null);$('remaining').textContent='Herlofsons veg → Skjermvegen';newReward=null;showRewards();}
@@ -96,7 +97,7 @@ function planAhead(){if(!active)return;const {slow,junction}=lookAhead(active.e,
 // Queued roads show in the hint and as the floating cue over the car.
 function renderPlan(){
  if(state!=='driving')return;
- const confirming=!!picked&&time<pickedUntil,show=!confirming&&!!preview&&!!active&&active.len-distance+preview.ahead<=250&&queue.length<2;
+ const confirming=!!picked&&time<pickedUntil,show=chooseAhead&&!confirming&&!!preview&&!!active&&active.len-distance+preview.ahead<=250&&queue.length<2;
  // Rebuild only when something visible changes, so a tap is not lost while passing automatic junctions.
  const key=`${confirming}|${show?preview.key:''}|${queue.map(q=>q.id)}`;if(key===planKey)return;
  const next=queue[0];world.setTurnArrow(next?{symbol:next.symbol,label:next.label}:null);
@@ -165,9 +166,9 @@ function setPause(on){if(!['driving','decision','free'].includes(state))return;p
 function openMenu(){menuWasPaused=paused;setPause(true);$('menu').showModal();}
 $('closeMenu').onclick=()=>$('menu').close();$('menu').addEventListener('close',()=>{if(!menuWasPaused)setPause(false);});$('settings').onclick=openMenu;$('about').onclick=openMenu;$('pause').onclick=()=>setPause(!paused);$('sound').onclick=()=>{sound=!sound;$('sound').textContent=sound?'♫':'♪';$('sound').classList.toggle('active',!sound);$('sound').setAttribute('aria-label',sound?'Slå av lyden':'Slå på lyden');if(!sound&&'speechSynthesis'in window)speechSynthesis.cancel();if(sound&&musicOn)music.play();else music.stop();if(sound)say('Hei Sofia!');};
 // Music and blindvei choices are remembered on this device (browser storage may be unavailable, e.g. in private mode).
-function saveSettings(){try{localStorage.setItem('sofiatur.innstillinger',JSON.stringify({music:musicOn?'on':'off',deadEnds:showDeadEnds?'on':'off'}));}catch{}}
-try{const saved=JSON.parse(localStorage.getItem('sofiatur.innstillinger'))||{};musicOn=saved.music!=='off';showDeadEnds=saved.deadEnds==='on';}catch{}
-$('music').value=musicOn?'on':'off';$('deadEnds').value=showDeadEnds?'on':'off';
+function saveSettings(){try{localStorage.setItem('sofiatur.innstillinger',JSON.stringify({music:musicOn?'on':'off',deadEnds:showDeadEnds?'on':'off',ahead:chooseAhead?'on':'off'}));}catch{}}
+try{const saved=JSON.parse(localStorage.getItem('sofiatur.innstillinger'))||{};musicOn=saved.music!=='off';showDeadEnds=saved.deadEnds==='on';chooseAhead=saved.ahead==='on';}catch{}
+$('music').value=musicOn?'on':'off';$('deadEnds').value=showDeadEnds?'on':'off';$('chooseAhead').value=chooseAhead?'on':'off';
 // Rewards: after the first trip to the kindergarten Sofia can pick the car's colour on the start screen;
 // after the second the car gets a rainbow trail. Trips and choices are remembered on this device.
 const carColours=[['Svart','#14171c'],['Rød','#c62828'],['Rosa','#ec6aa8'],['Lilla','#7b4cc2'],['Blå','#1f63c6'],['Turkis','#17a2a0'],['Grønn','#3b9a43'],['Gul','#f3c531'],['Oransje','#f07b22'],['Hvit','#eef0ef']];
@@ -185,6 +186,8 @@ $('trail').onchange=e=>{trailOn=!!e.target.checked;saveProgress();applyRewards()
 $('music').onchange=e=>{musicOn=e.target.value==='on';saveSettings();if(musicOn&&sound)music.play();else music.stop();};
 $('cameraMode').onchange=e=>camMode=e.target.value;$('start').onclick=start;$('again').onclick=()=>{const toStart=!!newReward;reset();if(!toStart)start();};$('restart').onclick=()=>{$('menu').close();reset();if(freeMode)start();};
 $('deadEnds').onchange=e=>{showDeadEnds=e.target.value==='on';saveSettings();queue=[];if(active)planAhead();choicesStale=true;};
+// Switching choosing ahead off drops any queued roads; the car then stops at the next junction again.
+$('chooseAhead').onchange=e=>{chooseAhead=e.target.value==='on';saveSettings();if(!chooseAhead){queue=[];picked=null;}planKey='';if(active)planAhead();};
 $('driveMode').onchange=e=>{if(!world)return;freeMode=e.target.value==='free';$('recoverCar').hidden=!freeMode;menuWasPaused=false;reset();$('menu').close();start();};
 $('recoverCar').onclick=()=>{recoverFree();menuWasPaused=false;$('menu').close();setPause(false);};
 for(const [id,action] of [['freeLeft','left'],['freeRight','right'],['freeBrake','brake'],['freeDrift','drift']]){const el=$(id);el.addEventListener('pointerdown',e=>{if(state!=='free'||paused)return;e.preventDefault();el.setPointerCapture?.(e.pointerId);heldPointers.set(e.pointerId,action);touch.add(action);el.classList.add('held');});const release=e=>{heldPointers.delete(e.pointerId);if(![...heldPointers.values()].includes(action)){touch.delete(action);el.classList.remove('held');}};for(const type of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(type,release);}
