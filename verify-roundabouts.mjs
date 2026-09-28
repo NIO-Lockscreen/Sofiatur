@@ -16,15 +16,26 @@ function frame(){now+=45;const q=callbacks.splice(0);q.forEach(cb=>cb(now));}
 for(let i=0;i<12;i++){await Promise.resolve();frame();}await init;
 const ringNodes=new Set(data.edges.filter(e=>e.roundabout).map(e=>e.from));
 const entries=data.edges.filter(e=>!e.roundabout&&ringNodes.has(e.to)&&!ringNodes.has(e.from));
-let tested=0;
+const adjacency=new Map();for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);}
+function ring(n){const nodes=new Set();while(!nodes.has(n)){nodes.add(n);const next=(adjacency.get(n)||[]).find(e=>e.roundabout);if(!next)break;n=next.to;}return nodes;}
+// A blindvei exit only leads back into the circle; home and the kindergarten count as destinations.
+function leadsOn(from,blocked){const seen=new Set([...blocked,from]),todo=[from];while(todo.length){const n=todo.pop();if(n===data.goal||n===data.start)return true;for(const e of adjacency.get(n)||[])if(!seen.has(e.to)){seen.add(e.to);todo.push(e.to);}}return false;}
+let tested=0,automatic=0;
 for(const entry of entries){
- env.test.enter(entry);const exits=env.test.read().choices;
- assert.ok(exits.length>=2,'Every entrance offers exits');
+ env.test.enter(entry);
+ if(env.test.read().state==='driving'){
+  // Only one exit leads on; the car drives through the circle without asking.
+  const plan=env.test.getActive().e;assert.ok(plan.roundaboutPlan);assert.equal(element('worldArrows').children.length,0);assert.equal(element('undoRoundabout').hidden,true);
+  assert.ok(leadsOn(plan.to,ring(entry.to)),'Automatic exit is not a blindvei');automatic++;continue;
+ }
+ const exits=env.test.read().choices;
+ assert.ok(exits.length>=2,'Every entrance with a choice offers exits');
  assert.equal(element('worldArrows').children.length,exits.length,'Every exit has a touch button, including shared directions');
  for(let i=0;i<exits.length;i++){
   env.test.enter(entry);const before=env.test.read();element('worldArrows').children[i].onclick();assert.equal(element('undoRoundabout').hidden,false);
   const plan=env.test.getActive().e;
   assert.ok(plan.roundaboutPlan);assert.ok(exits.some(e=>e.id===plan.id&&e.exitNumber===plan.exitNumber));
+  assert.ok(exits.find(e=>e.id===plan.id).recommended||leadsOn(plan.to,ring(entry.to)),`${plan.name} exit is not a blindvei`);
   for(let j=1;j<plan.segments.length;j++)assert.equal(plan.segments[j-1].to,plan.segments[j].from,'Continuous directed path');
   const control=env.test.getActive();let frames=0;
   element('pause').onclick();const old=env.test.read().travelledMetres;for(let j=0;j<10;j++)frame();assert.equal(env.test.read().travelledMetres,old);element('pause').onclick();
@@ -32,4 +43,4 @@ for(const entry of entries){
   assert.ok(frames<15000,'Reaches selected exit');assert.equal(env.test.read().currentNode,plan.to,'Arrives at selected road');element('undoRoundabout').onclick();assert.equal(env.test.read().currentNode,entry.to);assert.equal(env.test.read().state,'decision');assert.equal(env.test.read().travelledMetres,before.travelledMetres);assert.equal(element('worldArrows').children.length,exits.length);assert.equal(element('undoRoundabout').hidden,true);element('worldArrows').children[i].onclick();for(let j=0;j<8;j++)frame();element('undoRoundabout').onclick();assert.equal(env.test.read().currentNode,entry.to);assert.equal(env.test.read().state,'decision');tested++;
  }
 }
-console.log(`Roundabouts: ${tested} exits from ${entries.length} entrances passed; touch, pause, directed route and automatic traversal and undo verified.`);
+console.log(`Roundabouts: ${tested} exits from ${entries.length-automatic} entrances passed; touch, pause, directed route and automatic traversal and undo verified. ${automatic} entrances with one exit that is not a blindvei drive through automatically.`);

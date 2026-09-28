@@ -10,7 +10,7 @@ function freeInput(){return {left:keys.has('ArrowLeft')||keys.has('KeyA')||touch
 function startFree(){state='free';paused=false;active=null;choices=[];roundaboutUndo=null;clearInputs();free.reset(position.x,position.z,Math.atan2(heading.x,-heading.z));ui.welcome.hidden=true;ui.drive.hidden=false;ui.mini.hidden=false;ui.finish.hidden=true;clearWorldChoices();document.body.classList.remove('choosing');$('freeControls').hidden=false;$('undoRoundabout').hidden=true;$('pause').disabled=false;$('street').textContent='Frikjøring';updateHud();}
 function recoverFree(){if(state!=='free')return;clearInputs();free.recover();position.set(free.car.x,free.altitude,free.car.z);speed=0;heading.set(Math.sin(free.car.yaw),0,-Math.cos(free.car.yaw));world.resetCamera();}
 
-let adjacency=new Map(),distances=new Map(),optimal=new Map();
+let adjacency=new Map(),distances=new Map(),optimal=new Map(),openRoads=new Set();
 const ui={welcome:$('welcome'),decision:$('decision'),drive:$('driveHud'),mini:$('mini'),finish:$('finish')};
 function say(text){if(!sound||!('speechSynthesis'in window))return;try{speechSynthesis.cancel();const s=new SpeechSynthesisUtterance(text);s.lang='nb-NO';s.rate=.88;s.pitch=1.1;const v=speechSynthesis.getVoices().find(x=>/^nb|^no/.test(x.lang));if(v)s.voice=v;speechSynthesis.speak(s);}catch{}}
 let toastTimer;function toast(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),3100);}
@@ -20,7 +20,7 @@ function routeFrom(n){const route=[];const visited=new Set();while(n!==data.goal
 function computeRoutes(){const reverse=new Map();for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);if(!reverse.has(e.to))reverse.set(e.to,[]);reverse.get(e.to).push(e);}distances.set(data.goal,0);const todo=[data.goal];while(todo.length){todo.sort((a,b)=>distances.get(b)-distances.get(a));const n=todo.pop(),d=distances.get(n);for(const e of reverse.get(n)||[]){const nd=d+(e.cost||e.length);if(nd<(distances.get(e.from)??Infinity)){distances.set(e.from,nd);optimal.set(e.from,e);if(!todo.includes(e.from))todo.push(e.from);}}}}
 function reset(){clearInputs();$('freeControls').hidden=true;roundaboutUndo=null;$('undoRoundabout').hidden=true;maxKmh=200;current=data.start;previous=null;active=null;distance=0;speed=0;travelled=0;turns=0;state='intro';paused=false;position.copy(point(current));heading.copy(endDirection(optimal.get(current)));totalInitial=routeFrom(current).reduce((n,e)=>n+e.length,0);ui.welcome.hidden=false;ui.drive.hidden=true;ui.decision.hidden=true;ui.finish.hidden=true;document.body.classList.remove('choosing');$('game').classList.remove('paused');$('pause').disabled=true;$('pause').textContent='Ⅱ';world.resetCamera();clearWorldChoices();world.setTurnArrow(null);$('remaining').textContent='Herlofsons veg → Skjermvegen';}
 function start(){if(state!=='intro')return;if(freeMode){startFree();return;}ui.welcome.hidden=true;ui.drive.hidden=false;$('pause').disabled=false;state='decision';say('Hei Sofia! Nå skal vi kjøre til barnehagen. Trykk på en pil for å velge vei.');showDecision();}
-function directionInfo(e){const dir=endDirection(e.roundaboutPlan?e.exitEdge:e,e.roundaboutPlan?false:true);const dot=T.MathUtils.clamp(heading.x*dir.x+heading.z*dir.z,-1,1);const cross=heading.x*dir.z-heading.z*dir.x;const angle=Math.atan2(cross,dot);if(Math.abs(angle)>2.5)return {label:'Snu',symbol:'↶',angle};if(angle>.42)return {label:'Høyre',symbol:'↱',angle};if(angle<-.42)return {label:'Venstre',symbol:'↰',angle};return {label:'Rett frem',symbol:'↑',angle};}
+function directionInfo(e,h=heading){const dir=endDirection(e.roundaboutPlan?e.exitEdge:e,e.roundaboutPlan?false:true);const dot=T.MathUtils.clamp(h.x*dir.x+h.z*dir.z,-1,1);const cross=h.x*dir.z-h.z*dir.x;const angle=Math.atan2(cross,dot);if(Math.abs(angle)>2.5)return {label:'Snu',symbol:'↶',angle};if(angle>.42)return {label:'Høyre',symbol:'↱',angle};if(angle<-.42)return {label:'Venstre',symbol:'↰',angle};return {label:'Rett frem',symbol:'↑',angle};}
 function clearWorldChoices(){const wrap=$('worldArrows');wrap.replaceChildren();wrap.hidden=true;$('turnHint').hidden=true;}
 function renderWorldChoices(){
  const wrap=$('worldArrows');wrap.replaceChildren();const groups=new Map();
@@ -38,19 +38,33 @@ function renderWorldChoices(){
  });
  wrap.hidden=false;$('turnHint').textContent=choices.some(e=>e.roundaboutPlan)?'Rundkjøring · velg avkjørsel':'Trykk på en pil for å velge vei';$('turnHint').hidden=false;
 }
+function ringNodes(n){const ring=new Set();while(n!==undefined&&!ring.has(n)){ring.add(n);n=(adjacency.get(n)||[]).find(e=>e.roundabout)?.to;}return ring;}
+// Blindvei: a road from which neither the kindergarten nor home can be reached without driving back through the junction or turning around.
+function computeOpenRoads(){
+ const target=n=>n===data.goal||n===data.start;
+ const leadsOn=e=>{if(e.roundabout)return true;const seen=(adjacency.get(e.from)||[]).some(x=>x.roundabout)?ringNodes(e.from):new Set([e.from]);if(seen.has(e.to))return false;seen.add(e.to);const todo=[e.to];while(todo.length){const n=todo.pop();if(target(n))return true;for(const x of adjacency.get(n)||[])if(!seen.has(x.to)){seen.add(x.to);todo.push(x.to);}}return false;};
+ const through=data.edges.filter(leadsOn),before=new Map();
+ for(const x of through){const h=endDirection(x,false);for(const y of adjacency.get(x.to)||[])if(y.to!==x.from&&directionInfo(y,h).label!=='Snu'){if(!before.has(y))before.set(y,[]);before.get(y).push(x);}}
+ const todo=through.filter(e=>target(e.to));todo.forEach(e=>openRoads.add(e));
+ while(todo.length)for(const x of before.get(todo.pop())||[])if(!openRoads.has(x)){openRoads.add(x);todo.push(x);}
+}
 function showDecision(){
  if(current===data.goal){finish();return;}
  const outgoing=(adjacency.get(current)||[]).filter(e=>distances.has(e.to));
  if(outgoing.some(e=>e.roundabout)){
   choices=roundaboutChoices(current,previous,adjacency,distances);
   best=choices.reduce((a,e)=>!a||e.cost+distances.get(e.to)<a.cost+distances.get(a.to)?e:a,null);
+  choices=choices.filter(e=>e===best||openRoads.has(e.segments.find(s=>!s.roundabout)));
  }else{
-  let nonback=outgoing.filter(e=>e.to!==previous&&directionInfo(e).label!=='Snu');
-  if(!nonback.length)nonback=outgoing;
+  best=optimal.get(current);
+  const open=outgoing.filter(e=>e===best||openRoads.has(e));
+  let nonback=open.filter(e=>e.to!==previous&&directionInfo(e).label!=='Snu');
+  if(!nonback.length)nonback=open;
   const seen=new Set();choices=nonback.filter(e=>{if(seen.has(e.to))return false;seen.add(e.to);return true;}).sort((a,b)=>directionInfo(a).angle-directionInfo(b).angle);
-  best=optimal.get(current);if(best&&!choices.some(e=>e.id===best.id)&&outgoing.some(e=>e.id===best.id))choices.push(best);
+  if(best&&!choices.some(e=>e.id===best.id)&&outgoing.some(e=>e.id===best.id))choices.push(best);
  }
- if(choices.length===1&&previous&&!choices[0].roundaboutPlan&&directionInfo(choices[0]).label!=='Snu'){choose(choices[0].id,false);return;}
+ // With one road left (e.g. right, when straight ahead is a blindvei) the car drives on by itself.
+ if(choices.length===1&&previous&&directionInfo(choices[0]).label!=='Snu'){choose(choices[0].id,false);return;}
  state='decision';speed=0;ui.decision.hidden=true;ui.mini.hidden=true;document.body.classList.add('choosing');
  clearWorldChoices();renderWorldChoices();updateHud();
 }
@@ -104,4 +118,4 @@ function animate(now){requestAnimationFrame(animate);const dt=Math.min(.045,Math
 }
 function gameState(){return {state,paused,mode:freeMode?'free':'route',speedKmh:Math.round(speed*3.6),drifting:state==='free'&&free.car.drifting,position:[position.x,position.z],street:$('street').textContent,currentNode:current,remainingMetres:Math.round(remaining()),travelledMetres:Math.round(travelled),choices:state==='decision'?choices.map(e=>({id:e.id,direction:directionInfo(e).label,street:e.name,exitNumber:e.exitNumber,roundabout:!!e.roundaboutPlan,recommended:e.id===best?.id})):[]};}
 function registerTools(){const m=document.modelContext;if(!m?.registerTool)return;const definitions=[{name:'read_drive_state',description:'Read the car state and currently offered road choices.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:()=>gameState()},{name:'start_drive',description:'Start Sofia’s drive from home.',inputSchema:{type:'object',properties:{},additionalProperties:false},execute:()=>{if(state!=='intro')throw new Error('The drive is already started');start();return gameState();}},{name:'choose_road',description:'Choose one of the currently offered roads at a paused junction.',inputSchema:{type:'object',properties:{edgeId:{type:'integer'}},required:['edgeId'],additionalProperties:false},execute:input=>{if(!input||!Number.isInteger(input.edgeId)||state!=='decision'||!choose(input.edgeId,true))throw new Error('That road choice is not available');return gameState();}}];for(const def of definitions)try{Promise.resolve(m.registerTool(def)).catch(()=>{});}catch{}}
-try{const response=await fetch('./map.json');if(!response.ok)throw new Error('Kartet kunne ikke lastes');data=await response.json();if(!data.terrain)throw new Error('Terrengdata mangler');$('loading').textContent='Bygger husene og bakkene …';await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));world=createWorld($('world'),data);free=createFreeDrive(data,world.height);computeRoutes();if(!optimal.has(data.start))throw new Error('Fant ikke en sammenhengende rute');reset();$('start').disabled=false;$('start').textContent='Kjør til barnehagen  ↗';$('loading').hidden=true;registerTools();requestAnimationFrame(animate);}catch(error){console.error(error);$('loading').hidden=false;$('loading').textContent='Spillet kunne ikke starte. Prøv å laste siden på nytt.';$('start').textContent='Last inn på nytt';$('start').disabled=false;$('start').onclick=()=>location.reload();}
+try{const response=await fetch('./map.json');if(!response.ok)throw new Error('Kartet kunne ikke lastes');data=await response.json();if(!data.terrain)throw new Error('Terrengdata mangler');$('loading').textContent='Bygger husene og bakkene …';await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));world=createWorld($('world'),data);free=createFreeDrive(data,world.height);computeRoutes();computeOpenRoads();if(!optimal.has(data.start))throw new Error('Fant ikke en sammenhengende rute');reset();$('start').disabled=false;$('start').textContent='Kjør til barnehagen  ↗';$('loading').hidden=true;registerTools();requestAnimationFrame(animate);}catch(error){console.error(error);$('loading').hidden=false;$('loading').textContent='Spillet kunne ikke starte. Prøv å laste siden på nytt.';$('start').textContent='Last inn på nytt';$('start').disabled=false;$('start').onclick=()=>location.reload();}

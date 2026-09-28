@@ -29,7 +29,7 @@ Three.js 0.170.0, MIT license in `dist/vendor/THREE-LICENSE.txt`. iPad uses WebG
 Download the documented OSM bbox to `byasen.osm`, then run `python prepare-map.py` and `python fetch-terrain.py`. The terrain script uses the public Kartverket API with up to 50 points per request, 6 concurrent requests, and caches responses. Source downloads and transient cache files are ignored by Git. No API keys are needed.
 
 ## Roundabout controls
-At each roundabout entry the game offers every exit once, numbered in travel order. Direction arrows use the outgoing road relative to the approach, and no exit is visually recommended. Selecting an exit creates one continuous path through the directed OSM roundabout; speed is capped at 25 km/h inside the circle. “Angre rundkjøring” restores the last entrance, distance counter and choices, during or after the turn. Restart and arrival clear the undo point.
+At each roundabout entry the game offers every exit that is not a blindvei once, numbered in travel order; if only one exit leads on, the car drives through the circle by itself. Direction arrows use the outgoing road relative to the approach, and no exit is visually recommended. Selecting an exit creates one continuous path through the directed OSM roundabout; speed is capped at 25 km/h inside the circle. “Angre rundkjøring” restores the last entrance, distance counter and choices, during or after the turn. Restart and arrival clear the undo point.
 
 Run `node verify-roundabouts.mjs` for every mapped entrance and exit, including touch selection, pause, automatic traversal and undo.
 
@@ -46,3 +46,8 @@ OSM bridge/layer tags are retained for Gråkallbanen. Munkvoll bridge 14012126 o
 ## Junction scenery · 27 September 2026
 
 See `docs/junction-references.md` and `docs/junction-photo-matches.json` for scope and provenance. All mapped branching junctions receive a nearby detail pass; 24 footprints have new photo-informed overrides. This is not complete photographic reconstruction of every intersection. Run `node verify-junction-buildings.mjs` for footprint/roof validation.
+
+## Blindveier · 28 September 2026
+Dead ends are no longer offered as choices. A road counts as a blindvei when neither the kindergarten nor home can be reached from it without turning around or driving back through the same junction; this includes no-through residential loops and roads that end at the map edge. Home and the kindergarten entrance stay selectable. When only one road is left, for example a right turn where straight ahead is a blindvei, the car drives on by itself. The main trip now has 17 choices instead of 26.
+
+Run `node verify-dead-ends.mjs` to explore every junction reachable from home and check that no offered road is a dead end.
