@@ -4,7 +4,8 @@ export function addMunkvoll({T,scene,building,height,bucket,quad,tri,box}){
  const id=String(building.id);if(!['89233421','89233428','89233446','186840391','186841224','186841235'].includes(id))return null;
  const p=building.p.slice(0,-1),cx=p.reduce((s,v)=>s+v[0],0)/p.length,cz=p.reduce((s,v)=>s+v[1],0)/p.length,b=bucket(cx,cz);
  const bounds=[Math.min(...p.map(v=>v[0]))-3,Math.min(...p.map(v=>v[1]))-3,Math.max(...p.map(v=>v[0]))+3,Math.max(...p.map(v=>v[1]))+3];
- function sign(text,at,normal,w,h,fg='#f2f0e5',bg='#2c3032',serif=false){const c=document.createElement('canvas');c.width=1024;c.height=160;const q=c.getContext('2d');q.fillStyle=bg;q.fillRect(0,0,1024,160);q.fillStyle=fg;q.font=`bold 105px ${serif?'Georgia':'sans-serif'}`;q.textAlign='center';q.textBaseline='middle';q.fillText(text,512,83,985);const tx=new T.CanvasTexture(c);tx.colorSpace=T.SRGBColorSpace;const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:tx,side:T.DoubleSide}));m.name=text;m.position.set(...at);m.rotation.y=Math.atan2(normal[0],normal[1]);scene.add(m);}
+ // The canvas keeps the sign's proportions, so short text on small plates (door numbers) is not squeezed thin.
+ function sign(text,at,normal,w,h,fg='#f2f0e5',bg='#2c3032',serif=false){const c=document.createElement('canvas'),cw=Math.max(160,Math.min(1024,Math.round(160*w/h)));c.width=cw;c.height=160;const q=c.getContext('2d');q.fillStyle=bg;q.fillRect(0,0,cw,160);q.fillStyle=fg;q.font=`bold 105px ${serif?'Georgia':'sans-serif'}`;q.textAlign='center';q.textBaseline='middle';q.fillText(text,cw/2,83,cw-39);const tx=new T.CanvasTexture(c);tx.colorSpace=T.SRGBColorSpace;const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:tx,side:T.DoubleSide}));m.name=text;m.position.set(...at);m.rotation.y=Math.atan2(normal[0],normal[1]);scene.add(m);}
  function frame(origin,u,w,d,h,rise,wall,roof,hipped=false){const ul=Math.hypot(...u);u=u.map(v=>v/ul);const v=[-u[1],u[0]],y=Math.max(...[origin,[origin[0]+u[0]*w,origin[1]+u[1]*w]].map(a=>height(...a)))+.12;
   const at=(x,yy,z)=>[origin[0]+u[0]*x+v[0]*z,y+yy,origin[1]+u[1]*x+v[1]*z];
   const q=(a,c,d,e,col)=>quad(b,at(...a),at(...c),at(...d),at(...e),col);
@@ -18,7 +19,9 @@ export function addMunkvoll({T,scene,building,height,bucket,quad,tri,box}){
   for(let x=.6;x<w-.4;x+=.7){if(hipped&&(x<inset||x>w-inset))continue;for(const z of [0,d])beam([x,h+.02,z],[x,h+rise+.02,d/2],.04,'#657078');}
   for(const z of [0,d])beam([0,h,z],[w,h,z],.14,roof);
   const panel=(x,yy,z,ww,hh,col,side='long')=>side==='long'?q([x-ww/2,yy,z],[x+ww/2,yy,z],[x+ww/2,yy+hh,z],[x-ww/2,yy+hh,z],col):q([x,yy,z-ww/2],[x,yy,z+ww/2],[x,yy+hh,z+ww/2],[x,yy+hh,z-ww/2],col);
-  return {at,q,beam,panel,u,v,w,d,h,y,sign:(t,x,yy,z,ww,hh,side='long',fg,bg,serif)=>sign(t,at(x,yy,z),side==='long'?v:u,ww,hh,fg,bg,serif)};
+  // Signs face out of the wall they hang on (near or far long side, near or far end), so the text reads the right way round.
+  const out=(x,z,side)=>side==='long'?(z<d/2?[-v[0],-v[1]]:v):(x<w/2?[-u[0],-u[1]]:u);
+  return {at,q,beam,panel,u,v,w,d,h,y,sign:(t,x,yy,z,ww,hh,side='long',fg,bg,serif)=>sign(t,at(x,yy,z),out(x,z,side),ww,hh,fg,bg,serif)};
  }
  if(id==='186841224'||id==='186841235'){
   // Two distinct hipped dark standing-seam roofs, photographed numbered doors
