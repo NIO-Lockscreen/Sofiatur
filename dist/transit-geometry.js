@@ -1,4 +1,5 @@
-export const roadWidth=road=>road.type==='service'?3.5:road.type==='residential'?5.2:6.5;
+// The carriageway width measured for the road (map.json "width", from road_widths.py) when there is one, else the class default.
+export const roadWidth=road=>road.width??(road.type==='service'?3.5:road.type==='residential'?5.2:6.5);
 export function projectPoint(p,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],l=dx*dx+dz*dz,t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dz)/(l||1))),x=a[0]+t*dx,z=a[1]+t*dz;return {x,z,t,distance:Math.hypot(p[0]-x,p[1]-z)};}
 export function streetSegments(roads){return roads.flatMap(r=>r.p.slice(1).map((p,i)=>[r.p[i],p,roadWidth(r)]));}
 // Grid of segments by the cells their bounding boxes cover: near(x,z,r) returns every segment that passes within r metres

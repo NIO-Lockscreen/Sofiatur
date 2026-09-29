@@ -80,7 +80,8 @@ def add_crossing(x,z,tan,z_,rid,osm_id):
    c['z']=max(c['z'],z_);return c # the footway and the cycleway side by side, or the node on the way: one crossing
  n=unit(-tan[1],tan[0]);c={'p':[R(x),R(z)],'n':[R(n[0],3),R(n[1],3)],'z':z_,'r':rid,'o':osm_id};crossings.append(c);return c
 tables=[];table_at=lambda x,z:any(math.hypot(t['p'][0]-x,t['p'][1]-z)<5 for t in tables)
-HALF={'service':1.75,'residential':2.6} # half the carriageway, as roadWidth() in dist/transit-geometry.js (6.5 m otherwise)
+HALF={'service':1.75,'residential':2.6} # half the carriageway by class, as roadWidth() in dist/transit-geometry.js (6.5 m otherwise)
+half=lambda r:r['width']/2 if r.get('width') else HALF.get(r['type'],3.25) # a measured width (road_widths.py) wins, as in roadWidth()
 CROSS_WAYS=[(i,w) for i,w in WAYS.items() if w['t'].get('highway') in ('footway','cycleway','path') and (w['t'].get('footway')=='crossing' or w['t'].get('cycleway')=='crossing' or 'crossing' in w['t'])]
 for i,w in CROSS_WAYS:
  pts=[N[n] for n in w['ids']]
@@ -190,7 +191,7 @@ for ring in groups.values():
  rad=sum(math.hypot(p[0]-cx,p[1]-cz) for p in pts)/len(pts);q=nearest_road(*pts[0],3)
  if not in_region(cx,cz) or not q or not 3<=rad<=40:continue
  roundabouts.append({'p':[R(cx),R(cz)],'rad':R(rad,1),'r':q[1]})
- back=HALF.get(ROADS[q[1]]['type'],3.25)+1.6 # from the ring's centre line to the line the arm gives way at
+ back=half(ROADS[q[1]])+1.6 # from the ring's centre line to the line the arm gives way at
  for e in D['edges']:
   if e['to'] not in ring or e['from'] in ring or e.get('roundabout'):continue
   path=[D['nodes'][n] for n in e['path']][::-1];left=back # walk back from the ring along the arm
@@ -244,7 +245,7 @@ def back_off_roads(p):
  return p
 def gap_for_crossings(pieces):
  for c in crossings:
-  x,z=c['p'];nx,nz=c['n'];tx,tz=nz,-nx;h=HALF.get(ROADS[c['r']]['type'],3.25)+.5;a,b=[x-nx*h,z-nz*h],[x+nx*h,z+nz*h];out=[]
+  x,z=c['p'];nx,nz=c['n'];tx,tz=nz,-nx;h=half(ROADS[c['r']])+.5;a,b=[x-nx*h,z-nz*h],[x+nx*h,z+nz*h];out=[]
   for p in pieces:
    if len(p)>=3 and seg_poly_dist(a,b,p)<.5: # the crossing runs over this piece: keep what lies 1.8 m clear of it on either side
     out+=[q for q in (clip(p,[x,z],[x+tx,z+tz],keep,1.8) for keep in (1,-1)) if len(q)>=3]

@@ -1,4 +1,7 @@
 import collections
+import math
+
+from road_widths import ROAD_WIDTHS
 
 # South to Stavset (28 September 2026): Odd Husbys veg down to the roundabout at Stavset senter, and Byåsveien back
 # north through the roundabouts at Lysverkvegen and Kystadlia, with the Kystad houses between them. Local metres
@@ -13,6 +16,61 @@ def in_south(x, z):
         if (az > z) != (bz > z) and x < (bx - ax) * (z - az) / (bz - az) + ax:
             inside = not inside
     return inside
+
+
+def apply_road_widths(data):
+    """Junction audit, 29 September 2026: put the carriageway width (m) from road_widths.py on every road of the map
+    that has one ('width' on the road; dist/transit-geometry.js roadWidth() uses it, the class defaults apply to the
+    rest). Returns how many roads got a width."""
+    count = 0
+    for road in data['roads']:
+        width = ROAD_WIDTHS.get(str(road['id']))
+        if width is not None:
+            road['width'] = width
+            count += 1
+    return count
+
+
+# Roundabouts: diameter (m) of the grass island, measured on the Esri aerial photo (the green area found by colour,
+# checked by eye at 1:60), by the OSM ring way. The ring nodes in OSM lie 1-2.5 m further out than the middle of the
+# carriageway (the mapper traced the outer part of the circle), so the game drew the islands 4-7 m too wide: Kystadlia
+# and Lysverkvegen 15 m instead of 10 m, the KIWI roundabout 16 m instead of 12 m. The aerial is shifted about
+# 1.3 m south-east of OSM everywhere (the island centres of all eight rings lie 0.3-1.3 m east and 0.1-1.7 m south of
+# the ring centres), so only the radius is corrected here, not the centre.
+ROUNDABOUT_ISLANDS = {
+    '176064627': 12.0,  # KIWI Dalgård (Gamle Oslovei / General Bangs veg / Odd Husbys veg), ring was R 11.9
+    '18911623': 10.0,   # General Bangs veg / Arnt Smistads veg / Byåsveien (1339, 324), ring was R 11.4
+    '176064616': 22.0,  # Stavset senter, ring was R 16.1
+    '18661699': 10.3,   # Lysverkvegen, ring was R 11.5
+    '22898628': 10.0,   # Kystadlia, ring was R 11.4
+    '176064583': 6.0,   # Bøckmans veg / Byåsveien at Munkvoll (Palermo), ring was R 8.9
+    '727900565': 7.4,   # Byåsveien (1503, -215), ring was R 9.9
+    '727900566': 13.4,  # Byåsveien (1547, -479), ring was R 14.0
+}
+KERB_BAND = .7  # the lighter kerb band drawn along both sides of every road (road-surface.js: width + 1.4 in all)
+
+
+def fit_roundabouts(nodes, ways):
+    """Scale the ring nodes of each measured roundabout about the ring's centre so that the island left inside the
+    drawn ring (ring radius - half the drawn width - kerb band) has the measured diameter. nodes maps OSM node ids to
+    dicts with 'x' and 'z' (local metres), ways is the list of OSM ways ({'id', 'ids', ...}); the nodes are changed in
+    place, so the arms that leave the ring follow. Returns {way id: (old radius, new radius)}."""
+    result = {}
+    for way in ways:
+        island = ROUNDABOUT_ISLANDS.get(way['id'])
+        if island is None:
+            continue
+        ring = way['ids'][:-1] if way['ids'][0] == way['ids'][-1] else way['ids']
+        cx = sum(nodes[n]['x'] for n in ring) / len(ring)
+        cz = sum(nodes[n]['z'] for n in ring) / len(ring)
+        radius = sum(math.hypot(nodes[n]['x'] - cx, nodes[n]['z'] - cz) for n in ring) / len(ring)
+        target = island / 2 + KERB_BAND + ROAD_WIDTHS[way['id']] / 2
+        k = target / radius
+        for n in ring:
+            nodes[n]['x'] = cx + (nodes[n]['x'] - cx) * k
+            nodes[n]['z'] = cz + (nodes[n]['z'] - cz) * k
+        result[way['id']] = (round(radius, 2), round(target, 2))
+    return result
 
 
 def merge_close_junctions(edges, limit=12):
@@ -224,6 +282,7 @@ if __name__ == '__main__':
     path = Path('dist/map.json')
     data = json.loads(path.read_text())
     merged = merge_close_junctions(data['edges'])
+    apply_road_widths(data)
     add_school_parking_spur(data)
     add_kiwi_parking(data)
     add_ishall_parking(data)

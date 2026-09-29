@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET,json,math,heapq,collections
-from map_fixes import merge_close_junctions,add_school_parking_spur,add_kiwi_parking,in_south,SOUTH
+from map_fixes import merge_close_junctions,add_school_parking_spur,add_kiwi_parking,in_south,SOUTH,apply_road_widths,fit_roundabouts
 from pathlib import Path
 r=ET.parse('byasen.osm').getroot(); lat0=63.39945456;lon0=10.32727325
 sx=111320*math.cos(math.radians(lat0)); sz=111320
@@ -9,6 +9,9 @@ for w in r.findall('way'):
  ids=[n.attrib['ref'] for n in w.findall('nd')];t={x.attrib['k']:x.attrib['v'] for x in w.findall('tag')}
  if all(i in nodes for i in ids):ways.append({'id':w.attrib['id'],'ids':ids,'tags':t})
 roads=[w for w in ways if w['tags'].get('highway') in ['residential','living_street','tertiary','secondary','primary','unclassified','service','tertiary_link','secondary_link','primary_link']]
+# Junction audit (29 September 2026): the OSM roundabout rings lie 1-2.5 m outside the middle of the carriageway, which drew
+# the islands 4-7 m too wide; the ring nodes are pulled in to the island measured on the aerial (map_fixes.ROUNDABOUT_ISLANDS).
+fit_roundabouts(nodes,ways)
 # User-marked kindergarten entrance: east access, not the apartment parking to the south.
 # This short access lane is missing in the extract. Placement traced from user's map,
 # not presented as a surveyed OSM way. Keep the real north/south street connected.
@@ -105,7 +108,7 @@ for n,p in nodes.items():
  if (-220<p['x']<2220 and -700<p['z']<820 or in_south(p['x'],p['z'])) and t.get('name') and (t.get('shop') or t.get('amenity') in ['school','kindergarten','fuel']):pois.append({'x':round(p['x'],2),'z':round(p['z'],2),'name':t['name'],'type':t.get('shop',t.get('amenity'))})
 nodeout={n:[round(nodes[n]['x'],2),round(nodes[n]['z'],2)] for e in edges for n in e['path']}
 roadout=[{'id':w['id'],'p':[[round(nodes[n]['x'],2),round(nodes[n]['z'],2)] for n in w['ids']],'name':w['tags'].get('name',''),'type':w['tags']['highway'],'surface':w['tags'].get('surface','asphalt'),'mark':w['tags'].get('lane_markings')!='no' and w['tags']['highway'] in ['secondary','primary']} for w in roads if any(n in nodeout for n in w['ids']) or any(1450<nodes[n]['x']<2160 and 220<nodes[n]['z']<490 for n in w['ids'])]
-data={'origin':[lon0,lat0],'nodes':nodeout,'edges':edges,'start':start,'goal':end,'home':[0,0],'destination':[round(gx,2),round(gz,2)],'routeLength':round(length),'roads':roadout,'buildings':buildings,'areas':areas,'pois':pois,'bounds':[-220,-700,2220,1470],'south':[list(p) for p in SOUTH],'source':{'map':'© OpenStreetMap contributors, ODbL','terrain':'Kartverket DTM1, CC BY 4.0','date':'2026-09-24'}}
+data={'origin':[lon0,lat0],'nodes':nodeout,'edges':edges,'start':start,'goal':end,'home':[0,0],'destination':[round(gx,2),round(gz,2)],'routeLength':round(length),'roads':roadout,'buildings':buildings,'areas':areas,'pois':pois,'bounds':[-220,-700,2220,1470],'south':[list(p) for p in SOUTH],'source':{'map':'© OpenStreetMap contributors, ODbL','terrain':'Kartverket DTM1, CC BY 4.0','roadWidth':'Statens vegvesen NVDB (Vegbredde), NLOD','date':'2026-09-24'}}
 data['rails']=[{'id':w['id'],'type':w['tags']['railway'],'bridge':w['tags'].get('bridge') not in [None,'no'],'layer':int(w['tags'].get('layer','0')),'gauge':float(w['tags'].get('gauge','1000').split(';')[0])/1000,'p':[[round(nodes[n]['x'],2),round(nodes[n]['z'],2)] for n in w['ids']]} for w in ways if w['tags'].get('railway') in ['tram','rail','light_rail'] and any(-220<nodes[n]['x']<2220 and -700<nodes[n]['z']<820 or in_south(nodes[n]['x'],nodes[n]['z']) for n in w['ids'])]
 data['stops']=[{'id':n,'p':[round(p['x'],2),round(p['z'],2)],'name':p['tags'].get('name','Holdeplass'),'tram':p['tags'].get('railway')=='tram_stop'} for n,p in nodes.items() if (-220<p['x']<2220 and -700<p['z']<820 or in_south(p['x'],p['z'])) and (p['tags'].get('highway')=='bus_stop' or p['tags'].get('railway')=='tram_stop')]
 data['source']['goal']='East entrance traced from user-marked map, 2026-09-25; approximate geometry.'
@@ -115,6 +118,7 @@ merge_close_junctions(edges) # junctions a few metres apart are asked as one
 if Path('dist/map.json').exists():
  old=json.loads(Path('dist/map.json').read_text())
  if 'terrain' in old:data['terrain']=old['terrain']
+apply_road_widths(data) # carriageway widths from road_widths.py (Junction audit, 29 September 2026)
 add_school_parking_spur(data);add_kiwi_parking(data) # extra arms: Palermo lights, KIWI parking (Dalgård ishall: add-dalgard.py)
 Path('dist/map.json').write_text(json.dumps(data,ensure_ascii=False,separators=(',',':')))
 print('counts',len(edges),len(buildings),len(roadout),len(pois));print('POIS',pois)
