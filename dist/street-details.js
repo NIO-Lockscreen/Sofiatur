@@ -47,10 +47,10 @@ export function fitPath(points,halfWidth,index){
 // The island in the middle of a roundabout is one more such segment, a point with the island's diameter as its width.
 export function indexStreetDetails({paths,central},index){for(const [a,b,w] of [...paths,...central.map(c=>[c.p,c.p,2*c.rad])]){const len=Math.hypot(b[0]-a[0],b[1]-a[1]),seg=[a,b,w-5];for(let d=0;d<=len;d+=15){const t=len?d/len:0;index(a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,{road:seg});}index(b[0],b[1],{road:seg});}}
 
-export function addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,box,ribbon,groundPoly}){
+export function addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,box,ribbon,groundPoly,segments}){
  const S=data.street,out={paths:[],lamps:[],bars:[],islands:[],turning:[],central:[],signs:0};if(!S)return out;
  const roads=new Map(data.roads.map(r=>[String(r.id),r])),widthOf=id=>roadWidth(roads.get(id)||{type:'residential'});
- const segs=streetSegments(data.roads),index=segmentIndex(segs);
+ const segs=segments||streetSegments(data.roads),index=segmentIndex(segs); // the drawn (smoothed) centre lines when world.js passes them
  // Speed tables and humps raise everything painted on them: raise(x,z) is the height of the band at that point.
  const bands=new Map(),cellOf=(i,j)=>i+','+j;
  for(const t of S.tables){const k=cellOf(Math.floor(t.p[0]/16),Math.floor(t.p[1]/16));if(!bands.has(k))bands.set(k,[]);bands.get(k).push(t);}

@@ -23,7 +23,10 @@ export function createWorld(canvas, data) {
  function inRing(ring,x,z){let inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const [ax,az]=ring[j],[bx,bz]=ring[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)inside=!inside;}return inside;}
  function lakeAt(x,z){for(const l of lakes)if(x>l.box[0]&&x<l.box[2]&&z>l.box[1]&&z<l.box[3]&&inRing(l.p,x,z)&&!l.holes.some(h=>inRing(h,x,z)))return l;return null;}
  function rawHeight(x,z){if(lakes.length){const lake=lakeAt(x,z);if(lake)return lake.level;}const a=Math.max(0,Math.min(terrain.nx-1.001,(x-terrain.x0)/terrain.step)),b=Math.max(0,Math.min(terrain.nz-1.001,(z-terrain.z0)/terrain.step)),i=Math.floor(a),j=Math.floor(b),u=a-i,v=b-j,h=terrain.heights;return (h[j*terrain.nx+i]*(1-u)+h[j*terrain.nx+i+1]*u)*(1-v)+(h[(j+1)*terrain.nx+i]*(1-u)+h[(j+1)*terrain.nx+i+1]*u)*v;}
- function height(x,z){return verticalDatum+(rawHeight(x,z)-verticalDatum)*verticalExaggeration;}
+ function terrainHeight(x,z){return verticalDatum+(rawHeight(x,z)-verticalDatum)*verticalExaggeration;}
+ // The road is built on the plain terrain; the ground everything else stands on is lowered wherever it would poke through a road.
+ const roadSurface=createRoadSurface(data.roads,terrainHeight,data);
+ function height(x,z){return terrainHeight(x,z)+roadSurface.lowerAt(x,z);}
  const scene=new T.Scene();scene.background=new T.Color('#bfdfed');scene.fog=new T.Fog('#bfdfed',165,510);
  // Small procedural sky/ground reflection map keeps the black sedan's curvature
  // readable on mobile, without an external HDR download or a mirror-render pass.
@@ -37,7 +40,7 @@ export function createWorld(canvas, data) {
  const staticMaterial=new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide});
  const buckets=new Map();const colorCache=new Map();
  function col(c){if(!colorCache.has(c))colorCache.set(c,new T.Color(c));return colorCache.get(c);}
- function bucket(x,z){let k=Math.floor(x/160)+','+Math.floor(z/160);if(!buckets.has(k))buckets.set(k,{x:Math.floor(x/160)*160+80,z:Math.floor(z/160)*160+80,p:new Float32Array(2304),c:new Float32Array(2304),n:0});return buckets.get(k);}
+ function bucket(x,z){const i=Math.floor(x/160),j=Math.floor(z/160),k=i*4096+j;let b=buckets.get(k);if(!b){b={x:i*160+80,z:j*160+80,p:new Float32Array(2304),c:new Float32Array(2304),n:0};buckets.set(k,b);}return b;}
  // Chunks collect straight into growing Float32Arrays: about half the memory of plain arrays and no conversion afterwards.
  function tri(b,a,c,d,colour){let n=b.n;if(n+9>b.p.length){const p=new Float32Array(b.p.length*2),q=new Float32Array(b.p.length*2);p.set(b.p);q.set(b.c);b.p=p;b.c=q;}const p=b.p,cc=b.c,q=col(colour);
   p[n]=a[0];p[n+1]=a[1];p[n+2]=a[2];p[n+3]=c[0];p[n+4]=c[1];p[n+5]=c[2];p[n+6]=d[0];p[n+7]=d[1];p[n+8]=d[2];
@@ -48,23 +51,26 @@ export function createWorld(canvas, data) {
  function ribbon(points,width,colour,lift=.13,ground=height){for(let j=0;j<points.length-1;j++){let a=points[j],b=points[j+1],len=Math.hypot(b[0]-a[0],b[1]-a[1]);if(len<.01)continue;let dx=(b[0]-a[0])/len,dz=(b[1]-a[1])/len;for(let d=0;d<len;d+=8){let e=Math.min(len,d+8),ax=a[0]+d*dx,az=a[1]+d*dz,bx=a[0]+e*dx,bz=a[1]+e*dz;quad(bucket(ax,az),[ax-dz*width/2,ground(ax-dz*width/2,az+dx*width/2)+lift,az+dx*width/2],[ax+dz*width/2,ground(ax+dz*width/2,az-dx*width/2)+lift,az-dx*width/2],[bx+dz*width/2,ground(bx+dz*width/2,bz-dx*width/2)+lift,bz-dx*width/2],[bx-dz*width/2,ground(bx-dz*width/2,bz+dx*width/2)+lift,bz+dx*width/2],colour);}}}
  // Terrain uses the same interpolated DTM surface as roads and the car.
  let seed=42;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}
- const groundStep=8;for(let z=terrain.z0;z<terrain.z0+(terrain.nz-1)*terrain.step;z+=groundStep)for(let x=terrain.x0;x<terrain.x0+(terrain.nx-1)*terrain.step;x+=groundStep){let s=groundStep;let c=['#93b96e','#96bc71','#99bd73','#91b56c'][Math.abs(Math.floor(x/40)*7+Math.floor(z/40)*11)%4];quad(bucket(x,z),[x,height(x,z),z],[x+s,height(x+s,z),z],[x+s,height(x+s,z+s),z+s],[x,height(x,z+s),z+s],c);}
+ // Each grid vertex is looked up once (four cells share it).
+ const groundStep=8,gxn=Math.round((terrain.nx-1)*terrain.step/groundStep),gzn=Math.round((terrain.nz-1)*terrain.step/groundStep),gh=new Float32Array((gxn+1)*(gzn+1));
+ for(let j=0;j<=gzn;j++)for(let i=0;i<=gxn;i++)gh[j*(gxn+1)+i]=height(terrain.x0+i*groundStep,terrain.z0+j*groundStep);
+ for(let j=0;j<gzn;j++)for(let i=0;i<gxn;i++){const x=terrain.x0+i*groundStep,z=terrain.z0+j*groundStep,s=groundStep,k=j*(gxn+1)+i,c=['#93b96e','#96bc71','#99bd73','#91b56c'][Math.abs(Math.floor(x/40)*7+Math.floor(z/40)*11)%4];quad(bucket(x,z),[x,gh[k],z],[x+s,gh[k+1],z],[x+s,gh[k+gxn+2],z+s],[x,gh[k+gxn+1],z+s],c);}
 
  const greens={forest:'#7fa562',wood:'#7fa562',grass:'#8fb96b',meadow:'#9ac47a',park:'#8fba68',pitch:'#7eaf68',playground:'#bcca8b',recreation_ground:'#9bbe70',allotments:'#9eb878',water:'#6daeb4'};
  for(const a of data.areas)if(a.type==='water'&&a.level==null)groundPoly(a.p,greens.water,.09);
  // Lake surfaces are flat, a little above the lowered ground, with holes for the islands.
  for(const l of lakes){const y=verticalDatum+(l.level-verticalDatum)*verticalExaggeration+.12,all=[...l.p,...l.holes.flat()];
   for(const f of T.ShapeUtils.triangulateShape(l.p.map(v=>new T.Vector2(...v)),l.holes.map(h=>h.map(v=>new T.Vector2(...v)))))tri(bucket(all[f[0]][0],all[f[0]][1]),...f.map(i=>[all[i][0],y,all[i][1]]),'#4d9bc9');}
- const roadSegments=[];
- const roadSurface=createRoadSurface(data.roads,height),gravel=new Set(data.roads.filter(road=>['gravel','compacted','unpaved'].includes(road.surface)||(road.name==='Herlofsons veg'&&road.p.some(p=>Math.hypot(p[0],p[1])<58))));
- for(const q of roadSurface.quads)quad(bucket(q.x,q.z),...q.corners,q.kerb?'#b8bbae':gravel.has(q.road)?'#989789':'#737d7b');
+ const gravel=new Set(data.roads.filter(road=>['gravel','compacted','unpaved'].includes(road.surface)||(road.name==='Herlofsons veg'&&road.p.some(p=>Math.hypot(p[0],p[1])<58))));
+ const va=[0,0,0],vb=[0,0,0],vc=[0,0,0],vd=[0,0,0],roadColours=['#737d7b','#b8bbae','#93b96e','#95ba70','#8f9996'];
+ roadSurface.paint((cls,road,n,c,flip)=>{const colour=cls===0&&gravel.has(road)?'#989789':roadColours[cls],b=bucket(c[0],c[2]);va[0]=c[0];va[1]=c[1];va[2]=c[2];vb[0]=c[3];vb[1]=c[4];vb[2]=c[5];vc[0]=c[6];vc[1]=c[7];vc[2]=c[8];
+  if(n===3)tri(b,va,vb,vc,colour);else{vd[0]=c[9];vd[1]=c[10];vd[2]=c[11];if(flip)quad(b,vb,vc,vd,va,colour);else quad(b,va,vb,vc,vd,colour);}});
+ // Centre-line dashes sit on the drawn road in 1.5 m pieces, so they neither float above nor sink into it.
+ for(const d of roadSurface.dashes)quad(bucket(d[0][0],d[0][2]),...d,'#e8d797');
  // The car rides 8 cm above the drawn road (wheel bottoms on the asphalt), on terrain elsewhere.
  const roadTop=(x,z)=>roadSurface.heightAt(x,z)??height(x,z)+.39,carHeight=(x,z)=>roadTop(x,z)+.08;
- for(const road of data.roads){const width=roadWidth(road);
- for(let i=0;i<road.p.length-1;i++)roadSegments.push([road.p[i],road.p[i+1],width]);
- // Centre-line dashes sit on the drawn road in 1.5 m pieces, so they neither float above nor sink into it.
- if(road.mark){for(let i=0;i<road.p.length-1;i++){let a=road.p[i],b=road.p[i+1],l=Math.hypot(b[0]-a[0],b[1]-a[1]);const at=s=>[a[0]+(b[0]-a[0])*Math.min(l,s)/l,a[1]+(b[1]-a[1])*Math.min(l,s)/l];for(let s=0;s<l-2;s+=9)ribbon([at(s),at(s+1.5),at(s+3)],.13,'#e8d797',.04,roadTop);}}
- }
+ // Trees, bus stops and the like keep clear of the smoothed centre lines.
+ const roadSegments=roadSurface.geometry.roadSegments();
  addTransit({T,scene,data,height,bucket,quad,box,groundPoly,ribbon,roadSegments});
  const junctionBuildings=createJunctionBuildings(data);
  const houseBounds=[[-22,-16,16,16],[1798,226,1861,268],[1790,270,1850,337],[1450,169,1648,285]];
@@ -119,7 +125,7 @@ export function createWorld(canvas, data) {
  addDalgardDetails({T,scene,data,wallBase,bucket,quad,box});
  addStavsetDetails({T,scene,data,wallBase,height,bucket,quad,box,ribbon});addBridges({data,roadTop,roadWidth,bucket,quad,box});
  // Street details (gangfelt, haitenner, islands, sidewalks, lamps...): the paths and roundabout islands keep the trees off them.
- indexStreetDetails(addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,box,ribbon,groundPoly}),index);
+ indexStreetDetails(addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,box,ribbon,groundPoly,segments:roadSegments}),index);
  const homeShrubs=[[-15,1],[-12,4],[-9,6],[-6,8],[-3,9],[0,12],[3,10],[6,9],[9,8],[11,7],[-8,10],[-11,7]];for(const [x,z] of homeShrubs){const b=bucket(x,z),y=height(x,z);const g=new T.IcosahedronGeometry(1,1);g.scale(1.65,.85,1.45);g.translate(x,y+.7,z);const p=g.attributes.position;for(let i=0;i<p.count;i+=3)tri(b,...[0,1,2].map(j=>[p.getX(i+j),p.getY(i+j),p.getZ(i+j)]),'#688845');g.dispose();}
  for(let n=0;n<12000;n++){let x=-220+rnd()*2440,z=-700+rnd()*1520;if(!clear(x,z))continue;let y=height(x,z),h=3+rnd()*5,b=bucket(x,z);box(b,x,y+h*.3,z,.3,h*.6,.3,'#8c7152');if(rnd()<.6){cone(b,x,y+h*.25,z,h*.38,h*.7,'#538b60');cone(b,x,y+h*.54,z,h*.29,h*.55,'#689b64');}else{const geo=new T.IcosahedronGeometry(h*.35,0);geo.translate(x,y+h*.72,z);const at=geo.getAttribute('position');const cc=['#74a357','#8eb15f','#659850'][n%3];for(let i=0;i<at.count;i+=3)tri(b,[at.getX(i),at.getY(i),at.getZ(i)],[at.getX(i+1),at.getY(i+1),at.getZ(i+1)],[at.getX(i+2),at.getY(i+2),at.getZ(i+2)],cc);geo.dispose();}}
  // Around the lakes, where the terrain grid was widened: the same trees, less dense.
@@ -182,5 +188,5 @@ export function createWorld(canvas, data) {
  renderer.render(scene,camera);
  }
  function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
- resize();window.addEventListener('resize',resize);return {height,rawHeight,carHeight,scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setTrail:trail.setOn,trafficLights,resetCamera(){initialized=false;orbit.reset();trail.clear();}};
+ resize();window.addEventListener('resize',resize);return {height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setTrail:trail.setOn,trafficLights,resetCamera(){initialized=false;orbit.reset();trail.clear();}};
 }
