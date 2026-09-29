@@ -7,14 +7,16 @@ import {createFreeDrive} from './dist/free-drive.js';
 import {createMusic} from './dist/music.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8')),els=new Map();let callbacks=[],now=0;
 const canvasContext=new Proxy({},{get:()=>()=>{}});
-const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',style:{},children:[],classList:{add(){},remove(){},toggle(){}},setAttribute(){},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(){},getContext(){return canvasContext}});return els.get(id);};
+const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',style:{},children:[],classList:{add(){},remove(){},toggle(){}},events:new Map(),setAttribute(){},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(type,fn){this.events.set(type,fn);},getContext(){return canvasContext}});return els.get(id);};
 const env={T,roundaboutChoices,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener(){}},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){}})};
 const ctx=vm.createContext(env);
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
 // enter(e) arrives at the end of road e (home when null) and returns the offered roads, or the road the car took by itself.
-const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,enter(e){current=e?e.to:data.start;previous=e?e.arrivalFrom??e.from:null;active=null;paused=false;state='decision';maxKmh=200;position.copy(point(current));heading.copy(e?endDirection(e,false):endDirection(optimal.get(current)));showDecision();return state==='driving'?[active.e]:choices;},drive(e){current=e.from;previous=null;active=null;paused=false;state='decision';position.copy(point(current));heading.copy(endDirection(e));choices=[];choose(e.id,false);},active:()=>active};})()`,ctx);
+const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,enter(e){current=e?e.to:data.start;previous=e?e.arrivalFrom??e.from:null;active=null;state='decision';maxKmh=200;position.copy(point(current));heading.copy(e?endDirection(e,false):endDirection(optimal.get(current)));showDecision();return state==='driving'?[active.e]:choices;},drive(e){current=e.from;previous=null;active=null;state='decision';position.copy(point(current));heading.copy(endDirection(e));choices=[];choose(e.id,false);},active:()=>active};})()`,ctx);
 function frame(){now+=45;const q=callbacks.splice(0);q.forEach(cb=>cb(now));}
 for(let i=0;i<12;i++){await Promise.resolve();frame();}await init;
+// Blindveier are on by default (29 September 2026); everything up to "Setting on" below is about the setting off.
+assert.equal(element('deadEnds').value,'on','Blindveier are offered by default');element('deadEnds').onchange({target:{value:'off'}});
 
 // Independent check: from the chosen road, the kindergarten or home is reachable without driving back through the junction.
 const adjacency=new Map();for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);}
@@ -66,10 +68,10 @@ element('deadEnds').onchange({target:{value:'on'}});
 const withDeadEnds=env.test.enter(vetle);assert.equal(env.test.read().state,'decision');assert.ok(withDeadEnds.some(c=>c.name==='Vetle Vislies veg'),'Blindvei offered when the setting is on');
 run=approach(vetle);assert.equal(run.state,'decision');assert.ok(run.beforeChoice<=15,'Slows for the blindvei choice');
 let roundaboutExits=0;for(const e of data.edges.filter(x=>!x.roundabout&&adjacency.get(x.to)?.some(y=>y.roundabout)&&!adjacency.get(x.from)?.some(y=>y.roundabout))){const exits=env.test.enter(e);assert.equal(env.test.read().state,'decision','Every roundabout entrance asks again');roundaboutExits+=exits.length;}
-// Switching off while a blindvei choice is shown applies when the game resumes.
-env.test.enter(vetle);element('pause').onclick();element('deadEnds').onchange({target:{value:'off'}});assert.equal(env.test.read().state,'decision');element('pause').onclick();
+// Switching off in the menu while a blindvei choice is shown applies when the menu closes (the game runs on behind it).
+env.test.enter(vetle);element('deadEnds').onchange({target:{value:'off'}});assert.equal(env.test.read().state,'decision');element('menu').events.get('close')();
 assert.equal(env.test.read().state,'driving');assert.equal(env.test.active().e.name,'Herlofsons veg');
-console.log(`Setting on offers blindveier again (${roundaboutExits} roundabout exits); switching off applies on resume: OK`);
+console.log(`Setting on offers blindveier again (${roundaboutExits} roundabout exits); switching off applies when the menu closes: OK`);
 
 // Olaf Grilstads veg runs from the Myrahallen junction (Konrad Dahls veg / Per Sivles veg) to Kyvannsvegen and can be chosen from both ends.
 element('deadEnds').onchange({target:{value:'off'}});

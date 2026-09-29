@@ -17,7 +17,7 @@ const env={T,roundaboutChoices,createFreeDrive,createMusic,console,performance:{
  createWorld:()=>({height,rawHeight,carHeight,update(dt,pos){frames.push([pos.x,pos.y,pos.z]);},resetCamera(){},setTurnArrow(){}})};
 const ctx=vm.createContext(env);
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
-const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,drive(e){current=e.from;previous=null;active=null;paused=false;state='decision';position.copy(point(current));heading.copy(endDirection(e));choices=[];queue=[];choose(e.id,false);},active:()=>active};})()`,ctx);
+const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,drive(e){current=e.from;previous=null;active=null;state='decision';position.copy(point(current));heading.copy(endDirection(e));choices=[];queue=[];choose(e.id,false);},active:()=>active};})()`,ctx);
 function frame(){now+=45;const q=callbacks.splice(0);q.forEach(cb=>cb(now));}
 for(let i=0;i<12;i++){await Promise.resolve();frame();}await init;
 

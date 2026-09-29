@@ -12,9 +12,11 @@ const env={T,roundaboutChoices,console,performance:{now:()=>now},document:{getEl
 env.createFreeDrive=createFreeDrive;env.createMusic=createMusic;
 const ctx=vm.createContext(env);
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
-const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,enter(e){current=e.to;previous=e.from;active=null;paused=false;state='decision';maxKmh=200;position.copy(point(current));heading.copy(endDirection(e,false));showDecision();},getActive:()=>active};})()`,ctx);
+const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,enter(e){current=e.to;previous=e.from;active=null;state='decision';maxKmh=200;position.copy(point(current));heading.copy(endDirection(e,false));showDecision();},getActive:()=>active};})()`,ctx);
 function frame(){now+=45;const q=callbacks.splice(0);q.forEach(cb=>cb(now));}
 for(let i=0;i<12;i++){await Promise.resolve();frame();}await init;
+// Blindveier are on by default (29 September 2026); a roundabout only skips exits that lead nowhere when they are off.
+element('deadEnds').onchange({target:{value:'off'}});
 const ringNodes=new Set(data.edges.filter(e=>e.roundabout).map(e=>e.from));
 const entries=data.edges.filter(e=>!e.roundabout&&ringNodes.has(e.to)&&!ringNodes.has(e.from));
 const adjacency=new Map();for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);}
@@ -41,12 +43,11 @@ for(const entry of entries){
   assert.ok(exits.find(e=>e.id===plan.id).recommended||leadsOn(plan.to,ring(entry.to)),`${plan.name} exit is not a blindvei`);
   for(let j=1;j<plan.segments.length;j++)assert.equal(plan.segments[j-1].to,plan.segments[j].from,'Continuous directed path');
   const control=env.test.getActive();let frames=0;
-  element('pause').onclick();const old=env.test.read().travelledMetres;for(let j=0;j<10;j++)frame();assert.equal(env.test.read().travelledMetres,old);element('pause').onclick();
   while(env.test.getActive()===control&&frames++<15000){frame();if(env.test.getActive()===control)assert.equal(env.test.read().state,'driving','No intermediate stop inside circle');}
   assert.ok(frames<15000,'Reaches selected exit');assert.equal(env.test.read().currentNode,plan.to,'Arrives at selected road');element('undoRoundabout').onclick();assert.equal(env.test.read().currentNode,entry.to);assert.equal(env.test.read().state,'decision');assert.equal(env.test.read().travelledMetres,before.travelledMetres);assert.equal(element('worldArrows').children.length,exits.length);assert.equal(element('undoRoundabout').hidden,true);element('worldArrows').children[i].onclick();for(let j=0;j<8;j++)frame();element('undoRoundabout').onclick();assert.equal(env.test.read().currentNode,entry.to);assert.equal(env.test.read().state,'decision');tested++;
  }
 }
-console.log(`Roundabouts: ${tested} exits from ${entries.length-automatic} entrances passed; touch, pause, directed route and automatic traversal and undo verified. ${automatic} entrances with one exit that is not a blindvei drive through automatically.`);
+console.log(`Roundabouts: ${tested} exits from ${entries.length-automatic} entrances passed; touch, directed route and automatic traversal and undo verified. ${automatic} entrances with one exit that is not a blindvei drive through automatically.`);
 
 // Exit arrows follow the exit numbers round the circle: right, then straight on, then left, then back.
 const order={Høyre:0,'Rett frem':1,Venstre:2,Snu:3};let entrances=0;

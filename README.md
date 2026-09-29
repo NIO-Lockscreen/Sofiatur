@@ -1,6 +1,6 @@
 # Sofias biltur — Byåsen
 
-Private static browser game. Touch-first Norwegian UI, on-rails driving with real branching roads and pauses at junctions. Main trip: Herlofsons veg 3A → parking access by Skjermvegen barnehage, about 3.1 km.
+Private static browser game. Touch-first Norwegian UI, on-rails driving with real branching roads and stops at junctions. Main trip: Herlofsons veg 3A → parking access by Skjermvegen barnehage, about 3.1 km.
 
 ## Run
 
@@ -22,7 +22,7 @@ Three.js 0.170.0, MIT license in `dist/vendor/THREE-LICENSE.txt`. iPad uses WebG
 
 ## Validation
 
-`node verify-game.mjs` runs the actual game state machine with a mocked renderer and DOM. It covers start, invalid choices, pause, complete 3 km route, victory, replay, and an alternate route. Browser UI start/choice/pause controls were checked with the software renderer. WebMCP is feature-detected; the cloud browser does not expose modelContext, so browser registration validation is unavailable.
+`node verify-game.mjs` runs the actual game state machine with a mocked renderer and DOM. It covers start, invalid choices, complete 3 km route, victory, replay, and an alternate route. Browser UI start/choice controls were checked with the software renderer. WebMCP is feature-detected; the cloud browser does not expose modelContext, so browser registration validation is unavailable.
 
 ## Rebuilding geographic data
 
@@ -31,7 +31,7 @@ Run `python fetch-osm.py` (it downloads both documented OSM boxes and merges the
 ## Roundabout controls
 At each roundabout entry the game offers every exit that is not a blindvei once, numbered in travel order; if only one exit leads on, the car drives through the circle by itself. Direction arrows use the outgoing road relative to the approach, and no exit is visually recommended. Selecting an exit creates one continuous path through the directed OSM roundabout; speed is capped at 25 km/h inside the circle. “Angre rundkjøring” restores the last entrance, distance counter and choices, during or after the turn. Restart and arrival clear the undo point.
 
-Run `node verify-roundabouts.mjs` for every mapped entrance and exit, including touch selection, pause, automatic traversal and undo.
+Run `node verify-roundabouts.mjs` for every mapped entrance and exit, including touch selection, automatic traversal and undo.
 
 ## Driving and transit update · 26 September 2026
 
@@ -48,7 +48,7 @@ OSM bridge/layer tags are retained for Gråkallbanen. Munkvoll bridge 14012126 o
 See `docs/junction-references.md` and `docs/junction-photo-matches.json` for scope and provenance. All mapped branching junctions receive a nearby detail pass; 24 footprints have new photo-informed overrides. This is not complete photographic reconstruction of every intersection. Run `node verify-junction-buildings.mjs` for footprint/roof validation.
 
 ## Blindveier · 28 September 2026
-By default dead ends are no longer offered as choices; “Blindveier” in settings turns them back on. A road counts as a blindvei when neither the kindergarten nor home can be reached from it without turning around or driving back through the same junction; this includes no-through residential loops and roads that end at the map edge. Home and the kindergarten entrance stay selectable. When only one road is left, for example a right turn where straight ahead is a blindvei, the car drives on by itself and keeps its speed until the next real choice, braking only within 55 m of it; an automatic roundabout is entered at circle speed. The main trip has 17 choices instead of 26. With blindveier on, every road is offered and the car slows at each junction as before.
+By default dead ends are no longer offered as choices; “Blindveier” in settings turns them back on. (Since 29 September 2026 the setting is on by default; see the last section.) A road counts as a blindvei when neither the kindergarten nor home can be reached from it without turning around or driving back through the same junction; this includes no-through residential loops and roads that end at the map edge. Home and the kindergarten entrance stay selectable. When only one road is left, for example a right turn where straight ahead is a blindvei, the car drives on by itself and keeps its speed until the next real choice, braking only within 55 m of it; an automatic roundabout is entered at circle speed. The main trip has 17 choices instead of 26. With blindveier on, every road is offered and the car slows at each junction as before.
 
 Run `node verify-dead-ends.mjs` to explore every junction reachable from home and check that no offered road is a dead end, that speed is kept through automatic junctions, and that the setting restores the dead ends.
 
@@ -114,3 +114,14 @@ Rebuild order: `prepare-map.py`, `add-lakes.py`, then `add-dalgard.py`. The last
 Performance, same headless Chromium: building the world takes about 3.6 s instead of 2.9 s, and the scene has 1.69 million triangles instead of 1.33 million. The chunks south of the original box are only drawn within 680 m of the car, like the rest.
 
 Rebuild order: `fetch-osm.py`, `prepare-map.py`, `add-lakes.py`, `add-dalgard.py`, then `add-stavset.py`. Sources and uncertainty: `docs/stavset-references.md`. Run `node verify-stavset.mjs`. It drives home → Rema 1000 → kindergarten with blindveier off, through the three roundabouts. It also checks the arrival messages, the exit order at the Stavset roundabout, the terrain seam and level plot, the signs on both shops and which way they face, the parking places, the parking bays and the bridge railings.
+
+## Start button, no pause, blindveier on by default, Bunnpris at the junction · 29 September 2026
+**Start.** The start button on the first card drives the car out of the parking place. Leaving it is the only road, so it is no longer a choice: the arrow that used to appear first, pointing straight ahead while the camera still looked back at the house, is gone. The first arrows come at the first junction. “Kjør igjen” and “Begynn turen på nytt” start the same way.
+
+**No pause.** The game is always running. The pause button is gone, and so are Space (in the guided trip), P and Esc (in free driving) as pause keys, the “Turen er på pause” overlay and the automatic pause when the window loses focus or the page is hidden. Space still starts the trip from the start screen and drifts in free driving. Losing focus only releases the held keys. The settings menu is a modal box over the running game: the car goes on behind it (in the guided trip it stops at the next junction), and a changed Blindveier setting applies when the menu closes. `read_drive_state` no longer has a `paused` field.
+
+**Blindveier are on by default** (“På · blindveier kan velges”), and every road is offered at every junction, so the whole trip has 24 choices instead of 17. Saved settings now carry a version (`v:2` in `sofiatur.innstillinger`): a Blindveier value saved before this change does not count, because it may only have been saved when another setting was changed. Music and choosing ahead are kept. Someone who turns Blindveier off gets it back after a reload.
+
+**Bunnpris at the T-junction.** Olav Duuns veg meets Odd Husbys veg 30 m from the shop, and the mapped car park starts 5 m from that junction. A driveway now follows the mapped footway from the junction into the car park (`map_fixes.add_bunnpris_parking`), so a car coming down Olav Duuns veg has the car park and the shop straight ahead, and “Rett frem: Bunnpris” is a choice there. Parking places (KIWI, Dalgård ishall, Rema 1000 and Bunnpris) are stops: the car waits for a choice there even where a road leads on, as it must at Bunnpris, which now has two ways in.
+
+Tests: `verify-game.mjs` (start button, no arrow, focus loss and P/Esc do not stop the car, first junction asks), `verify-settings.mjs` (defaults, migration of old saved values), `verify-dead-ends.mjs` and `verify-roundabouts.mjs` (explicitly with Blindveier off, and the default checked), `verify-queued-choices.mjs` (Blindveier off), `verify-stavset.mjs` (the T-junction and the driveway).

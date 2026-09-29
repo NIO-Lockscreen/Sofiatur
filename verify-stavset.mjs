@@ -16,7 +16,7 @@ const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',style
 const env={T,roundaboutChoices,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener(){}},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),createWorld:()=>({height:()=>160,carHeight:()=>160,update(){},resetCamera(){},setTurnArrow(){}})};
 const ctx=vm.createContext(env);
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
-const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,enter(e){current=e?e.to:data.start;previous=e?e.arrivalFrom??e.from:null;active=null;paused=false;state='decision';maxKmh=200;position.copy(point(current));heading.copy(e?endDirection(e,false):endDirection(optimal.get(current)));showDecision();return state==='driving'?[active.e]:choices;},choose(id){choose(id,false);},active:()=>active};})()`,ctx);
+const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,enter(e){current=e?e.to:data.start;previous=e?e.arrivalFrom??e.from:null;active=null;state='decision';maxKmh=200;position.copy(point(current));heading.copy(e?endDirection(e,false):endDirection(optimal.get(current)));showDecision();return state==='driving'?[active.e]:choices;},choose(id){choose(id,false);},active:()=>active};})()`,ctx);
 function frame(){now+=45;const q=callbacks.splice(0);q.forEach(cb=>cb(now));}
 for(let i=0;i<12;i++){await Promise.resolve();frame();}await init;
 
@@ -63,6 +63,20 @@ for(const [goal,text] of [['rema-parkering','Rema 1000'],['bunnpris-parkering','
  assert.equal(env.test.read().currentNode,goal);assert.ok(element('toast').textContent.includes(text),`Arrival at ${text} announced: ${element('toast').textContent}`);}
 const bp=drive(null,'bunnpris-parkering');assert.equal(bp.streets.at(-1),'Bunnpris');
 console.log(`Car parks at Rema 1000 Stavset and Bunnpris Ugla are places to drive to (Bunnpris via ${bp.streets.slice(-2).join(' → ')}): OK`);
+
+// The T-junction where Olav Duuns veg meets Odd Husbys veg: the Bunnpris car park and the shop are straight ahead, and
+// 'Rett frem: Bunnpris' is a choice there (a driveway along the mapped footway into the car park).
+const tj=data.edges.find(e=>e.name==='Olav Duuns veg'&&e.from==='253815085'&&e.to==='185588577');
+env.test.enter(tj);const tjChoices=env.test.read().choices,ahead=tjChoices.find(c=>c.street==='Bunnpris');
+assert.ok(ahead&&ahead.direction==='Rett frem',`Straight ahead at the T-junction is Bunnpris: ${tjChoices.map(c=>c.direction+' '+c.street).join(', ')}`);
+assert.ok(tjChoices.some(c=>c.direction==='Høyre'&&c.street==='Odd Husbys veg')&&tjChoices.some(c=>c.direction==='Venstre'&&c.street==='Odd Husbys veg'),'Odd Husbys veg to the left and right');
+const jn=data.nodes['185588577'],before=data.nodes[tj.path.at(-2)],hd=Math.atan2(jn[1]-before[1],jn[0]-before[0]);
+const shop=data.buildings.find(b=>b.id==='1037053709').p.slice(0,-1),sc=shop.reduce((a,v)=>[a[0]+v[0]/shop.length,a[1]+v[1]/shop.length],[0,0]);
+const off=Math.abs(((Math.atan2(sc[1]-jn[1],sc[0]-jn[0])-hd+3*Math.PI)%(2*Math.PI))-Math.PI)*180/Math.PI;
+assert.ok(off<45,`The shop lies within 45° of straight ahead (${off.toFixed(0)}°) and ${Math.hypot(sc[0]-jn[0],sc[1]-jn[1]).toFixed(0)} m away`);
+const lotB=data.areas.find(a=>a.osm==='w207829382');assert.ok(Math.min(...lotB.p.map(v=>Math.hypot(v[0]-jn[0],v[1]-jn[1])))<8,'The car park starts at the junction');
+env.test.choose(ahead.id);for(let i=0;i<4000&&env.test.read().state==='driving';i++)frame();assert.equal(env.test.read().currentNode,'bunnpris-parkering');
+console.log(`Olav Duuns veg / Odd Husbys veg: ${tjChoices.map(c=>c.direction+' '+c.street).join(', ')}; the shop ${off.toFixed(0)}° off straight ahead: OK`);
 
 // Roundabout arrows at Stavset follow the exit numbers, and the way back to where the car came from reads as a U-turn.
 const entries=data.edges.filter(e=>!e.roundabout&&stavset.has(e.to)&&!stavset.has(e.from));const order={Høyre:0,'Rett frem':1,Venstre:2,Snu:3},seen=[];

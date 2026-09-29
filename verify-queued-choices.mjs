@@ -12,9 +12,11 @@ const ctx=vm.createContext(env);const source=fs.readFileSync('dist/game.js','utf
 const read=()=>tools.get('read_drive_state').execute(),act=(name,input)=>tools.get(name).execute(input);
 function step(n=1){for(let i=0;i<n;i++){now+=45;const q=raf.splice(0);q.forEach(cb=>cb(now));}}
 const recommended=list=>list.find(c=>c.recommended)?.id??list[0].id;
+// Blindveier are on by default (29 September 2026); the queue below is tested with them off, as the car then only stops at real choices.
+element('deadEnds').onchange({target:{value:'off'}});
 
 // Choosing ahead is a menu option, off by default: then no arrows show while driving and the car stops at the junction.
-act('start_drive');act('choose_road',{edgeId:recommended(read().choices)});for(let i=0;i<400&&read().state==='driving';i++){step();assert.equal(read().upcoming.length,0,'No arrows ahead while the option is off');}
+act('start_drive');for(let i=0;i<400&&read().state==='driving';i++){step();assert.equal(read().upcoming.length,0,'No arrows ahead while the option is off');}
 assert.equal(read().state,'decision','The car stops at the next junction');
 element('chooseAhead').onchange({target:{value:'on'}});element('restart').onclick();assert.equal(read().state,'intro');
 console.log('Choosing ahead is off by default: OK');
@@ -23,7 +25,7 @@ const waitUpcoming=()=>{for(let i=0;i<3000&&read().state==='driving'&&!read().up
 
 // A picked road lights up first; arrows for the next junction appear only once it is within 250 m; a tap queues it.
 // Stop at the junction just outside home first: from there the next choices are a few hundred metres away.
-act('start_drive');act('choose_road',{edgeId:recommended(read().choices)});for(let i=0;i<400&&read().state==='driving';i++)step();
+act('start_drive');for(let i=0;i<400&&read().state==='driving';i++)step();
 assert.equal(read().state,'decision');act('choose_road',{edgeId:recommended(read().choices)});step();
 let s=read();assert.equal(s.state,'driving');assert.equal(s.upcoming.length,0,'The picked arrow shows first');assert.equal(element('worldArrows').children.length,1);
 s=waitUpcoming();assert.ok(s.upcoming.length>=2,'Arrows for the next junction while driving');assert.ok(s.upcomingMetres<=250&&s.upcomingMetres>150,`Arrows appear as the junction comes within 250 m (${s.upcomingMetres} m)`);
@@ -36,7 +38,7 @@ console.log(`Picked arrow lights up, arrows ahead from ${firstJunction.length&&2
 
 // Drive the whole trip queuing the recommended road at every junction: no stop after the start, at most two queued,
 // and the car keeps its speed into every queued junction.
-element('again').onclick();act('choose_road',{edgeId:recommended(read().choices)});
+element('again').onclick();
 let stops=0,queuedTurns=0,crossings=[],roundaboutUndo=false,maxQueued=0,farthest=0,replanned=false;
 for(let i=0;i<20000&&read().state!=='finished';i++){
  s=read();if(s.state==='decision'){stops++;act('choose_road',{edgeId:recommended(s.choices)});continue;}
@@ -56,14 +58,14 @@ console.log(`Whole trip on queued choices: ${queuedTurns} queued, up to ${maxQue
 
 // Keyboard arrows queue as well; undoing a roundabout or restarting clears the queue.
 element('again').onclick();if(read().state==='intro')act('start_drive'); // the first arrival unlocks a reward and returns to the start screen
-act('choose_road',{edgeId:recommended(read().choices)});waitUpcoming();
+waitUpcoming();
 const keyFor={Venstre:'ArrowLeft',Høyre:'ArrowRight','Rett frem':'ArrowUp',Snu:'ArrowDown'},pick=read().upcoming[0];
 listeners.get('keydown')({key:keyFor[pick.direction],code:keyFor[pick.direction],repeat:false,preventDefault(){}});assert.equal(read().queued.map(q=>q.id).join(),String(pick.id));
 element('again').onclick();assert.equal(read().queued.length,0);assert.equal(turnArrow,null);
 console.log('Keyboard queue and reset: OK');
 
 // Switching the option off while driving drops the queued road; the car stops at that junction again.
-element('again').onclick();if(read().state==='intro')act('start_drive');act('choose_road',{edgeId:recommended(read().choices)});s=waitUpcoming();act('choose_road',{edgeId:recommended(s.upcoming)});assert.equal(read().queued.length,1);
+element('again').onclick();if(read().state==='intro')act('start_drive');s=waitUpcoming();act('choose_road',{edgeId:recommended(s.upcoming)});assert.equal(read().queued.length,1);
 element('chooseAhead').onchange({target:{value:'off'}});assert.equal(read().queued.length,0);assert.equal(turnArrow,null);
 for(let i=0;i<3000&&read().state==='driving';i++){step();assert.equal(read().upcoming.length,0);}assert.equal(read().state,'decision');
 console.log('Switching choosing ahead off while driving clears the queue: OK');
