@@ -150,15 +150,26 @@ export function addStavsetDetails({T,scene,data,wallBase,height,bucket,quad,box,
  for(let s=-1.8;s<=1.8;s+=.5){const q=pt(s,0,.55);box(b,q[0],q[1],q[2],.42,.9,1.4,'#9ea4a6',Math.atan2(-az,ax));}
 }
 
-// Kystadbrua carries Byåsveien over the Kystad valley: a concrete edge beam and a steel railing on both sides.
-// The terrain grid is too coarse to show the valley under it, so the deck simply follows the drawn road.
-export function addBridges({data,roadTop,roadWidth,bucket,quad,box}){
- for(const r of data.roads.filter(r=>r.bridge)){const w=roadWidth(r)/2+.35;
-  for(let i=0;i<r.p.length-1;i++){const a=r.p[i],c=r.p[i+1],len=Math.hypot(c[0]-a[0],c[1]-a[1]),dx=(c[0]-a[0])/len,dz=(c[1]-a[1])/len;
-   for(const s of [-1,1]){const side=(d,h,o=0)=>{const x=a[0]+dx*d-dz*s*(w+o),z=a[1]+dz*d+dx*s*(w+o);return [x,roadTop(a[0]+dx*d,a[1]+dz*d)+h,z];};
-    for(let d=0;d<len;d+=4){const e=Math.min(len,d+4),bk=bucket(...[side(d,0)[0],side(d,0)[2]]);
-     quad(bk,side(d,-.6),side(e,-.6),side(e,.35),side(d,.35),'#b3b5ae');quad(bk,side(d,.35),side(e,.35),side(e,.35,.4),side(d,.35,.4),'#c4c6bf');
-     quad(bk,side(d,-.6,.4),side(e,-.6,.4),side(e,.35,.4),side(d,.35,.4),'#a9aba4');
-     for(const h of [.8,1.15])quad(bk,side(d,h,.2),side(e,h,.2),side(e,h+.07,.2),side(d,h+.07,.2),'#8d9496');
-     const q=side(d,.78,.2);box(bk,q[0],q[1],q[2],.08,.9,.08,'#8d9496');}}}}
+// Road bridges (OSM bridge=yes: Kystadbrua, and Dalgårdbrua, where Byåsveien crosses the Dalgård valley 16 m up): along the
+// drawn centre line a concrete deck under the road, edge beams and a steel railing on both sides, and piers every 30 m
+// down to the ground wherever the deck stands more than 3 m above it. The deck itself is the road surface (road-geometry.js).
+export function addBridges({data,roadTop,roadWidth,bucket,quad,box,height,geometry}){
+ const lines=geometry?geometry.roads.filter(g=>g.bridge).map(g=>({r:g.road,p:g.pts})):data.roads.filter(r=>r.bridge).map(r=>({r,p:r.p}));
+ const piers=[];
+ for(const {r,p} of lines){const hw=roadWidth(r)/2,w=hw+.35;let run=0,nextPier=14;
+  for(let i=0;i<p.length-1;i++){const a=p[i],c=p[i+1],len=Math.hypot(c[0]-a[0],c[1]-a[1]);if(len<.01)continue;
+   const dx=(c[0]-a[0])/len,dz=(c[1]-a[1])/len,top=d=>roadTop(a[0]+dx*d,a[1]+dz*d),across=Math.atan2(-dx,-dz);
+   const at=(d,s,o,h)=>[a[0]+dx*d-dz*s*o,top(d)+h,a[1]+dz*d+dx*s*o];
+   for(let d=0;d<len;d+=4){const e=Math.min(len,d+4),bk=bucket(a[0]+dx*d,a[1]+dz*d);
+    quad(bk,at(d,-1,w+.4,-1.4),at(e,-1,w+.4,-1.4),at(e,1,w+.4,-1.4),at(d,1,w+.4,-1.4),'#a3a69f'); // underside of the deck
+    for(const s of [-1,1]){quad(bk,at(d,s,w,-.6),at(e,s,w,-.6),at(e,s,w,.35),at(d,s,w,.35),'#b3b5ae');quad(bk,at(d,s,w,.35),at(e,s,w,.35),at(e,s,w+.4,.35),at(d,s,w+.4,.35),'#c4c6bf');
+     quad(bk,at(d,s,w+.4,-1.4),at(e,s,w+.4,-1.4),at(e,s,w+.4,.35),at(d,s,w+.4,.35),'#a9aba4');
+     for(const h of [.8,1.15])quad(bk,at(d,s,w+.2,h),at(e,s,w+.2,h),at(e,s,w+.2,h+.07),at(d,s,w+.2,h+.07),'#8d9496');
+     const q=at(d,s,w+.2,.78);box(bk,q[0],q[1],q[2],.08,.9,.08,'#8d9496');}}
+   for(;nextPier<run+len;nextPier+=30){const d=nextPier-run,x=a[0]+dx*d,z=a[1]+dz*d,deck=top(d)-1.4;if(!height||deck-height(x,z)<3)continue;
+    const bk=bucket(x,z);box(bk,x,deck-.4,z,2*w,.8,1.4,'#aeb0a9',across); // pier cap across the deck
+    for(const s of [-1,1]){const px=x-dz*s*(hw-1.3),pz=z+dx*s*(hw-1.3),g=height(px,pz)-.6;box(bk,px,(g+deck-.8)/2,pz,1.2,deck-.8-g,1.2,'#b9bbb4',across);}
+    piers.push([x,z]);}
+   run+=len;}}
+ return {piers};
 }

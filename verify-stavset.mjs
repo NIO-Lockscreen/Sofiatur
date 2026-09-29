@@ -114,10 +114,18 @@ const rn=normal(roadLogo);assert.ok(data.roads.some(r=>r.name==='Byåsveien'&&r.
 console.log('Bunnpris Ugla: gable with BUNNPRIS and opening hours towards Odd Husbys veg, canopy and parking place on the car park side: OK');
 console.log('Stavset senter: STAVSET SENTER and REMA 1000 over the entrance, parking place in front of it, second logo towards Byåsveien: OK');
 
-// Details: parking bays inside the car parks, and Kystadbrua's railings along the bridge.
+// Details: parking bays inside the car parks, and the railings along the bridges (Kystadbrua, Dalgårdbrua).
 const ribbons=[];const wallBase=new Map([['191198632',{y:height(486,510),h:5.8}]]);
 addStavsetDetails({T,scene,data,wallBase,height,bucket,quad,box,ribbon:(p,w)=>ribbons.push(p)});
 assert.ok(ribbons.length>30&&ribbons.every(p=>inRing(lotS.p,...p[0])||inRing(lot.p,...p[0])),`Parking bays inside the car parks (${ribbons.length})`);
 points=[];addBridges({data,roadTop:(x,z)=>height(x,z)+.39,roadWidth,bucket,quad,box});const bridge=data.roads.find(r=>r.bridge);
-assert.equal(bridge.name,'Kystadbrua');assert.ok(points.length>100&&points.every(p=>nearRoad(p[0],p[2])>=roadWidth(bridge)/2),'Railings beside the carriageway');
-console.log(`Details: ${ribbons.length} parking bays, the goods door at Bunnpris, Kystadbrua with railings: OK`);
+assert.ok(['Kystadbrua','Dalgårdbrua'].includes(bridge.name));assert.ok(points.length>100&&points.every(p=>nearRoad(p[0],p[2])>=roadWidth(bridge)/2),'Railings beside the carriageway');
+console.log(`Details: ${ribbons.length} parking bays, the goods door at Bunnpris, bridges with railings: OK`);
+// Dalgårdbrua: Byåsveien crosses the Dalgård valley on a bridge; the deck runs straight between its ends, far above the
+// valley floor, on piers (the user: "you don't drive down into a valley, you drive on a bridge").
+const dal=data.roads.find(r=>r.name==='Dalgårdbrua');assert.ok(dal?.bridge,'Dalgårdbrua is a bridge (OSM bridge=yes)');
+const [d0,d1]=[dal.p[0],dal.p.at(-1)],dl=Math.hypot(d1[0]-d0[0],d1[1]-d0[1]),deck=(x,z)=>{const t=Math.max(0,Math.min(1,((x-d0[0])*(d1[0]-d0[0])+(z-d0[1])*(d1[1]-d0[1]))/dl/dl));return height(...d0)+(height(...d1)-height(...d0))*t+.39;};
+let clearance=0;for(let k=1;k<20;k++){const x=d0[0]+(d1[0]-d0[0])*k/20,z=d0[1]+(d1[1]-d0[1])*k/20;clearance=Math.max(clearance,deck(x,z)-height(x,z));}
+const {piers}=addBridges({data:{roads:[dal]},roadTop:deck,roadWidth,bucket,quad,box,height});
+assert.ok(clearance>10,`The deck spans the valley (${clearance.toFixed(1)} m above its floor)`);assert.ok(piers.length>=4,`Piers under Dalgårdbrua (${piers.length})`);
+console.log(`Dalgårdbrua: ${Math.round(dl)} m bridge, up to ${clearance.toFixed(1)} m above the valley, ${piers.length} piers: OK`);

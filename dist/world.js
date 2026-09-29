@@ -123,7 +123,7 @@ export function createWorld(canvas, data) {
  addLandmarkGround({height,bucket,quad,box,groundPoly,ribbon});
  addMunkvollDetails({T,scene,data,wallBase,bucket,quad,box});
  addDalgardDetails({T,scene,data,wallBase,bucket,quad,box});
- addStavsetDetails({T,scene,data,wallBase,height,bucket,quad,box,ribbon});addBridges({data,roadTop,roadWidth,bucket,quad,box});
+ addStavsetDetails({T,scene,data,wallBase,height,bucket,quad,box,ribbon});addBridges({data,roadTop,roadWidth,bucket,quad,box,height,geometry:roadSurface.geometry});
  // Street details (gangfelt, haitenner, islands, sidewalks, lamps...): the paths and roundabout islands keep the trees off them.
  indexStreetDetails(addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,box,ribbon,groundPoly,segments:roadSegments}),index);
  const homeShrubs=[[-15,1],[-12,4],[-9,6],[-6,8],[-3,9],[0,12],[3,10],[6,9],[9,8],[11,7],[-8,10],[-11,7]];for(const [x,z] of homeShrubs){const b=bucket(x,z),y=height(x,z);const g=new T.IcosahedronGeometry(1,1);g.scale(1.65,.85,1.45);g.translate(x,y+.7,z);const p=g.attributes.position;for(let i=0;i<p.count;i+=3)tri(b,...[0,1,2].map(j=>[p.getX(i+j),p.getY(i+j),p.getZ(i+j)]),'#688845');g.dispose();}

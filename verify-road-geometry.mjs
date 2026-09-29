@@ -70,8 +70,11 @@ const chainAt=(c,s)=>{let lo=0,hi=c.s.length-1;s=Math.max(0,Math.min(c.len,s));w
  assert.ok(bad/n<=.0005,`ground below the carriageway (${bad} of ${n} samples within 2 cm, closest ${worst.toFixed(3)} m)`);console.log(`Ground: ${n} samples on the carriageway, ${bad} not below it (closest ${worst.toFixed(3)} m): OK`);}
 
 // 9. The bridge keeps a straight deck between its ends, and roundabout rings are round and level enough to drive.
-{const bridge=geo.roads.find(r=>r.bridge),[a,b]=[bridge.pts[0],bridge.pts.at(-1)],ya=surface.heightAt(...a),yb=surface.heightAt(...b),ym=surface.heightAt((a[0]+b[0])/2,(a[1]+b[1])/2);
- assert.ok(Math.abs(ym-(ya+yb)/2)<.06,'the bridge deck is a straight ramp between its ends');
+{const bridges=geo.roads.filter(r=>r.bridge);assert.ok(bridges.length>=2,'Kystadbrua and Dalgårdbrua are bridges');
+ // Along each deck's own centre line the level rises or falls evenly with the distance travelled (a curved deck, like Dalgårdbrua, too).
+ for(const bridge of bridges){const n=bridge.pts.length,L=bridge.s[n-1],y0=bridge.y[0],y1=bridge.y[n-1];let worst=0;
+  for(let i=0;i<n;i++)worst=Math.max(worst,Math.abs(bridge.y[i]-(y0+(y1-y0)*bridge.s[i]/L)));
+  assert.ok(worst<.06,`${bridge.road.name}: the deck is a straight ramp between its ends (${worst.toFixed(3)} m)`);}
  const rings=R.filter(r=>r.ring);assert.ok(rings.length>=8,'roundabout rings found');
  for(const r of rings){const n=r.pts.length-1;let cx=0,cz=0;for(let i=0;i<n;i++){cx+=r.pts[i][0];cz+=r.pts[i][1];}cx/=n;cz/=n;const rad=r.pts.slice(0,n).map(p=>Math.hypot(p[0]-cx,p[1]-cz));
   for(let i=0;i<n;i++){const p=r.pts[i],q=r.pts[i+1],k=r.pts[(i+2)%n];const turn=Math.abs(Math.atan2((q[0]-p[0])*(k[1]-q[1])-(q[1]-p[1])*(k[0]-q[0]),(q[0]-p[0])*(k[0]-q[0])+(q[1]-p[1])*(k[1]-q[1])));assert.ok(turn<3*2*Math.PI/n,`ring bends evenly (${(turn*180/Math.PI).toFixed(1)} degrees at sample ${i}, on average ${(360/n).toFixed(1)}): round, no polygon corners`);}

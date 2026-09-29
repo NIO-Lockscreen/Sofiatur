@@ -1,7 +1,6 @@
 # Stavset: the strip south of the original box (map_fixes.SOUTH), which prepare-map.py takes from byasen.osm
 # (fetch-osm.py). This adds what the game needs on top of that:
 # - terrain south of z=840, where the measured Kartverket grid ends (see below), with a level plot under Stavset senter;
-# - Kystadbrua, Byåsveien's bridge west of the Lysverkvegen roundabout, marked as a bridge (a straight deck);
 # - the customer car parks at Stavset senter and Bunnpris Ugla with their aisles, and a road into each of them
 #   (map_fixes.add_rema_parking, map_fixes.add_bunnpris_parking): both are places to drive to.
 # Run after prepare-map.py, add-lakes.py and add-dalgard.py; running it again replaces what it added.
@@ -51,8 +50,7 @@ for k in plot:t['heights'][k]=level
 osm=ET.parse('byasen.osm').getroot()
 nodes={n.attrib['id']:[round((float(n.attrib['lon'])-lon0)*sx,2),round((lat0-float(n.attrib['lat']))*111320,2)] for n in osm.iter('node')}
 ways={w.attrib['id']:[n.attrib['ref'] for n in w.findall('nd')] for w in osm.iter('way')}
-for r in D['roads']:
- if str(r['id'])=='22898263':r['bridge']=True # Kystadbrua (OSM: bridge, layer 2) over the Kystad valley
+# Road bridges (Kystadbrua over the Kystad valley, Dalgårdbrua over Dalgård) carry OSM's bridge tag; prepare-map.py marks them.
 PARKING={'89061200':'Stavset senter','207829382':'Bunnpris Ugla'}
 D['areas']=[a for a in D['areas'] if a.get('osm') not in {'w'+w for w in PARKING}]
 for wid,name in PARKING.items():D['areas'].append({'type':'parking','name':name,'osm':'w'+wid,'p':[nodes[n] for n in ways[wid][:-1]],'holes':[]})
