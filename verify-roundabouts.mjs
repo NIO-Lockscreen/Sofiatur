@@ -54,6 +54,12 @@ const order={Høyre:0,'Rett frem':1,Venstre:2,Snu:3};let entrances=0;
 for(const entry of entries){env.test.enter(entry);const s=env.test.read();if(s.state!=='decision')continue;entrances++;
  const byNumber=[...s.choices].sort((a,b)=>a.exitNumber-b.exitNumber).map(c=>order[c.direction]);
  for(let i=1;i<byNumber.length;i++)assert.ok(byNumber[i]>=byNumber[i-1],`Arrows in exit order at ${entry.to}: ${s.choices.map(c=>c.exitNumber+' '+c.direction).join(', ')}`);}
+// The Munkvoll roundabout just before the kindergarten, coming up Byåsveien from the south: Bøckmans veg leaves 47° to
+// the right and Byåsveien 36° to the left. Both were within the straight-on cone; only the straighter one is straight on.
+const munkvoll=data.edges.find(e=>!e.roundabout&&e.name==='Byåsveien'&&adjacency.get(e.to)?.some(x=>x.roundabout)&&adjacency.get(e.to).some(x=>x.roundabout)&&Math.hypot(data.nodes[e.to][0]-1500,data.nodes[e.to][1]-161)<3);
+env.test.enter(munkvoll);const mk=env.test.read().choices;
+assert.deepEqual(mk.map(c=>`${c.exitNumber}. ${c.direction} ${c.street}`),['1. Høyre Bøckmans veg','2. Rett frem Byåsveien','3. Snu Byåsveien'],'Munkvoll roundabout from Byåsveien south');
+console.log('Munkvoll roundabout from Byåsveien south: 1. Høyre Bøckmans veg, 2. Rett frem Byåsveien, 3. Snu: OK');
 // The KIWI roundabout on the way to the kindergarten, entered at a slant: Odd Husbys veg carries straight on, General
 // Bangs veg is the first turn to the left (the user's description), and the car drives past the
 // splitter island without asking again; the next question is the KIWI parking entrance.

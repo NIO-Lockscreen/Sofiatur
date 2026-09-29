@@ -37,8 +37,8 @@ function start(){if(state!=='intro')return;if(sound&&musicOn)music.play();if(fre
 // the circle at a slant (the KIWI roundabout) then read as the driver sees them. An exit that leads back to the junction
 // the car came from is a U-turn, however the roads meet (at Stavset, Byåsveien's lanes part before the circle).
 function roundaboutDirection(e,h){const d=endDirection(e.segments.find(s=>!s.roundabout)),angle=Math.atan2(h.x*d.z-h.z*d.x,T.MathUtils.clamp(h.x*d.x+h.z*d.z,-1,1)),deg=Math.abs(angle)*180/Math.PI;
- const label=deg>150||e.uTurn?'Snu':deg<55?'Rett frem':angle>0?'Høyre':'Venstre';return {label,symbol:{Høyre:'↱','Rett frem':'↑',Venstre:'↰',Snu:'↶'}[label],angle};}
-function directionInfo(e,h=heading){if(e.roundaboutPlan)return roundaboutDirection(e,h);const dir=endDirection(e);const dot=T.MathUtils.clamp(h.x*dir.x+h.z*dir.z,-1,1);const cross=h.x*dir.z-h.z*dir.x;const angle=Math.atan2(cross,dot);if(Math.abs(angle)>2.5)return {label:'Snu',symbol:'↶',angle};if(angle>.42)return {label:'Høyre',symbol:'↱',angle};if(angle<-.42)return {label:'Venstre',symbol:'↰',angle};return {label:'Rett frem',symbol:'↑',angle};}
+ const label=e.label||(deg>150||e.uTurn?'Snu':deg<55?'Rett frem':angle>0?'Høyre':'Venstre');return {label,symbol:{Høyre:'↱','Rett frem':'↑',Venstre:'↰',Snu:'↶'}[label],angle};}
+function directionInfo(e,h=heading){if(e.roundaboutPlan)return roundaboutDirection(e,h);const dir=endDirection(e);const dot=T.MathUtils.clamp(h.x*dir.x+h.z*dir.z,-1,1);const cross=h.x*dir.z-h.z*dir.x;const angle=Math.atan2(cross,dot);if(e.label)return {label:e.label,symbol:e.label==='Høyre'?'↱':'↰',angle};if(Math.abs(angle)>2.5)return {label:'Snu',symbol:'↶',angle};if(angle>.42)return {label:'Høyre',symbol:'↱',angle};if(angle<-.42)return {label:'Venstre',symbol:'↰',angle};return {label:'Rett frem',symbol:'↑',angle};}
 function clearWorldChoices(){planKey='';aheadShown=false;const wrap=$('worldArrows');wrap.replaceChildren();wrap.hidden=true;$('turnHint').hidden=true;}
 function renderWorldChoices(list=choices,h=heading,pick=e=>choose(e.id,true),ahead=false){
  const wrap=$('worldArrows');wrap.replaceChildren();const groups=new Map();
@@ -70,12 +70,13 @@ function computeOpenRoads(){
 function roadChoices(node,prev,h){
  const outgoing=(adjacency.get(node)||[]).filter(e=>distances.has(e.to));let list,top;
  if(outgoing.some(e=>e.roundabout)){
-  list=roundaboutChoices(node,prev,adjacency,distances);
+  list=roundaboutChoices(node,prev,adjacency,distances);straightest(list,h);
   top=list.reduce((a,e)=>!a||e.cost+distances.get(e.to)<a.cost+distances.get(a.to)?e:a,null);
   if(!showDeadEnds)list=list.filter(e=>e===top||openRoads.has(e.segments.find(s=>!s.roundabout)));
  }else{
   top=optimal.get(node);
   const open=showDeadEnds||everyRoadAt.has(node)?outgoing:outgoing.filter(e=>e===top||openRoads.has(e));
+  straightest(outgoing.filter(e=>e.to!==prev),h);
   let nonback=open.filter(e=>e.to!==prev&&directionInfo(e,h).label!=='Snu');
   if(!nonback.length)nonback=open;
   const seen=new Set();list=nonback.filter(e=>{if(seen.has(e.to))return false;seen.add(e.to);return true;}).sort((a,b)=>directionInfo(a,h).angle-directionInfo(b,h).angle);
@@ -83,6 +84,11 @@ function roadChoices(node,prev,h){
  }
  return {list,top};
 }
+// Two roads that both read as straight on cannot both be: only the straighter one is, the other bends to its own side.
+// At the Munkvoll roundabout, coming up Byåsveien, Bøckmans veg (47° right) is the right turn and Byåsveien (36° left) straight on.
+// Counted over every road at the junction, blindveier included, so the arrows do not change with that setting.
+function straightest(list,h){for(const e of list)delete e.label;const straight=list.map(e=>({e,i:directionInfo(e,h)})).filter(x=>x.i.label==='Rett frem').sort((a,b)=>Math.abs(a.i.angle)-Math.abs(b.i.angle));
+ for(const {e,i} of straight.slice(1))e.label=i.angle>0?'Høyre':'Venstre';}
 // With one road left (e.g. right, when straight ahead is a blindvei) the car drives on by itself.
 function autoRoad(list,prev,h){return list.length===1&&prev&&directionInfo(list[0],h).label!=='Snu'?list[0]:null;}
 // Look past road e: junctions taken automatically or by a queued choice are driven through without slowing
