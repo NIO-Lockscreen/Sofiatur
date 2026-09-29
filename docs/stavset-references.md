@@ -22,8 +22,9 @@ the committed map (only the order of the edges differed; they are now sorted, so
 - Byåsveien's two lanes at the Kystadlia roundabout (ways 1443998971 and 1443998972) part at a splitter island but
   have no oneway tag, so the car could leave the circle up the lane coming in. They are one-way in their drawing
   direction (`prepare-map.py`).
-- Kystadbrua (22898263, bridge, layer 2) carries Byåsveien over the Kystad valley. The terrain grid does not show the
-  valley, so the bridge is drawn with edge beams and railings on the road as laid on the terrain.
+- Kystadbrua (22898263, bridge, layer 2) carries Byåsveien over the Kystad valley, and Dalgårdbrua (192 m) over the
+  Dalgård valley north of the Kystadlia roundabout. Both carry OSM's bridge tag: the deck is a straight ramp between the
+  bridge ends, with edge beams, railings and piers where it stands more than 3 m above the ground.
 
 **Terrain.** Kartverket's height service (`ws.geonorge.no/hoydedata`) and its WCS both answered 504 Gateway Timeout on
 28 September 2026. South of the last measured row (z = 840) the 40 m grid takes Mapzen terrain tiles through

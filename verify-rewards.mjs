@@ -10,13 +10,13 @@ const data=JSON.parse(fs.readFileSync('dist/map.json','utf8'));
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
 // Starts a fresh game (as after a page reload) with the given browser storage; the world records paint and trail calls.
 async function launch(localStorage){
- const els=new Map(),world={colour:null,trail:null,skin:null};let callbacks=[],now=0;const canvasContext=new Proxy({},{get:()=>()=>{}});
+ const els=new Map(),world={colour:null,trail:null,skin:null,model:null};let callbacks=[],now=0;const canvasContext=new Proxy({},{get:()=>()=>{}});
  const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',value:'',checked:false,style:{},children:[],attrs:{},classes:new Set(),classList:{add(){},remove(){},toggle(c,on){on?this.owner.classes.add(c):this.owner.classes.delete(c);}},setAttribute(k,v){this.attrs[k]=v;},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(){},getContext(){return canvasContext}});const el=els.get(id);el.classList.owner=el;return el;};
  const env={T,roundaboutChoices,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener(){}},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),
-  createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setTrail:on=>world.trail=on})};
+  createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on})};
  if(localStorage)Object.defineProperty(env,'localStorage',{get:localStorage});
  const ctx=vm.createContext(env);
- const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},progress:()=>({arrivals,carColour,trailOn})};})()`,ctx);
+ const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},progress:()=>({arrivals,carColour,trailOn,catOn})};})()`,ctx);
  for(let i=0;i<12;i++){await Promise.resolve();const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}await init;return {element,test:env.test,world};
 }
 const store=new Map(),storage={getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,String(v))};
@@ -29,7 +29,7 @@ assert.equal(game.world.colour,'#14171c');assert.equal(game.world.trail,false);
 // First arrival: the colour picker unlocks and the button leads to the start screen, where it is shown.
 game.test.arrive();assert.equal(game.test.progress().arrivals,1);assert.equal(game.element('unlock').hidden,false);assert.match(game.element('unlock').textContent,/farge/);
 game.element('again').onclick();assert.equal(game.element('welcome').hidden,false);assert.equal(game.element('rewards').hidden,false);assert.equal(game.element('trailRow').hidden,true);
-const swatches=game.element('carColours').children;assert.equal(swatches.length,11);assert.equal(swatches[10].hidden,true,'The KIWI car is a secret until parked at KIWI');assert.ok(swatches[0].classes.has('on'),'Black is picked to begin with');
+const swatches=game.element('carColours').children;assert.equal(swatches.length,12);assert.equal(swatches[10].hidden,true,'The rainbow car waits for the third trip');assert.equal(swatches[11].hidden,true,'The KIWI car is a secret until parked at KIWI');assert.ok(swatches[0].classes.has('on'),'Black is picked to begin with');
 swatches[3].onclick();assert.equal(game.world.colour,'#7b4cc2');assert.ok(swatches[3].classes.has('on')&&!swatches[0].classes.has('on'));assert.equal(game.world.trail,false,'No trail yet');
 game.element('customColour').oninput({target:{value:'#12AB34'}});assert.equal(game.world.colour,'#12ab34');
 swatches[3].onclick();
@@ -38,15 +38,34 @@ console.log('First arrival unlocks the colour picker on the start screen: OK');
 // After a reload the colour is kept; the second arrival unlocks the rainbow trail (on by default).
 game=await launch(()=>storage);assert.equal(game.world.colour,'#7b4cc2');assert.equal(game.element('rewards').hidden,false);assert.match(game.element('rewardTeaser').textContent,/én gang til/);
 game.test.arrive();assert.equal(game.test.progress().arrivals,2);assert.equal(game.world.trail,true);assert.match(game.element('unlock').textContent,/regnbuespor/);
-game.element('again').onclick();assert.equal(game.element('trailRow').hidden,false);assert.equal(game.element('trail').checked,true);assert.equal(game.element('rewardTeaser').hidden,true);
+game.element('again').onclick();assert.equal(game.element('trailRow').hidden,false);assert.equal(game.element('trail').checked,true);assert.equal(game.element('rewardTeaser').hidden,false,'More surprises to come');
 game.element('trail').onchange({target:{checked:false}});assert.equal(game.world.trail,false);
 game=await launch(()=>storage);assert.equal(game.world.trail,false,'Trail switch is remembered');assert.equal(game.element('trail').checked,false);
-game.test.arrive();assert.equal(game.element('unlock').hidden,true,'No new reward on later trips');assert.match(game.element('again').textContent,/en gang til/);
 console.log('Second arrival unlocks the rainbow trail; colour and trail switch survive a reload: OK');
 
+// Third arrival: the rainbow car that changes colour, picked at once and kept after a reload; a colour can still be picked.
+assert.equal(game.world.model,'car');assert.equal(game.element('rewardTeaser').hidden,false,'Still a teaser before the third trip');
+game.test.arrive();assert.equal(game.test.progress().arrivals,3);assert.equal(game.world.colour,'rainbow');assert.match(game.element('unlock').textContent,/regnbuebil/);assert.match(game.element('again').textContent,/regnbuebilen/);
+game.element('again').onclick();let rainbowButton=game.element('carColours').children[10];assert.equal(rainbowButton.hidden,false);assert.ok(rainbowButton.classes.has('on'));assert.equal(game.element('catRow').hidden,true,'The cat waits for the fourth trip');
+game.element('carColours').children[1].onclick();assert.equal(game.world.colour,'#c62828');rainbowButton.onclick();assert.equal(game.world.colour,'rainbow');
+game=await launch(()=>storage);assert.equal(game.world.colour,'rainbow','Rainbow car remembered');assert.equal(game.world.model,'car');
+console.log('Third arrival unlocks the rainbow car that changes colour: OK');
+
+// Fourth arrival: the car becomes a running cat, with a switch back to the car on the start screen; both kept after a reload.
+game.test.arrive();assert.equal(game.test.progress().arrivals,4);assert.equal(game.world.model,'cat');assert.match(game.element('unlock').textContent,/katt/);assert.match(game.element('again').textContent,/katten/);
+game.element('again').onclick();assert.equal(game.element('catRow').hidden,false);assert.equal(game.element('cat').checked,true);assert.equal(game.element('rewardTeaser').hidden,true,'No teaser once everything is unlocked');
+game.element('cat').onchange({target:{checked:false}});assert.equal(game.world.model,'car');game=await launch(()=>storage);assert.equal(game.world.model,'car','Car remembered');
+game.element('cat').onchange({target:{checked:true}});game=await launch(()=>storage);assert.equal(game.world.model,'cat','Cat remembered');assert.equal(game.world.colour,'rainbow','A rainbow cat');
+game.test.arrive();assert.equal(game.element('unlock').hidden,true,'No new reward on later trips');assert.match(game.element('again').textContent,/en gang til/);
+console.log('Fourth arrival turns the car into a running cat; the switch survives a reload: OK');
+
+// Rewards that are not unlocked yet cannot be forced through storage.
+store.set('sofiatur.fremgang',JSON.stringify({arrivals:2,colour:'rainbow',model:'cat'}));game=await launch(()=>storage);assert.equal(game.world.colour,'#14171c');assert.equal(game.world.model,'car');
+console.log('Locked rewards stay locked: OK');
+
 // Blocked or damaged storage starts from scratch.
-game=await launch(()=>{throw new Error('SecurityError');});assert.deepEqual({...game.test.progress()},{arrivals:0,carColour:'#14171c',trailOn:true});assert.equal(game.element('rewards').hidden,true);
-store.set('sofiatur.fremgang','{"arrivals":"lots","colour":"red; x"}');game=await launch(()=>storage);assert.deepEqual({...game.test.progress()},{arrivals:0,carColour:'#14171c',trailOn:true});
+game=await launch(()=>{throw new Error('SecurityError');});assert.deepEqual({...game.test.progress()},{arrivals:0,carColour:'#14171c',trailOn:true,catOn:false});assert.equal(game.element('rewards').hidden,true);
+store.set('sofiatur.fremgang','{"arrivals":"lots","colour":"red; x"}');game=await launch(()=>storage);assert.deepEqual({...game.test.progress()},{arrivals:0,carColour:'#14171c',trailOn:true,catOn:false});
 console.log('Blocked or damaged storage falls back to the locked start: OK');
 
 // Secret: parking at KIWI unlocks the KIWI car, even before the first trip; it shows with black on the start screen.

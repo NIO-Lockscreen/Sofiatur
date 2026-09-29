@@ -3,6 +3,7 @@ import {createJunctionBuildings,addJunctionDetails} from './junction-buildings.j
 import {roadWidth} from './transit-geometry.js';
 import {createRoadSurface} from './road-surface.js';
 import {createET5} from './car-model.js';
+import {createCat} from './cat-model.js';
 import {addMunkvoll,addTransit,addMunkvollDetails} from './munkvoll.js';
 import {createTrafficLights} from './traffic-lights.js';
 import {createRainbowTrail} from './rainbow-trail.js';
@@ -139,9 +140,15 @@ export function createWorld(canvas, data) {
  const goalPos=data.nodes[data.goal];const goalRing=new T.Mesh(new T.TorusGeometry(4,.18,6,48),new T.MeshBasicMaterial({color:'#ffe17a'}));goalRing.rotation.x=Math.PI/2;goalRing.position.set(goalPos[0],height(...goalPos)+.7,goalPos[1]);scene.add(goalRing);labels.push(label('⚑  Her er barnehagen!',...goalPos,'#c58b29',14));
  const trafficLights=createTrafficLights({T,scene,height,data});
  const {car,wheels,paint,skins}=createET5(T);scene.add(car);
- function setCarSkin(name){for(const [k,list] of Object.entries(skins))for(const m of list)m.visible=k===name;car.userData.skin=name||null;}
+ // The running cat (the reward for the fourth trip) rides in the car's group and takes its place: model 'car' or 'cat'.
+ const bodywork=[...car.children],skinParts=new Set(Object.values(skins).flat()),cat=createCat(T);cat.group.visible=false;car.add(cat.group);
+ let model='car',skin=null,rainbow=false;
+ function showModel(){for(const o of bodywork)if(!skinParts.has(o))o.visible=model==='car';for(const [k,list] of Object.entries(skins))for(const m of list)m.visible=model==='car'&&k===skin;cat.group.visible=model==='cat';}
+ function setCarSkin(name){skin=name||null;car.userData.skin=skin;showModel();}
+ function setCarModel(name){model=name==='cat'?'cat':'car';car.userData.body=model;showModel();}
  // Paint colour (a reward). Black keeps the original deep metallic look; brighter colours are less metallic so they read as colour.
- function setCarColour(hex){paint.color.set(hex);const c=paint.color,dark=Math.max(c.r,c.g,c.b)<.06;paint.metalness=dark?.72:.38;paint.roughness=dark?.24:.3;car.userData.colour=hex;}
+ // 'rainbow' (the reward for the third trip) runs slowly through all the colours; update() turns it.
+ function setCarColour(hex){rainbow=hex==='rainbow';car.userData.colour=hex;if(rainbow){paint.metalness=.3;paint.roughness=.28;return;}paint.color.set(hex);const c=paint.color,dark=Math.max(c.r,c.g,c.b)<.06;paint.metalness=dark?.72:.38;paint.roughness=dark?.24:.3;}
  const trail=createRainbowTrail({T,scene});
  // Soft contact shadow remains visible with economical mobile shadows.
  const shc=document.createElement('canvas');shc.width=64;shc.height=64;const sc=shc.getContext('2d'),gr=sc.createRadialGradient(32,32,6,32,32,32);gr.addColorStop(0,'rgba(24,40,35,.48)');gr.addColorStop(1,'rgba(24,40,35,0)');sc.fillStyle=gr;sc.fillRect(0,0,64,64);const sm=new T.Mesh(new T.PlaneGeometry(3.4,6),new T.MeshBasicMaterial({map:new T.CanvasTexture(shc),transparent:true,depthWrite:false}));sm.rotation.x=-Math.PI/2;scene.add(sm);
@@ -167,6 +174,7 @@ export function createWorld(canvas, data) {
  function update(dt,pos,tangent,velocity,mode,finished,time,carFacing=tangent){
  adaptResolution();
  trail.update(dt,pos,carFacing);trafficLights.update(dt,pos);
+ if(rainbow)paint.color.setHSL((time*.09)%1,.9,.42);if(model==='cat')cat.update(dt,Math.abs(velocity),time,paint.color);
  car.position.copy(pos);const yaw=Math.atan2(-carFacing.x,-carFacing.z);rot.setFromEuler(facing.set(Math.atan2(carFacing.y,Math.hypot(carFacing.x,carFacing.z)),yaw,0));car.quaternion.slerp(rot,1-Math.exp(-dt*9));wheels.forEach(w=>w.rotation.x-=velocity*dt/.39);
  sm.position.set(pos.x,height(pos.x,pos.z)+.25,pos.z);sm.rotation.z=-yaw;turnArrow.position.set(pos.x,pos.y+6.2+Math.sin(time*3)*.22,pos.z);turnArrow.scale.setScalar(4.5+Math.sin(time*3)*.16);if(finished)turnArrow.visible=false;
  const follow=follows[mode]||follows.follow;
@@ -188,5 +196,5 @@ export function createWorld(canvas, data) {
  renderer.render(scene,camera);
  }
  function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
- resize();window.addEventListener('resize',resize);return {height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setTrail:trail.setOn,trafficLights,resetCamera(){initialized=false;orbit.reset();trail.clear();}};
+ resize();window.addEventListener('resize',resize);return {height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setTrail:trail.setOn,trafficLights,resetCamera(){initialized=false;orbit.reset();trail.clear();}};
 }
