@@ -52,9 +52,9 @@ export function createWorld(canvas, data) {
  function ribbon(points,width,colour,lift=.13,ground=height){for(let j=0;j<points.length-1;j++){let a=points[j],b=points[j+1],len=Math.hypot(b[0]-a[0],b[1]-a[1]);if(len<.01)continue;let dx=(b[0]-a[0])/len,dz=(b[1]-a[1])/len;for(let d=0;d<len;d+=8){let e=Math.min(len,d+8),ax=a[0]+d*dx,az=a[1]+d*dz,bx=a[0]+e*dx,bz=a[1]+e*dz;quad(bucket(ax,az),[ax-dz*width/2,ground(ax-dz*width/2,az+dx*width/2)+lift,az+dx*width/2],[ax+dz*width/2,ground(ax+dz*width/2,az-dx*width/2)+lift,az-dx*width/2],[bx+dz*width/2,ground(bx+dz*width/2,bz-dx*width/2)+lift,bz-dx*width/2],[bx-dz*width/2,ground(bx-dz*width/2,bz+dx*width/2)+lift,bz+dx*width/2],colour);}}}
  // Terrain uses the same interpolated DTM surface as roads and the car.
  let seed=42;function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}
- // Each grid vertex is looked up once (four cells share it).
+ // Each grid vertex is looked up once (four cells share it), as the road surface has it: the terrain there less how far the road lowered it.
  const groundStep=8,gxn=Math.round((terrain.nx-1)*terrain.step/groundStep),gzn=Math.round((terrain.nz-1)*terrain.step/groundStep),gh=new Float32Array((gxn+1)*(gzn+1));
- for(let j=0;j<=gzn;j++)for(let i=0;i<=gxn;i++)gh[j*(gxn+1)+i]=height(terrain.x0+i*groundStep,terrain.z0+j*groundStep);
+ for(let j=0;j<=gzn;j++)for(let i=0;i<=gxn;i++)gh[j*(gxn+1)+i]=roadSurface.meshAt(terrain.x0+i*groundStep,terrain.z0+j*groundStep);
  for(let j=0;j<gzn;j++)for(let i=0;i<gxn;i++){const x=terrain.x0+i*groundStep,z=terrain.z0+j*groundStep,s=groundStep,k=j*(gxn+1)+i,c=['#93b96e','#96bc71','#99bd73','#91b56c'][Math.abs(Math.floor(x/40)*7+Math.floor(z/40)*11)%4];quad(bucket(x,z),[x,gh[k],z],[x+s,gh[k+1],z],[x+s,gh[k+gxn+2],z+s],[x,gh[k+gxn+1],z+s],c);}
 
  const greens={forest:'#7fa562',wood:'#7fa562',grass:'#8fb96b',meadow:'#9ac47a',park:'#8fba68',pitch:'#7eaf68',playground:'#bcca8b',recreation_ground:'#9bbe70',allotments:'#9eb878',water:'#6daeb4'};
@@ -126,7 +126,7 @@ export function createWorld(canvas, data) {
  addDalgardDetails({T,scene,data,wallBase,bucket,quad,box});
  addStavsetDetails({T,scene,data,wallBase,height,bucket,quad,box,ribbon});addBridges({data,roadTop,roadWidth,bucket,quad,box,height,geometry:roadSurface.geometry});
  // Street details (gangfelt, haitenner, islands, sidewalks, lamps...): the paths and roundabout islands keep the trees off them.
- indexStreetDetails(addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,box,ribbon,groundPoly,segments:roadSegments}),index);
+ indexStreetDetails(addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,box,ribbon,groundPoly,segments:roadSegments,ground:roadSurface.groundTop}),index);
  const homeShrubs=[[-15,1],[-12,4],[-9,6],[-6,8],[-3,9],[0,12],[3,10],[6,9],[9,8],[11,7],[-8,10],[-11,7]];for(const [x,z] of homeShrubs){const b=bucket(x,z),y=height(x,z);const g=new T.IcosahedronGeometry(1,1);g.scale(1.65,.85,1.45);g.translate(x,y+.7,z);const p=g.attributes.position;for(let i=0;i<p.count;i+=3)tri(b,...[0,1,2].map(j=>[p.getX(i+j),p.getY(i+j),p.getZ(i+j)]),'#688845');g.dispose();}
  for(let n=0;n<12000;n++){let x=-220+rnd()*2440,z=-700+rnd()*1520;if(!clear(x,z))continue;let y=height(x,z),h=3+rnd()*5,b=bucket(x,z);box(b,x,y+h*.3,z,.3,h*.6,.3,'#8c7152');if(rnd()<.6){cone(b,x,y+h*.25,z,h*.38,h*.7,'#538b60');cone(b,x,y+h*.54,z,h*.29,h*.55,'#689b64');}else{const geo=new T.IcosahedronGeometry(h*.35,0);geo.translate(x,y+h*.72,z);const at=geo.getAttribute('position');const cc=['#74a357','#8eb15f','#659850'][n%3];for(let i=0;i<at.count;i+=3)tri(b,[at.getX(i),at.getY(i),at.getZ(i)],[at.getX(i+1),at.getY(i+1),at.getZ(i+1)],[at.getX(i+2),at.getY(i+2),at.getZ(i+2)],cc);geo.dispose();}}
  // Around the lakes, where the terrain grid was widened: the same trees, less dense.

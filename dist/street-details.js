@@ -2,7 +2,7 @@ import {roadWidth,streetSegments,segmentIndex,projectPoint} from './transit-geom
 // Street details drawn the Norwegian way, from data.street (add-street-details.py reads them from OpenStreetMap; tags and
 // what is approximate: docs/street-details.md): gangfelt with signs, haitenner at give-way points, stop lines, raised and
 // painted traffic islands, turning circles, speed tables, sidewalks and gang- og sykkelvei, street lamps. Everything on the
-// road stands on roadTop() and everything beside it on height(), so the road surface can change without touching this.
+// road stands on roadTop() and everything beside it on ground() (the ground as it is seen: the world passes the verge strips over the ground mesh, else height), so the road surface can change without touching this.
 const WHITE='#f1f1e8',KERB='#cfcdc4',PAVING='#b7b4aa',GRASS='#86b364',POLE='#7f898d',BLUE='#1f57a8',RED='#c62330';
 const ROAD='#737d7b',GRAVEL='#989789',ROAD_KERB='#b8bbae'; // as world.js draws the road
 export const COLOURS={WHITE,KERB,TABLE:'#858c89'}; // for the test
@@ -10,6 +10,7 @@ const MARK=.06; // markings float this far above the asphalt, over the centre-li
 export const PATH_WIDTH={sidewalk:2.2,cycleway:3},KERB_BAND=.7,PATH_GAP=.4; // road-surface.js draws a kerb band .7 m wider than the carriageway on each side
 const PATH_LIFT={sidewalk:.22,cycleway:.24},PATH_COLOUR={sidewalk:'#aeaca2',cycleway:'#6d7573'};
 const SURFACE={gravel:'#a49d8b',fine_gravel:'#a49d8b',compacted:'#a8a08b',unpaved:'#a39a83',dirt:'#9b8d72',ground:'#9b8d72',paving_stones:'#b3afa4',cobblestone:'#a7a398',sett:'#a7a398',concrete:'#bdbcb4'};
+export const PATH_COLOURS=new Set([...Object.values(PATH_COLOUR),...Object.values(SURFACE)]); // for the test
 const TABLE={table:{top:3,ramp:1.5,h:.09},hump:{top:0,ramp:1.8,h:.08}}; // a raised band across the road; the car does not bump
 const unit=(x,z)=>{const l=Math.hypot(x,z)||1;return [x/l,z/l];};
 const inRing=(ring,x,z)=>{let c=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const [ax,az]=ring[j],[bx,bz]=ring[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)c=!c;}return c;};
@@ -47,7 +48,7 @@ export function fitPath(points,halfWidth,index){
 // The island in the middle of a roundabout is one more such segment, a point with the island's diameter as its width.
 export function indexStreetDetails({paths,central},index){for(const [a,b,w] of [...paths,...central.map(c=>[c.p,c.p,2*c.rad])]){const len=Math.hypot(b[0]-a[0],b[1]-a[1]),seg=[a,b,w-5];for(let d=0;d<=len;d+=15){const t=len?d/len:0;index(a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,{road:seg});}index(b[0],b[1],{road:seg});}}
 
-export function addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,box,ribbon,groundPoly,segments}){
+export function addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,box,ribbon,groundPoly,segments,ground=height}){
  const S=data.street,out={paths:[],lamps:[],bars:[],islands:[],turning:[],central:[],signs:0};if(!S)return out;
  const roads=new Map(data.roads.map(r=>[String(r.id),r])),widthOf=id=>roadWidth(roads.get(id)||{type:'residential'});
  const segs=segments||streetSegments(data.roads),index=segmentIndex(segs); // the drawn (smoothed) centre lines when world.js passes them
@@ -64,7 +65,7 @@ export function addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,bo
  // A flat shape on a sign face: (s along the face, v up) to a point, the face looking along (nx,nz) from a pole at (x,z).
  const face=(x,z,nx,nz,y0,off)=>(s,v)=>[x-nz*s+nx*off,y0+v,z+nx*s+nz*off];
  // The road signs are on the driver's right, facing the traffic they are for: gangfelt (blue square, white triangle), vikeplikt (red-rimmed triangle on its point).
- function sign(kind,x,z,nx,nz){const b=bucket(x,z),y=height(x,z);pole(b,x,z,y,2.5,.045,.04,POLE);out.signs++;
+ function sign(kind,x,z,nx,nz){const b=bucket(x,z),y=ground(x,z);pole(b,x,z,y,2.5,.045,.04,POLE);out.signs++;
   if(kind==='gangfelt'){const f=face(x,z,nx,nz,y+1.95,.07),g=face(x,z,nx,nz,y+1.95,.085);quad(b,f(-.32,0),f(.32,0),f(.32,.64),f(-.32,.64),BLUE);tri(b,g(-.2,.1),g(.2,.1),g(0,.52),WHITE);}
   else{const f=face(x,z,nx,nz,y+1.85,.07),g=face(x,z,nx,nz,y+1.85,.085);tri(b,f(-.5,.9),f(.5,.9),f(0,0),RED);tri(b,g(-.29,.74),g(.29,.74),g(0,.24),WHITE);}}
  // A row of white haitenner across a lane: triangles with their points towards the driver, who comes along -d.
@@ -139,12 +140,14 @@ export function addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,bo
   raisedIsland(Array.from({length:n},(_,i)=>[r.p[0]+Math.cos(i/n*Math.PI*2)*ri,r.p[1]+Math.sin(i/n*Math.PI*2)*ri]),GRASS);out.central.push({p:r.p,rad:ri});}
 
  // ---- Sidewalks and gang- og sykkelvei ------------------------------------------------------------------------------------------
- // A ribbon with mitred corners on the ground, in 8 m pieces so it follows the terrain.
+ // A ribbon with mitred corners on the ground (the visible ground: a verge slope where the road has one), in 4 m pieces, each split lengthways where the middle would
+ // otherwise sink into a bend of the ground or stand over it.
  function strip(p,width,colour,lift){
-  const q=[p[0]];for(let i=0;i<p.length-1;i++){const a=p[i],c=p[i+1],k=Math.max(1,Math.ceil(Math.hypot(c[0]-a[0],c[1]-a[1])/8));for(let j=1;j<=k;j++)q.push([a[0]+(c[0]-a[0])*j/k,a[1]+(c[1]-a[1])*j/k]);}
+  const q=[p[0]];for(let i=0;i<p.length-1;i++){const a=p[i],c=p[i+1],k=Math.max(1,Math.ceil(Math.hypot(c[0]-a[0],c[1]-a[1])/4));for(let j=1;j<=k;j++)q.push([a[0]+(c[0]-a[0])*j/k,a[1]+(c[1]-a[1])*j/k]);}
   const sides=q.map((v,i)=>{const d1=unit(v[0]-(q[i-1]||v)[0],v[1]-(q[i-1]||v)[1]),d2=unit((q[i+1]||v)[0]-v[0],(q[i+1]||v)[1]-v[1]),a=i?d1:d2,c=q[i+1]?d2:d1,n1=[-a[1],a[0]],n2=[-c[1],c[0]],m=unit(n1[0]+n2[0],n1[1]+n2[1]),s=Math.min(1.6,1/Math.max(.1,m[0]*n1[0]+m[1]*n1[1]))*width/2;
-   const l=[v[0]+m[0]*s,v[1]+m[1]*s],r=[v[0]-m[0]*s,v[1]-m[1]*s];return [[l[0],height(...l)+lift,l[1]],[r[0],height(...r)+lift,r[1]]];});
-  for(let i=0;i<q.length-1;i++)quad(bucket(...q[i]),sides[i][0],sides[i][1],sides[i+1][1],sides[i+1][0],colour);}
+   const l=[v[0]+m[0]*s,v[1]+m[1]*s],r=[v[0]-m[0]*s,v[1]-m[1]*s];return [[l[0],ground(...l)+lift,l[1]],[r[0],ground(...r)+lift,r[1]],[v[0],ground(...v)+lift,v[1]]];});
+  for(let i=0;i<q.length-1;i++){const [l0,r0,c0]=sides[i],[l1,r1,c1]=sides[i+1],b=bucket(...q[i]);
+   if(Math.abs(c0[1]-(l0[1]+r0[1])/2)>.04||Math.abs(c1[1]-(l1[1]+r1[1])/2)>.04){quad(b,l0,c0,c1,l1,colour);quad(b,c0,r0,r1,c1,colour);}else quad(b,l0,r0,r1,l1,colour);}}
  for(const p of S.paths){const width=PATH_WIDTH[p.t]||2.2;
   for(const line of fitPath(p.p,width/2,index)){strip(line,width,SURFACE[p.s]||PATH_COLOUR[p.t],PATH_LIFT[p.t]);for(let i=0;i<line.length-1;i++)out.paths.push([line[i],line[i+1],width]);}}
 
@@ -156,7 +159,7 @@ export function addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,bo
     const [ux,uz]=pr.distance>.01?unit(x-pr.x,z-pr.z):unit(-(b[1]-a[1]),b[0]-a[0]);x+=ux*(min-pr.distance);z+=uz*(min-pr.distance);}
    if(!moved)break;}
   let near=null;for(const [a,b,w] of index.near(x,z,20)){const pr=projectPoint([x,z],a,b);if(pr.distance<16&&(!near||pr.distance<near.distance))near=pr;}
-  const y=height(x,z),b=bucket(x,z),H=7.6;pole(b,x,z,y,H,.1,.06,POLE);
+  const y=ground(x,z),b=bucket(x,z),H=7.6;pole(b,x,z,y,H,.1,.06,POLE);
   if(near){const [ax,az]=unit(near.x-x,near.z-z),angle=Math.atan2(-az,ax),ex=x+ax*2,ez=z+az*2,py=y+H-.1,lx=-az*.14,lz=ax*.14;
    // The arm reaches 2 m out over the verge; the head hangs at its end with a pale plate underneath.
    box(b,x+ax,py,z+az,2,.08,.08,POLE,angle);box(b,ex,py-.06,ez,.9,.14,.34,'#6d777b',angle);

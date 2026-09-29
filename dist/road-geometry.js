@@ -136,7 +136,7 @@ export function createRoadGeometry(data,height,tune={}){
   const [a,b]=n.arms;n.kind=k===2&&n.links.length&&a.d[0]*b.d[0]+a.d[1]*b.d[1]<-.94&&Math.abs(a.w-b.w)<.01?'through':'patch';}
  const patches=[];
  for(const n of reg.values()){for(const a of n.arms)a.t=0;if(n.kind!=='patch')continue;
-  const arms=n.arms.map(a=>({d:a.d,w:a.w,rc:cornerRadius(R[a.ri].type),maxT:Math.max(0,Math.min(22,a.straight*.97,a.len*(a.dead?.9:.45))),src:a}));
+  const arms=n.arms.map(a=>({d:a.d,w:a.w,rc:cornerRadius(R[a.ri].type),maxT:R[a.ri].bridge?0:Math.max(0,Math.min(22,a.straight*.97,a.len*(a.dead?.9:.45))),src:a}));
   const geo=junctionPatch([n.x,n.z],arms);for(const a of arms)a.src.t=a.t;
   patches.push({node:n,x:n.x,z:n.z,arms:arms.map(a=>a.src),chains:geo.chains,mouths:geo.mouths,level:0});n.patch=patches.at(-1);}
  // 5. Pieces between nodes chain up through linked arms; a chain is one continuous carriageway (and one profile).
