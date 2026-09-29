@@ -17,7 +17,7 @@ function freeInput(){return {left:keys.has('ArrowLeft')||keys.has('KeyA')||touch
 function startFree(){state='free';active=null;choices=[];queue=[];preview=null;roundaboutUndo=null;clearInputs();free.reset(position.x,position.z,Math.atan2(heading.x,-heading.z));ui.welcome.hidden=true;ui.drive.hidden=false;ui.mini.hidden=false;ui.finish.hidden=true;clearWorldChoices();document.body.classList.remove('choosing');$('freeControls').hidden=false;$('undoRoundabout').hidden=true;$('street').textContent='Frikjøring';updateHud();}
 function recoverFree(){if(state!=='free')return;clearInputs();free.recover();position.set(free.car.x,free.altitude,free.car.z);speed=0;heading.set(Math.sin(free.car.yaw),0,-Math.cos(free.car.yaw));world.resetCamera();}
 
-let adjacency=new Map(),distances=new Map(),optimal=new Map(),openRoads=new Set();
+let adjacency=new Map(),incoming=new Map(),distances=new Map(),optimal=new Map(),openRoads=new Set();
 const ui={welcome:$('welcome'),decision:$('decision'),drive:$('driveHud'),mini:$('mini'),finish:$('finish')};
 function say(text){if(!sound||!('speechSynthesis'in window))return;try{speechSynthesis.cancel();const s=new SpeechSynthesisUtterance(text);s.lang='nb-NO';s.rate=.88;s.pitch=1.1;const v=speechSynthesis.getVoices().find(x=>/^nb|^no/.test(x.lang));if(v)s.voice=v;s.onstart=()=>music.duck(true);s.onend=s.onerror=()=>music.duck(false);speechSynthesis.speak(s);}catch{}}
 let toastTimer;function toast(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),3100);}
@@ -29,14 +29,13 @@ const curves=new Map();
 function roadCurve(e){const key=e.roundaboutPlan?e.from+'>'+e.id:e.id;let curve=curves.get(key);if(!curve){curve=new T.CatmullRomCurve3(roadPoints(e.path),false,'centripetal',.15);curve.arcLengthDivisions=Math.max(50,Math.ceil(e.length*2));curves.set(key,curve);}return curve;}
 function endDirection(e,start=true){const p=e.path.map(n=>data.nodes[n]),i=start?e.stub||0:p.length-2;const a=p[i],b=p[i+1];return new T.Vector3(b[0]-a[0],0,b[1]-a[1]).normalize();}
 function routeFrom(n){const route=[];const visited=new Set();while(n!==data.goal&&!visited.has(n)){visited.add(n);const e=optimal.get(n);if(!e)break;route.push(e);n=e.to;}return route;}
-function computeRoutes(){const reverse=new Map();for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);if(!reverse.has(e.to))reverse.set(e.to,[]);reverse.get(e.to).push(e);}distances.set(data.goal,0);const todo=[data.goal];while(todo.length){todo.sort((a,b)=>distances.get(b)-distances.get(a));const n=todo.pop(),d=distances.get(n);for(const e of reverse.get(n)||[]){const nd=d+(e.cost||e.length);if(nd<(distances.get(e.from)??Infinity)){distances.set(e.from,nd);optimal.set(e.from,e);if(!todo.includes(e.from))todo.push(e.from);}}}}
+function computeRoutes(){const reverse=incoming;for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);if(!reverse.has(e.to))reverse.set(e.to,[]);reverse.get(e.to).push(e);}distances.set(data.goal,0);const todo=[data.goal];while(todo.length){todo.sort((a,b)=>distances.get(b)-distances.get(a));const n=todo.pop(),d=distances.get(n);for(const e of reverse.get(n)||[]){const nd=d+(e.cost||e.length);if(nd<(distances.get(e.from)??Infinity)){distances.set(e.from,nd);optimal.set(e.from,e);if(!todo.includes(e.from))todo.push(e.from);}}}}
 function reset(){clearInputs();$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;picked=null;$('undoRoundabout').hidden=true;maxKmh=200;current=data.start;previous=null;active=null;distance=0;speed=0;travelled=0;turns=0;state='intro';position.copy(point(current));heading.copy(endDirection(optimal.get(current)));totalInitial=routeFrom(current).reduce((n,e)=>n+e.length,0);ui.welcome.hidden=false;ui.drive.hidden=true;ui.decision.hidden=true;ui.finish.hidden=true;document.body.classList.remove('choosing');world.resetCamera();clearWorldChoices();world.setTurnArrow(null);$('remaining').textContent='Herlofsons veg → Skjermvegen';newReward=null;showRewards();}
 function start(){if(state!=='intro')return;if(sound&&musicOn)music.play();if(freeMode){startFree();return;}ui.welcome.hidden=true;ui.drive.hidden=false;state='decision';say('Hei Sofia! Nå kjører vi til barnehagen. Ved hvert kryss velger du vei med en pil.');leavingHome=true;showDecision();}
-// A roundabout exit's arrow shows where its road leaves the circle, seen from the car as it comes in: straight
-// on when it carries on roughly the same way, left or right when it bends off, back when it returns. Roads that meet
-// the circle at a slant (the KIWI roundabout) then read as the driver sees them. An exit that leads back to the junction
-// the car came from is a U-turn, however the roads meet (at Stavset, Byåsveien's lanes part before the circle).
-function roundaboutDirection(e,h){const d=endDirection(e.segments.find(s=>!s.roundabout)),angle=Math.atan2(h.x*d.z-h.z*d.x,T.MathUtils.clamp(h.x*d.x+h.z*d.z,-1,1)),deg=Math.abs(angle)*180/Math.PI;
+// A roundabout exit's arrow shows where its road goes, seen from the circle (roundaboutLabels); without that, where its
+// road leaves the circle, seen from the car as it comes in. An exit that leads back to the junction the car came from
+// is a U-turn, however the roads meet (at Stavset, Byåsveien's lanes part before the circle).
+function roundaboutDirection(e,h){const d=endDirection(e.segments.find(s=>!s.roundabout)),angle=e.turn??Math.atan2(h.x*d.z-h.z*d.x,T.MathUtils.clamp(h.x*d.x+h.z*d.z,-1,1)),deg=Math.abs(angle)*180/Math.PI;
  const label=e.label||(deg>150||e.uTurn?'Snu':deg<55?'Rett frem':angle>0?'Høyre':'Venstre');return {label,symbol:{Høyre:'↱','Rett frem':'↑',Venstre:'↰',Snu:'↶'}[label],angle};}
 function directionInfo(e,h=heading){if(e.roundaboutPlan)return roundaboutDirection(e,h);const dir=endDirection(e);const dot=T.MathUtils.clamp(h.x*dir.x+h.z*dir.z,-1,1);const cross=h.x*dir.z-h.z*dir.x;const angle=Math.atan2(cross,dot);if(e.label)return {label:e.label,symbol:e.label==='Høyre'?'↱':'↰',angle};if(Math.abs(angle)>2.5)return {label:'Snu',symbol:'↶',angle};if(angle>.42)return {label:'Høyre',symbol:'↱',angle};if(angle<-.42)return {label:'Venstre',symbol:'↰',angle};return {label:'Rett frem',symbol:'↑',angle};}
 function clearWorldChoices(){planKey='';aheadShown=false;const wrap=$('worldArrows');wrap.replaceChildren();wrap.hidden=true;$('turnHint').hidden=true;}
@@ -45,7 +44,8 @@ function renderWorldChoices(list=choices,h=heading,pick=e=>choose(e.id,true),ahe
  for(const e of list){const info=directionInfo(e,h),key=info.label==='Rett frem'?'straight':info.label==='Venstre'?'left':info.label==='Høyre'?'right':'reverse';if(!groups.has(key))groups.set(key,[]);groups.get(key).push({e,info});}
  // Arrows ahead sit higher, clear of the minimap that shows while driving.
  const positions=ahead?{straight:[50,38],left:[27,52],right:[73,52],reverse:[50,62]}:{straight:[50,48],left:[27,66],right:[73,66],reverse:[50,76]};
- for(const [key,items] of groups)items.forEach(({e,info},i)=>{
+ // On each side the gentlest turn sits highest, as its road runs furthest ahead, and the sharpest lowest.
+ for(const [key,items] of groups){if(key==='left'||key==='right')items.sort((a,b)=>Math.abs(a.info.angle)-Math.abs(b.info.angle));items.forEach(({e,info},i)=>{
   const b=document.createElement('button');b.type='button';b.className=`world-choice ${key}${e.roundaboutPlan?' roundabout-choice':''}${ahead?' ahead':''}`;
   b.style.left=(positions[key][0]+(key==='straight'||key==='reverse'?(i-(items.length-1)/2)*19:0))+'%';
   b.style.top=(positions[key][1]+(key==='left'||key==='right'?(i-(items.length-1)/2)*17:0))+'%';
@@ -54,7 +54,7 @@ function renderWorldChoices(list=choices,h=heading,pick=e=>choose(e.id,true),ahe
   const n=document.createElement('span');n.className='choice-name';n.textContent=e.name==='Lokalvei'?'Innkjøring':e.name;b.append(g,n);
   if(e.roundaboutPlan){const badge=document.createElement('span');badge.className='exit-number';badge.textContent=e.exitNumber;b.append(badge);}
   b.onclick=()=>pick(e);wrap.append(b);
- });
+ });}
  wrap.hidden=false;$('turnHint').textContent=list.some(e=>e.roundaboutPlan)?'Rundkjøring · velg avkjørsel':'Trykk på en pil for å velge vei';$('turnHint').hidden=false;
 }
 function ringNodes(n){const ring=new Set();while(n!==undefined&&!ring.has(n)){ring.add(n);n=(adjacency.get(n)||[]).find(e=>e.roundabout)?.to;}return ring;}
@@ -70,7 +70,7 @@ function computeOpenRoads(){
 function roadChoices(node,prev,h){
  const outgoing=(adjacency.get(node)||[]).filter(e=>distances.has(e.to));let list,top;
  if(outgoing.some(e=>e.roundabout)){
-  list=roundaboutChoices(node,prev,adjacency,distances);straightest(list,h);
+  list=roundaboutChoices(node,prev,adjacency,distances);roundaboutLabels(list,node,prev,h);
   top=list.reduce((a,e)=>!a||e.cost+distances.get(e.to)<a.cost+distances.get(a.to)?e:a,null);
   if(!showDeadEnds)list=list.filter(e=>e===top||openRoads.has(e.segments.find(s=>!s.roundabout)));
  }else{
@@ -83,6 +83,33 @@ function roadChoices(node,prev,h){
   if(top&&!list.some(e=>e.id===top.id)&&outgoing.some(e=>e.id===top.id))list.push(top);
  }
  return {list,top};
+}
+// Where a roundabout's roads go, as a driver sees them from the circle: the bearing from the circle's centre to the road
+// in, 35 m before the circle, and to each exit road, 35 m after it. Opposite the road in (within 45°) is straight on, a
+// quarter turn round the circle right, three quarters left; only the exit back to the road in is Snu, a sharp turn onto
+// another road is right or left. Measured on the map, so the car's heading as it reaches the circle does not matter:
+// lanes at splitter islands curve in, which used to turn every arrow a little (coming down Munkvollvegen into the
+// roundabout on Byåsveien by Midelfarts veg, Byåsveien straight ahead read as a right turn and Midelfarts veg, to the
+// left, as straight on).
+// Of two exits within 45°, only the straighter is straight on.
+function roundaboutLabels(list,node,prev,h){
+ const entry=(adjacency.get(prev)||[]).find(e=>e.to===node&&!e.roundabout),ring=ringNodes(node);if(!entry){straightest(list,h);return;}
+ const pts=[...ring].map(n=>data.nodes[n]),c=[pts.reduce((s,p)=>s+p[0],0)/pts.length,pts.reduce((s,p)=>s+p[1],0)/pts.length];
+ const a=alongRoad(entry,35,true,ring),inX=c[0]-a[0],inZ=c[1]-a[1];
+ for(const e of list){const x=alongRoad(e.segments.find(s=>!s.roundabout),35,false,ring),dx=x[0]-c[0],dz=x[1]-c[1];e.turn=Math.atan2(inX*dz-inZ*dx,inX*dx+inZ*dz);
+  e.label=e.uTurn?'Snu':Math.abs(e.turn)<Math.PI/4?'Rett frem':e.turn>0?'Høyre':'Venstre';}
+ for(const e of list.filter(e=>e.label==='Rett frem').sort((a,b)=>Math.abs(a.turn)-Math.abs(b.turn)).slice(1))e.label=e.turn>0?'Høyre':'Venstre';
+}
+// The point `metres` along a road from the start of edge e (back: from its end, backwards), carrying on the straightest
+// way at junctions and never into the circle `ring`; the road's end if it ends sooner.
+function alongRoad(e,metres,back,ring){
+ let edge=e,left=metres,last=data.nodes[back?e.to:e.from];const seen=new Set();
+ while(edge&&!seen.has(edge)){seen.add(edge);const p=(back?[...edge.path].reverse():edge.path).map(n=>data.nodes[n]);
+  for(let i=1;i<p.length;i++){const l=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);if(l>=left){const t=left/l;return [p[i-1][0]+(p[i][0]-p[i-1][0])*t,p[i-1][1]+(p[i][1]-p[i-1][1])*t];}left-=l;}
+  last=p[p.length-1];const a=p[p.length-2],end=back?edge.from:edge.to,dx=last[0]-a[0],dz=last[1]-a[1];
+  const next=((back?incoming:adjacency).get(end)||[]).filter(x=>!x.roundabout&&!ring.has(back?x.from:x.to)&&(back?x.from:x.to)!==(back?edge.to:edge.from));
+  edge=next.map(x=>{const q=(back?[...x.path].reverse():x.path).map(n=>data.nodes[n]),vx=q[1][0]-q[0][0],vz=q[1][1]-q[0][1];return {x,c:(vx*dx+vz*dz)/(Math.hypot(vx,vz)||1)};}).sort((a,b)=>b.c-a.c)[0]?.x;}
+ return last;
 }
 // Two roads that both read as straight on cannot both be: only the straighter one is, the other bends to its own side.
 // At the Munkvoll roundabout, coming up Byåsveien, Bøckmans veg (47° right) is the right turn and Byåsveien (36° left) straight on.

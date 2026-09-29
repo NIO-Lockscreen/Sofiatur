@@ -12,7 +12,7 @@ const env={T,roundaboutChoices,console,performance:{now:()=>now},document:{getEl
 env.createFreeDrive=createFreeDrive;env.createMusic=createMusic;
 const ctx=vm.createContext(env);
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
-const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,enter(e){current=e.to;previous=e.from;active=null;state='decision';maxKmh=200;position.copy(point(current));heading.copy(endDirection(e,false));showDecision();},getActive:()=>active};})()`,ctx);
+const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,enter(e,turn=0){current=e.to;previous=e.from;active=null;state='decision';maxKmh=200;position.copy(point(current));heading.copy(endDirection(e,false)).applyAxisAngle(new T.Vector3(0,1,0),turn);showDecision();},getActive:()=>active};})()`,ctx);
 function frame(){now+=45;const q=callbacks.splice(0);q.forEach(cb=>cb(now));}
 for(let i=0;i<12;i++){await Promise.resolve();frame();}await init;
 // Blindveier are on by default (29 September 2026); a roundabout only skips exits that lead nowhere when they are off.
@@ -54,8 +54,8 @@ const order={Høyre:0,'Rett frem':1,Venstre:2,Snu:3};let entrances=0;
 for(const entry of entries){env.test.enter(entry);const s=env.test.read();if(s.state!=='decision')continue;entrances++;
  const byNumber=[...s.choices].sort((a,b)=>a.exitNumber-b.exitNumber).map(c=>order[c.direction]);
  for(let i=1;i<byNumber.length;i++)assert.ok(byNumber[i]>=byNumber[i-1],`Arrows in exit order at ${entry.to}: ${s.choices.map(c=>c.exitNumber+' '+c.direction).join(', ')}`);}
-// The Munkvoll roundabout just before the kindergarten, coming up Byåsveien from the south: Bøckmans veg leaves 47° to
-// the right and Byåsveien 36° to the left. Both were within the straight-on cone; only the straighter one is straight on.
+// The Munkvoll roundabout just before the kindergarten, coming up Byåsveien from the south: seen from the circle,
+// Bøckmans veg goes 47° to the right and Byåsveien 26° to the left. Only the straighter one is straight on.
 const munkvoll=data.edges.find(e=>!e.roundabout&&e.name==='Byåsveien'&&adjacency.get(e.to)?.some(x=>x.roundabout)&&adjacency.get(e.to).some(x=>x.roundabout)&&Math.hypot(data.nodes[e.to][0]-1500,data.nodes[e.to][1]-161)<3);
 env.test.enter(munkvoll);const mk=env.test.read().choices;
 assert.deepEqual(mk.map(c=>`${c.exitNumber}. ${c.direction} ${c.street}`),['1. Høyre Bøckmans veg','2. Rett frem Byåsveien','3. Snu Byåsveien'],'Munkvoll roundabout from Byåsveien south');
@@ -70,3 +70,27 @@ assert.equal(bangs.to,'6673481580','Past the splitter island to the next real ju
 for(let i=0;i<5000&&env.test.read().state==='driving';i++){frame();if(env.test.getActive()?.e===bangs)ringTop=Math.max(ringTop,env.test.read().speedKmh);}
 assert.equal(env.test.read().currentNode,'6673481580','Next stop is the KIWI entrance, not the splitter island');assert.ok(ringTop>=44,`Circle speed ${ringTop} km/h`);
 console.log(`Exit arrows in exit order at ${entrances} entrances; KIWI roundabout straight/left/back, straight through the splitter island: OK`);
+
+// Every entrance of every roundabout, blindveier shown: the arrows come from the map, not from the car's heading as it
+// reaches the circle (lanes at splitter islands curve in), so turning the car 25° either way changes none of them. At
+// most one exit is straight on, and only the exit back to the road in is Snu.
+element('deadEnds').onchange({target:{value:'on'}});let checked=0;
+for(const entry of entries){env.test.enter(entry);const s=env.test.read();if(s.state!=='decision')continue;checked++;
+ const labels=s.choices.map(c=>`${c.exitNumber}. ${c.direction} ${c.street}`);
+ for(const turn of [-.44,.44]){env.test.enter(entry,turn);assert.deepEqual(env.test.read().choices.map(c=>`${c.exitNumber}. ${c.direction} ${c.street}`),labels,`Arrows at ${entry.to} do not follow the car's heading`);}
+ assert.ok(s.choices.filter(c=>c.direction==='Rett frem').length<=1,`One straight on at ${entry.to}: ${labels}`);
+ const byNumber=[...s.choices].sort((a,b)=>a.exitNumber-b.exitNumber);
+ for(let i=1;i<byNumber.length;i++)assert.ok(order[byNumber[i].direction]>=order[byNumber[i-1].direction],`Arrows in exit order at ${entry.to}: ${labels}`);
+ for(const c of s.choices)if(c.direction==='Snu')assert.equal(c.street,entry.name,`Snu leads back to the road in at ${entry.to}: ${labels}`);}
+assert.equal(checked,30,'All entrances of the eight roundabouts');
+// Coming down Munkvollvegen into the roundabout on Byåsveien by Midelfarts veg, the lane bends 24° to the left before the
+// circle. Measured from the car's heading there, Byåsveien straight ahead read as a right turn and Midelfarts veg (52° to
+// the left) as straight on.
+const midelfarts=entries.find(e=>e.name==='Munkvollvegen'&&Math.hypot(data.nodes[e.to][0]-1502,data.nodes[e.to][1]+215)<15);env.test.enter(midelfarts);
+assert.deepEqual(env.test.read().choices.map(c=>`${c.exitNumber}. ${c.direction} ${c.street}`),['1. Høyre Vegmesterstien','2. Rett frem Byåsveien','3. Venstre Midelfarts veg','4. Venstre Byåsveien']);
+// Two exits on one side: the gentler turn sits higher, as its road runs further ahead. Down Byåsveien from the north,
+// Vegmesterstien (83° right) is above Munkvollvegen (144° right, back up the hill).
+const north=entries.find(e=>e.name==='Byåsveien'&&Math.hypot(data.nodes[e.to][0]-1502,data.nodes[e.to][1]+215)<15&&data.nodes[e.from][1]<data.nodes[e.to][1]);env.test.enter(north);
+const buttons=element('worldArrows').children,top=name=>parseFloat(buttons.find(b=>b.children[1].textContent===name).style.top);
+assert.ok(top('Vegmesterstien')<top('Munkvollvegen'),'Gentler right turn above the sharper one');
+console.log(`Arrows at all ${checked} roundabout entrances come from the map (same with the car turned 25°), one straight on, Snu only back; Munkvollvegen: right, straight, left, left; gentler turn higher: OK`);
