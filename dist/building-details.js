@@ -37,6 +37,9 @@ export const buildingStyles={
  '191198632':{wall:'#efeee7',roof:'#36312e',levels:2,siding:true,frame:'#8e2b27',gabled:true,roofRise:3.4,chimney:true,source:'bunnpris-photos'}
 };
 
+// Two chargers at the head of the parking bays on the car park's south-west edge, between bays, 8 m from Drivhusvegen's
+// centre line. They used to stand in Drivhusvegen itself, where the car drives in to KIWI.
+export const KIWI_CHARGERS=[[777.7,217.9],[780.4,222.5]];
 export function addKiwi({T,scene,building,height,bucket,tri,quad,box,groundPoly,ribbon}){
  const p=building.p.slice(0,-1),b=bucket(813,194);
  const y=Math.max(...p.map(v=>height(...v)))+.15,top=y+5.5;
@@ -72,6 +75,6 @@ export function addKiwi({T,scene,building,height,bucket,tri,quad,box,groundPoly,
  const parking=[[773.2,213.6],[789.5,241.9],[798.8,235.9],[798.6,230.3],[803.3,227.7],[789.7,204.1],[784.8,195.8],[780,198.3],[785.1,207.1]];
  groundPoly(parking,'#707773',.44);
  for(let i=0;i<6;i++){const x=777.3+i*2.7*.5,z=215+i*2.7*.86;ribbon([[x,z],[x+4.5,z-2.6]],.13,'#e8e9df',.48);}
- for(const [x,z] of [[778,204],[780,207]]){box(b,x,height(x,z)+.9,z,.6,1.6,.45,'#343e3d');box(b,x,height(x,z)+1.27,z,.61,.52,.46,'#8abd39');}
+ for(const [x,z] of KIWI_CHARGERS){box(b,x,height(x,z)+.9,z,.6,1.6,.45,'#343e3d');box(b,x,height(x,z)+1.27,z,.61,.52,.46,'#8abd39');}
  return {bounds:[773,170,838,242]};
 }

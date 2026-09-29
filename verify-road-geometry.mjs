@@ -5,6 +5,7 @@ import {createRoadSurface} from './dist/road-surface.js';
 import {addStreetDetails,PATH_COLOURS} from './dist/street-details.js';
 import {fillet,bendRadius,maxGrade,pointKey} from './dist/road-geometry.js';
 import {roadWidth} from './dist/transit-geometry.js';
+import {KIWI_CHARGERS} from './dist/building-details.js';
 // The drawn road (road-surface.js) measured as a driver would meet it: level across, smooth along, no gaps at bends or junctions, ground below it.
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8')),terrain=data.terrain;
 function rawHeight(x,z){const a=Math.max(0,Math.min(terrain.nx-1.001,(x-terrain.x0)/terrain.step)),b=Math.max(0,Math.min(terrain.nz-1.001,(z-terrain.z0)/terrain.step)),i=Math.floor(a),j=Math.floor(b),u=a-i,v=b-j,h=terrain.heights;return (h[j*terrain.nx+i]*(1-u)+h[j*terrain.nx+i+1]*u)*(1-v)+(h[(j+1)*terrain.nx+i]*(1-u)+h[(j+1)*terrain.nx+i+1]*u)*v;}
@@ -127,3 +128,6 @@ const chainAt=(c,s)=>{let lo=0,hi=c.s.length-1;s=Math.max(0,Math.min(c.len,s));w
    for(const q of surface.verges)if(Math.abs(q.x-x)<b.hw+2&&Math.abs(q.z-z)<b.hw+2)assert.fail(`${b.road.name}: a verge runs along the deck at ${s.toFixed(0)} m`);}}
  for(const pt of geo.patches)for(const a of pt.arms)if(R[a.ri].bridge)assert.equal(a.t,0,'a junction patch stops at the abutment: no setback onto a deck');
  assert.ok(bridges.length>=2&&checked>40);console.log(`Bridges: ${bridges.length} decks, ${checked} sample points under them with the ground untouched, no patch or verge on a deck: OK`);}
+// The chargers at KIWI Dalgård stand beside the car park's bays, off every drawn road (they stood in Drivhusvegen, the way in).
+{for(const [x,z] of KIWI_CHARGERS)for(let dx=-1;dx<=1;dx+=.5)for(let dz=-1;dz<=1;dz+=.5)assert.equal(surface.heightAt(x+dx,z+dz),null,`KIWI charger at (${x}, ${z}) is off the road`);
+ console.log('KIWI chargers stand beside the parking bays, at least 1 m from any drawn road: OK');}
