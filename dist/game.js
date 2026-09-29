@@ -1,12 +1,15 @@
 import {createFreeDrive} from './free-drive.js';
 import {createWorld,T} from './world.js';
 import {roundaboutChoices} from './roundabouts.js';
+import {createDrivingLines} from './driving-line.js';
 import {createMusic} from './music.js';
 const $=id=>document.getElementById(id);
-let world,data,state='loading',sound=true,current,previous=null,active=null,distance=0,speed=0,travelled=0,turns=0,heading=new T.Vector3(0,0,1),position=new T.Vector3(),choices=[],best=null,totalInitial=0,maxKmh=200,camMode='follow',lastTime=performance.now(),time=0,mapClock=0,leavingHome=false;
+let world,data,state='loading',sound=true,current,previous=null,active=null,distance=0,speed=0,travelled=0,turns=0,heading=new T.Vector3(0,0,1),position=new T.Vector3(),choices=[],best=null,totalInitial=0,maxKmh=200,camMode='follow',lastTime=performance.now(),time=0,mapClock=0,leavingHome=false,lastEdge=null,lines=null;
 let roundaboutUndo=null,freeMode=false,free=null,carHeight,showDeadEnds=true,choicesStale=false,musicOn=true,queue=[],preview=null,picked=null,pickedUntil=-9,aheadShown=false,planKey='';
 let arrivals=0,carColour='#14171c',trailOn=true,catOn=false,newReward=null;
 const roundaboutKmh=45; // speed round the circle and into it
+// The car speeds up by ACCEL, brakes ahead of a slower stretch (a turn, a junction where it must stop) by DECEL, and by BRAKE at most when a new plan needs it at once.
+const ACCEL=7,DECEL=4.5,BRAKE=8,STOP=2.4;
 // Junctions where every road is offered, also with blindveier off: the Palermo traffic lights (left, straight on, right).
 const everyRoadAt=new Set(['91783986']);
 let chooseAhead=false; // Menu option: arrows for the next junction while driving, to queue up to two roads. Off by default.
@@ -23,14 +26,16 @@ function say(text){if(!sound||!('speechSynthesis'in window))return;try{speechSyn
 let toastTimer;function toast(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),3100);}
 function point(n){const p=data.nodes[n];return new T.Vector3(p[0],carHeight(...p),p[1]);}
 // The car follows the drawn road's smoothed centre line (world.roadLine: samples 2 m apart, level and bends as drawn); without it, sample the road every 2 m between map nodes.
-function roadPoints(path){if(world.roadLine)return world.roadLine(path).map(p=>new T.Vector3(p[0],p[2],p[1]));const pts=[];for(const n of path){const [x,z]=data.nodes[n],last=pts.at(-1);if(last){const len=Math.hypot(x-last.x,z-last.z);if(len<.05)continue;const steps=Math.ceil(len/2);for(let k=1;k<steps;k++){const px=last.x+(x-last.x)*k/steps,pz=last.z+(z-last.z)*k/steps;pts.push(new T.Vector3(px,carHeight(px,pz),pz));}}pts.push(point(n));}return pts;}
-// Curves are built once per road; a roundabout plan's path depends on its entrance, so plans are keyed by entrance and exit.
-const curves=new Map();
-function roadCurve(e){const key=e.roundaboutPlan?e.from+'>'+e.id:e.id;let curve=curves.get(key);if(!curve){curve=new T.CatmullRomCurve3(roadPoints(e.path),false,'centripetal',.15);curve.arcLengthDivisions=Math.max(50,Math.ceil(e.length*2));curves.set(key,curve);}return curve;}
+function roadPoints(path){if(world.roadLine)return world.roadLine(path);const pts=[];for(const n of path){const [x,z]=data.nodes[n],last=pts.at(-1);if(last){const len=Math.hypot(x-last[0],z-last[1]);if(len<.05)continue;const steps=Math.ceil(len/2);for(let k=1;k<steps;k++){const px=last[0]+(x-last[0])*k/steps,pz=last[1]+(z-last[1])*k/steps;pts.push([px,pz,carHeight(px,pz)]);}}pts.push([x,z,carHeight(x,z)]);}return pts;}
+// The car's line: right-hand lane, an arc through every junction, and a speed limit from its curvature (dist/driving-line.js).
+// A line runs from the stop line before one junction to the stop line before the next; lines(a,b) is the line of road b driven after road a (null after a standing start).
+const drivingLines=()=>lines||(lines=createDrivingLines({data,roadLine:roadPoints,carHeight:(x,z)=>carHeight(x,z),surfaceTop:world.surfaceTop||null,adjacency,centred:n=>n===data.goal||n===data.start||parkingPlaces.has(n)}));
+// The road the car arrived on. Tests and undo put the car on a node without it, then the road from the previous node that most closely ends in the heading.
+function incomingEdge(){if(lastEdge&&lastEdge.to===current)return lastEdge;if(previous==null)return null;let best=null,bestDot=-2;for(const x of adjacency.get(previous)||[]){if(x.to!==current)continue;const d=endDirection(x,false),dot=d.x*heading.x+d.z*heading.z;if(dot>bestDot){bestDot=dot;best=x;}}return best;}
 function endDirection(e,start=true){const p=e.path.map(n=>data.nodes[n]),i=start?e.stub||0:p.length-2;const a=p[i],b=p[i+1];return new T.Vector3(b[0]-a[0],0,b[1]-a[1]).normalize();}
 function routeFrom(n){const route=[];const visited=new Set();while(n!==data.goal&&!visited.has(n)){visited.add(n);const e=optimal.get(n);if(!e)break;route.push(e);n=e.to;}return route;}
 function computeRoutes(){const reverse=incoming;for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);if(!reverse.has(e.to))reverse.set(e.to,[]);reverse.get(e.to).push(e);}distances.set(data.goal,0);const todo=[data.goal];while(todo.length){todo.sort((a,b)=>distances.get(b)-distances.get(a));const n=todo.pop(),d=distances.get(n);for(const e of reverse.get(n)||[]){const nd=d+(e.cost||e.length);if(nd<(distances.get(e.from)??Infinity)){distances.set(e.from,nd);optimal.set(e.from,e);if(!todo.includes(e.from))todo.push(e.from);}}}}
-function reset(){clearInputs();$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;picked=null;$('undoRoundabout').hidden=true;maxKmh=200;current=data.start;previous=null;active=null;distance=0;speed=0;travelled=0;turns=0;state='intro';position.copy(point(current));heading.copy(endDirection(optimal.get(current)));totalInitial=routeFrom(current).reduce((n,e)=>n+e.length,0);ui.welcome.hidden=false;ui.drive.hidden=true;ui.decision.hidden=true;ui.finish.hidden=true;document.body.classList.remove('choosing');world.resetCamera();clearWorldChoices();world.setTurnArrow(null);$('remaining').textContent='Herlofsons veg → Skjermvegen';newReward=null;showRewards();}
+function reset(){clearInputs();$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;picked=null;$('undoRoundabout').hidden=true;maxKmh=200;current=data.start;previous=null;lastEdge=null;active=null;distance=0;speed=0;travelled=0;turns=0;state='intro';position.copy(point(current));heading.copy(endDirection(optimal.get(current)));totalInitial=routeFrom(current).reduce((n,e)=>n+e.length,0);ui.welcome.hidden=false;ui.drive.hidden=true;ui.decision.hidden=true;ui.finish.hidden=true;document.body.classList.remove('choosing');world.resetCamera();clearWorldChoices();world.setTurnArrow(null);$('remaining').textContent='Herlofsons veg → Skjermvegen';newReward=null;showRewards();}
 function start(){if(state!=='intro')return;if(sound&&musicOn)music.play();if(freeMode){startFree();return;}ui.welcome.hidden=true;ui.drive.hidden=false;state='decision';say('Hei Sofia! Nå kjører vi til barnehagen. Ved hvert kryss velger du vei med en pil.');leavingHome=true;showDecision();}
 // A roundabout exit's arrow shows where its road goes, seen from the circle (roundaboutLabels); without that, where its
 // road leaves the circle, seen from the car as it comes in. An exit that leads back to the junction the car came from
@@ -118,23 +123,31 @@ function straightest(list,h){for(const e of list)delete e.label;const straight=l
  for(const {e,i} of straight.slice(1))e.label=i.angle>0?'Høyre':'Venstre';}
 // With one road left (e.g. right, when straight ahead is a blindvei) the car drives on by itself.
 function autoRoad(list,prev,h){return list.length===1&&prev&&directionInfo(list[0],h).label!=='Snu'?list[0]:null;}
-// Look past road e: junctions taken automatically or by a queued choice are driven through without slowing
-// (with blindveier on, automatic junctions still slow the car; roundabouts are entered at circle speed).
-// Returns where the car must slow down (metres past e, speed there) and the first junction still waiting for a choice.
-function lookAhead(e,curve){
- let ahead=0,node=e.to,prev=e.arrivalFrom??e.from,h=curve.getTangentAt(1),planned=0,slow=null;
+// Look past the line of road e: junctions taken automatically or by a queued choice are driven through without stopping
+// (with blindveier on, automatic junctions still slow the car to a crawl; parking places and the goal always stop it).
+// Returns the lines driven on after e, the speed the car may have where each of them ends (STOP: it must stop or crawl;
+// Infinity: it drives on) and the first junction still waiting for a choice, with its distance from the end of e.
+function lookAhead(e,line){
+ const items=[{e,line}],floors=[];let node=e.to,prev=e.arrivalFrom??e.from,h=line.tangent(line.len,new T.Vector3()),from=e,planned=0,ahead=0,junction=null;
  for(let step=0;step<40&&ahead<3000;step++){
-  if(node===data.goal)return {slow:slow??{ahead,floor:2.4},junction:null};
-  const {list,top}=roadChoices(node,prev,h);let next=autoRoad(list,prev,h);
-  if(next){if(showDeadEnds)slow??={ahead,floor:2.4};}
-  else if(queue[planned]?.node===node&&(next=list.find(c=>c.id===queue[planned].id)))planned++;
-  else return {slow:slow??{ahead,floor:2.4},junction:{node,prev,h,list,top,ahead,key:node+':'+list.map(c=>c.id)}};
-  if(next.roundaboutPlan)slow??={ahead,floor:roundaboutKmh/3.6};
-  ahead+=next.length;node=next.to;prev=next.arrivalFrom??next.from;h=roadCurve(next).getTangent(1);
+  if(node===data.goal){floors.push(STOP);break;}
+  const {list,top}=roadChoices(node,prev,h);let next=parkingPlaces.has(node)?null:autoRoad(list,prev,h);
+  if(next)floors.push(showDeadEnds?STOP:Infinity);
+  else if(queue[planned]?.node===node&&(next=list.find(c=>c.id===queue[planned].id))){planned++;floors.push(Infinity);}
+  else{floors.push(STOP);junction={node,prev,h,list,top,ahead,key:node+':'+list.map(c=>c.id)};break;}
+  const nl=drivingLines().line(from,next);items.push({e:next,line:nl});
+  ahead+=nl.len;node=next.to;prev=next.arrivalFrom??next.from;h=nl.tangent(nl.len,new T.Vector3());from=next;
  }
- return {slow:slow??{ahead:Infinity,floor:2.4},junction:null};
+ while(floors.length<items.length)floors.push(Infinity);
+ return {items,floors,junction};
 }
-function planAhead(){if(!active)return;const {slow,junction}=lookAhead(active.e,active.curve);active.ahead=slow.ahead;active.floor=slow.floor;preview=junction;renderPlan();}
+// Where a roundabout plan's line passes its exit node: the car keeps to roundaboutKmh until 4 m after it.
+function ringStation(e,line){if(line.ring!==undefined)return line.ring;let ring=0;if(e.roundaboutPlan){const [ex,ez]=data.nodes[e.segments.find(s=>!s.roundabout).from];let nearest=Infinity;for(let i=0;i<line.n;i++){const d=(line.x[i]-ex)**2+(line.z[i]-ez)**2;if(d<nearest){nearest=d;ring=line.s[i];}}}return line.ring=ring;}
+// Speed limits along the lines ahead, worked backwards from where the car must slow: the curvature limit of every stretch, the circle speed of a roundabout, and braking at DECEL to reach each limit in time.
+function planAhead(){if(!active)return;const {items,floors,junction}=lookAhead(active.e,active.line),limits=[];
+ for(let k=items.length-1;k>=0;k--){const {e,line}=items[k],endLimit=Math.min(floors[k],k+1<items.length?limits[k+1][0]:Infinity),ring=e.roundaboutPlan?ringStation(e,line)+4:0;
+  limits[k]=drivingLines().profile(line,endLimit,DECEL,e.roundaboutPlan?s=>s<ring?roundaboutKmh/3.6:Infinity:null);}
+ active.limits=limits[0];active.hold=floors[0]<=STOP;preview=junction;renderPlan();}
 // While driving: a picked arrow lights up briefly, then arrows for the next open junction appear once it is within 250 m.
 // Queued roads show in the hint and as the floating cue over the car.
 function renderPlan(){
@@ -169,19 +182,19 @@ function showDecision(){
  clearWorldChoices();renderWorldChoices();updateHud();
 }
 function choose(edgeId,manual=true,planned=false){if(state!=='decision')return false;const e=(manual?choices:[...choices,...(adjacency.get(current)||[])]).find(e=>e.id===Number(edgeId));if(!e)return false;if(manual&&!choices.some(x=>x.id===e.id))return false;
- if(manual&&e.roundaboutPlan){roundaboutUndo={current,previous,position:position.clone(),heading:heading.clone(),travelled,turns};$('undoRoundabout').hidden=false;}
- const curve=roadCurve(e);if(curve.points.length<2)return false;const len=curve.getLength();const info=directionInfo(e);let ringDistance=0;if(e.roundaboutPlan){const exitPoint=point(e.segments.find(s=>!s.roundabout).from);let nearest=Infinity;for(let j=0;j<=500;j++){const u=j/500,d=curve.getPointAt(u).distanceToSquared(exitPoint);if(d<nearest){nearest=d;ringDistance=u*len;}}}active={e,curve,len,ringDistance,ahead:0,floor:2.4};distance=0;state='driving';ui.decision.hidden=true;document.body.classList.remove('choosing');$('street').textContent=e.name==='Lokalvei'?'Innkjøringen':e.name;
+ if(manual&&e.roundaboutPlan){roundaboutUndo={current,previous,lastEdge,position:position.clone(),heading:heading.clone(),travelled,turns};$('undoRoundabout').hidden=false;}
+ const line=drivingLines().line(incomingEdge(),e);if(line.n<2)return false;const info=directionInfo(e);active={e,line,len:line.len,limits:null,hold:true};distance=0;state='driving';ui.decision.hidden=true;document.body.classList.remove('choosing');$('street').textContent=e.name==='Lokalvei'?'Innkjøringen':e.name;
  if(manual){turns++;if(!planned){picked={e,h:heading.clone()};pickedUntil=time+.8;say(e.roundaboutPlan?`Vi tar avkjørsel ${e.exitNumber}.`:(info.label==='Snu'?'Vi snur!':info.label+'. Da kjører vi!'));}}
  planAhead();return true;
 }
 function undoRoundabout(){
  if(!roundaboutUndo)return;
  const saved=roundaboutUndo;roundaboutUndo=null;$('undoRoundabout').hidden=true;
- queue=[];preview=null;current=saved.current;previous=saved.previous;position.copy(saved.position);heading.copy(saved.heading);travelled=saved.travelled;turns=saved.turns;
+ queue=[];preview=null;current=saved.current;previous=saved.previous;lastEdge=saved.lastEdge;position.copy(saved.position);heading.copy(saved.heading);travelled=saved.travelled;turns=saved.turns;
  active=null;distance=0;speed=0;state='decision';world.resetCamera();$('street').textContent='Rundkjøring';showDecision();say('Prøv en annen avkjørsel!');
 }
 $('undoRoundabout').onclick=undoRoundabout;
-function arrive(){if(!active)return;previous=active.e.arrivalFrom??active.e.from;current=active.e.to;if(current===kiwiParking)parkAtKiwi();if(current===ishallParking)parkAtIshall();if(current===remaParking)parkAtRema();if(current===bunnprisParking)parkAtBunnpris();position.copy(point(current));heading.copy(active.curve.getTangentAt(1));if(!active.ahead&&active.floor<=2.4)speed=0;active=null;state='decision';showDecision();}
+function arrive(){if(!active)return;previous=active.e.arrivalFrom??active.e.from;current=active.e.to;if(current===kiwiParking)parkAtKiwi();if(current===ishallParking)parkAtIshall();if(current===remaParking)parkAtRema();if(current===bunnprisParking)parkAtBunnpris();active.line.at(active.len,position);active.line.tangent(active.len,heading);lastEdge=active.e;if(active.hold)speed=0;active=null;state='decision';showDecision();}
 function finish(){state='finished';roundaboutUndo=null;queue=[];preview=null;$('undoRoundabout').hidden=true;clearWorldChoices();world.setTurnArrow(null);speed=0;ui.decision.hidden=true;ui.finish.hidden=false;document.body.classList.remove('choosing');$('remaining').textContent='Fremme!';$('finishSummary').textContent=`${(travelled/1000).toLocaleString('nb-NO',{maximumFractionDigits:1})} km gjennom nabolaget · ${turns} veivalg`;
  arrivals++;newReward=['colour','trail','rainbow','cat'][arrivals-1]||null;if(newReward==='rainbow')carColour='rainbow';if(newReward==='cat')catOn=true;saveProgress();if(newReward&&newReward!=='colour')applyRewards();
  const reward={colour:['🎨 Ny overraskelse! Nå kan du velge farge på bilen. Fargene finner du på startskjermen.','Velg farge på bilen 🎨',' Nå kan du velge farge på bilen!'],trail:['🌈 Ny overraskelse! Bilen har fått et regnbuespor. Du kan slå det av og på på startskjermen.','Prøv regnbuesporet 🌈',' Og nå har bilen fått et regnbuespor!'],
@@ -250,10 +263,14 @@ window.addEventListener('blur',clearInputs);
 document.addEventListener('visibilitychange',()=>{lastTime=performance.now();});
 function animate(now){requestAnimationFrame(animate);const dt=Math.min(.045,Math.max(0,(now-lastTime)/1000));lastTime=now;time+=dt;if(!world)return;
  if(state==='free'){travelled+=free.step(dt,freeInput());const c=free.car;speed=c.speed;position.set(c.x,free.altitude,c.z);const hx=Math.sin(c.yaw),hz=-Math.cos(c.yaw),slope=(carHeight(c.x+hx,c.z+hz)-carHeight(c.x-hx,c.z-hz))/2;heading.set(hx,slope,hz).normalize();$('freeDrift').classList.toggle('held',c.drifting);}
- if(state==='driving'&&active){const remaining=active.len-distance;const targetSpeed=Math.min(maxKmh,active.e.roundaboutPlan&&distance<active.ringDistance+4?roundaboutKmh:200)/3.6;const toSlow=remaining+active.ahead;const approachSpeed=toSlow<55?Math.max(active.floor,Math.sqrt(Math.max(0,toSlow)*7.5)):targetSpeed;const maxspeed=Math.min(targetSpeed,approachSpeed);speed=T.MathUtils.damp(speed,maxspeed,5.5,dt);const step=Math.min(remaining,speed*dt);distance+=step;travelled+=step;const u=Math.min(1,distance/active.len);position.copy(active.curve.getPointAt(u));heading.copy(active.curve.getTangentAt(u));if(distance>=active.len-.015)arrive();}
+ if(state==='driving'&&active){const remaining=active.len-distance;
+  // The limit at this point already includes braking for whatever lies ahead (planAhead); the car catches up to it at ACCEL and follows it down at DECEL, or BRAKE at most.
+  if(!active.limits)planAhead();
+  const target=Math.min(maxKmh/3.6,active.line.limit(active.limits,distance));speed=speed<target?Math.min(target,speed+ACCEL*dt):Math.max(target,speed-BRAKE*dt);
+  const step=Math.min(remaining,speed*dt);distance+=step;travelled+=step;active.line.at(distance,position);active.line.tangent(distance,heading);if(distance>=active.len-.015)arrive();}
  if(state==='driving')renderPlan();
  cameraHeading.copy(heading);if(state==='free')cameraHeading.set(Math.sin(free.car.course),heading.y,-Math.cos(free.car.course)).normalize();
- world.update(dt,position,cameraHeading,speed,state==='intro'&&arrivals>=1?'introCar':(state==='intro'||travelled===0&&state==='decision')?'intro':camMode,state==='finished',time,heading);
+ world.update(dt,position,cameraHeading,state==='driving'&&active&&active.line.reversing(distance)?-speed:speed,state==='intro'&&arrivals>=1?'introCar':(state==='intro'||travelled===0&&state==='decision')?'intro':camMode,state==='finished',time,heading);
  mapClock+=dt;if(mapClock>.16){mapClock=0;if(state!=='intro'&&state!=='finished')updateHud();}
 }
 function gameState(){return {state,mode:freeMode?'free':'route',speedKmh:Math.round(speed*3.6),drifting:state==='free'&&free.car.drifting,position:[position.x,position.z],street:$('street').textContent,currentNode:current,remainingMetres:Math.round(remaining()),travelledMetres:Math.round(travelled),choices:state==='decision'?choices.map(e=>({id:e.id,direction:directionInfo(e).label,street:e.name,exitNumber:e.exitNumber,roundabout:!!e.roundaboutPlan,recommended:e.id===best?.id})):[],upcomingMetres:state==='driving'&&aheadShown?Math.round(active.len-distance+preview.ahead):null,upcoming:state==='driving'&&aheadShown?preview.list.map(e=>({id:e.id,direction:directionInfo(e,preview.h).label,street:e.name,exitNumber:e.exitNumber,roundabout:!!e.roundaboutPlan,recommended:e.id===preview.top?.id})):[],queued:queue.map(q=>({id:q.id,direction:q.label,street:q.name}))};}

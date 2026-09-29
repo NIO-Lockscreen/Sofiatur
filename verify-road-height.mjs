@@ -3,6 +3,7 @@ import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import * as T from './dist/vendor/three.js';
 import {roundaboutChoices} from './dist/roundabouts.js';
+import {createDrivingLines} from './dist/driving-line.js';
 import {createFreeDrive} from './dist/free-drive.js';
 import {createMusic} from './dist/music.js';
 import {createRoadSurface} from './dist/road-surface.js';
@@ -13,8 +14,8 @@ const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',style
 const terrain=data.terrain;
 function rawHeight(x,z){const a=Math.max(0,Math.min(terrain.nx-1.001,(x-terrain.x0)/terrain.step)),b=Math.max(0,Math.min(terrain.nz-1.001,(z-terrain.z0)/terrain.step)),i=Math.floor(a),j=Math.floor(b),u=a-i,v=b-j,h=terrain.heights;return (h[j*terrain.nx+i]*(1-u)+h[j*terrain.nx+i+1]*u)*(1-v)+(h[(j+1)*terrain.nx+i]*(1-u)+h[(j+1)*terrain.nx+i+1]*u)*v;}
 const height=(x,z)=>160+(rawHeight(x,z)-160)*1.45,surface=createRoadSurface(data.roads,height,data),carHeight=(x,z)=>(surface.heightAt(x,z)??height(x,z)+.39)+.08;
-const env={T,roundaboutChoices,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener(){}},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),
- createWorld:()=>({height,rawHeight,carHeight,roadLine:path=>surface.edgeLine(path,.08),update(dt,pos){frames.push([pos.x,pos.y,pos.z]);},resetCamera(){},setTurnArrow(){}})};
+const env={T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener(){}},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),
+ createWorld:()=>({height,rawHeight,carHeight,roadLine:path=>surface.edgeLine(path,.08),surfaceTop:surface.heightAt,update(dt,pos){frames.push([pos.x,pos.y,pos.z]);},resetCamera(){},setTurnArrow(){}})};
 const ctx=vm.createContext(env);
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
 const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,drive(e){current=e.from;previous=null;active=null;state='decision';position.copy(point(current));heading.copy(endDirection(e));choices=[];queue=[];choose(e.id,false);},active:()=>active};})()`,ctx);

@@ -3,12 +3,13 @@ import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import * as T from './dist/vendor/three.js';
 import {roundaboutChoices} from './dist/roundabouts.js';
+import {createDrivingLines} from './dist/driving-line.js';
 import {createFreeDrive} from './dist/free-drive.js';
 import {createMusic} from './dist/music.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8')),els=new Map();let callbacks=[],now=0;
 const canvasContext=new Proxy({},{get:()=>()=>{}});
 const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',style:{},children:[],classList:{add(){},remove(){},toggle(){}},events:new Map(),setAttribute(){},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(type,fn){this.events.set(type,fn);},getContext(){return canvasContext}});return els.get(id);};
-const env={T,roundaboutChoices,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener(){}},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){}})};
+const env={T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener(){}},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){}})};
 const ctx=vm.createContext(env);
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
 // enter(e) arrives at the end of road e (home when null) and returns the offered roads, or the road the car took by itself.
@@ -55,12 +56,12 @@ const home=env.test.enter(data.edges.find(e=>e.from==='206324584'&&e.to==='13644
 const gate=data.edges.find(e=>e.to===data.goal);const kindergarten=env.test.enter(data.edges.find(e=>e.to===gate.from&&e.from!==data.goal));assert.equal(env.test.read().state,'decision');assert.ok(kindergarten.some(c=>c.to===data.goal),'The kindergarten entrance can be chosen');
 console.log('Home and kindergarten entrances remain choices: OK');
 
-// Speed: with blindveier off the car keeps its speed through the automatic right turn and first slows for the next real choice.
+// Speed: with blindveier off the car takes the automatic right turn without stopping (at the speed its arc allows) and first slows for the next real choice.
 function approach(e){env.test.drive(e);const speeds=[];let crossed=null;
  for(let i=0;i<4000&&env.test.read().state==='driving';i++){frame();speeds.push(env.test.read().speedKmh);if(!crossed&&env.test.active()?.e!==e)crossed=speeds.at(-2);}
  return {crossed,beforeChoice:speeds.at(-2),state:env.test.read().state};}
 let run=approach(vetle);
-assert.ok(run.crossed>=150,`Keeps speed into the automatic turn (${run.crossed} km/h)`);assert.equal(run.state,'decision');assert.ok(run.beforeChoice<=15,`Slows for the next real choice (${run.beforeChoice} km/h)`);
+assert.ok(run.crossed>=13,`Does not slow to a crawl for the automatic turn: it takes the arc at the speed the arc allows, sqrt(2.5 m/s2 x radius), 13 km/h or more for a radius of 5 m or more (${run.crossed} km/h)`);assert.equal(run.state,'decision');assert.ok(run.beforeChoice<=15,`Slows for the next real choice (${run.beforeChoice} km/h)`);
 console.log(`Blindveier off: ${run.crossed} km/h through the automatic turn, ${run.beforeChoice} km/h before the next choice: OK`);
 
 // Setting on: dead ends are offered again and the car slows at every junction, as before.
