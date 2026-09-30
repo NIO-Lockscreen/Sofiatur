@@ -12,6 +12,7 @@ const env={document,window:{addEventListener:(name,fn)=>listeners.set(name,fn)},
 const ctx=vm.createContext(env);const source=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');const init=vm.runInContext(`(async()=>{${source}})()`,ctx);for(let i=0;i<12;i++){await Promise.resolve();const q=raf.splice(0);q.forEach(cb=>cb(now));}await init;assert.equal(element('start').disabled,false);const read=()=>tools.get('read_drive_state').execute();const act=(name,input)=>tools.get(name).execute(input);
 function step(){now+=45;const q=raf.splice(0);q.forEach(cb=>cb(now));}
 // The start button drives the car out of the parking place: leaving it is the only road, so no arrow is shown for it.
+assert.equal(element('fullscreen').hidden,true,'No fullscreen button where the browser has no Fullscreen API');
 assert.equal(read().state,'intro');act('start_drive');assert.equal(read().state,'driving');assert.equal(read().currentNode,data.start);assert.equal(element('worldArrows').children.length,0,'No arrow to tap at the start');assert.equal(read().travelledMetres,0);
 for(let i=0;i<3000&&read().state==='driving';i++)step();assert.equal(read().state,'decision','The first real choice comes at the first junction');assert.ok(read().travelledMetres>5);
 const before=read();assert.throws(()=>act('choose_road',{edgeId:-1}));assert.equal(read().currentNode,before.currentNode);assert.equal('paused' in read(),false,'The game has no pause');console.log('Start button drives out without an arrow, first junction asks, invalid choice: OK');
