@@ -269,27 +269,8 @@ def add_bunnpris_parking(data, coords, link, aisle):
     a, b = coords[joint], coords[aisle[-2]]
     park = [round(a[0] + (b[0] - a[0]) * .45, 2), round(a[1] + (b[1] - a[1]) * .45, 2)]
     _add_place(data, end, [coords[joint], park], 'Bunnpris', 'Granlivegen', 'bunnpris')
-    # The car park also opens straight onto the T-junction where Olav Duuns veg meets Odd Husbys veg (OSM node
-    # 185588577): the polygon starts 5 m from it, and a footway (455263297) leads from the aisle up to the road.
-    # A driveway follows that line, so the shop and its car park are straight ahead for a car coming down Olav
-    # Duuns veg, and 'Rett frem: Bunnpris' is a choice there. It joins the aisle at its middle vertex.
-    junction = '185588577'
-    assert junction in data['nodes'], 'The junction at the top of the car park is in the road network'
-    mid = aisle_mid(coords, aisle)
-    drive = [data['nodes'][junction], [469.8, 476.7], [471.5, 478.0], mid]
-    names = [f'bunnpris-i{i}' for i in range(1, 4)]
-    for n, q in zip(names, drive[1:]):
-        data['nodes'][n] = q
-    ahead = [junction] + names + ['bunnpris-parkering']
-    eid = _next_id(data)
-    data['edges'] += [_edge(data, ahead, 'Bunnpris', eid), _edge(data, ahead[::-1], 'Odd Husbys veg', eid + 1)]
-    data['roads'].append({'id': 'bunnpris-innkjoring', 'p': drive, 'name': 'Bunnpris', 'type': 'service',
-                          'surface': 'asphalt', 'mark': False})
-
-
-def aisle_mid(coords, aisle):
-    """The aisle's middle vertex (the point of its V), where the driveway from the junction joins it."""
-    return coords[aisle[1]]
+    # From 29 to 30 September 2026 a driveway also ran from the T-junction where Olav Duuns veg meets Odd Husbys veg
+    # (OSM node 185588577) into the car park, along the mapped footway 455263297. There is no such way in; it is gone.
 
 
 if __name__ == '__main__':

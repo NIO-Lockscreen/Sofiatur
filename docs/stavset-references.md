@@ -65,7 +65,7 @@ tiled gable roof (`building-details.js`); the goods door with VAREMOTTAK is on i
 depth of the canopy, the positions of the posts and the doors, the roof pitch and the old house's form (its OSM outline
 also covers the lower annexes).
 
-**At the T-junction.** Olav Duuns veg meets Odd Husbys veg at OSM node 185588577, 30 m from the shop (30° right of straight ahead for a car coming down Olav Duuns veg). The car park polygon starts 5 m from that junction and a footway (455263297) leads from the aisle up to the road, so the car park is open towards the junction. The game has a driveway along that line, from the junction through (469.8, 476.7) and (471.5, 478.0) to the middle of the aisle: the road *Bunnpris* is straight ahead there and ends at the same parking place. The driveway itself is not a mapped road (only the footway is); it follows the footway and the car park's corner.
+**At the T-junction.** Olav Duuns veg meets Odd Husbys veg at OSM node 185588577, 30 m from the shop (30° right of straight ahead for a car coming down Olav Duuns veg). The car park polygon starts 5 m from that junction and a footway (455263297) leads from the aisle up to the road. From 29 to 30 September 2026 the game had a driveway along that footway, from the junction into the car park. The user confirmed that there is no such way in, so it is gone: the car park is reached only from Granlivegen, as mapped.
 
 **The car park.** Drawn as asphalt with parking bays. The mapped way in is from the end of Granlivegen (link 1364292850,
 aisle 23390718); the road *Bunnpris* ends at a parking place in the aisle in front of the canopy
