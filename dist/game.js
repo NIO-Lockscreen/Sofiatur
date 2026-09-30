@@ -231,7 +231,8 @@ try{const saved=JSON.parse(localStorage.getItem('sofiatur.fremgang'))||{};arriva
 const swatches=carColours.map(([name,hex])=>{const b=document.createElement('button');b.type='button';b.className='swatch';b.title=name;b.setAttribute('aria-label',name);b.style.background=hex;b.onclick=()=>pickColour(hex);return b;});
 const kiwiSwatch=document.createElement('button');kiwiSwatch.type='button';kiwiSwatch.className='swatch kiwi';kiwiSwatch.title='KIWI';kiwiSwatch.setAttribute('aria-label','Hemmelig KIWI-bil');kiwiSwatch.textContent='K';kiwiSwatch.onclick=()=>pickColour('kiwi');
 const rainbowSwatch=document.createElement('button');rainbowSwatch.type='button';rainbowSwatch.className='swatch rainbow';rainbowSwatch.title='Regnbue';rainbowSwatch.setAttribute('aria-label','Regnbuebil som skifter farge');rainbowSwatch.onclick=()=>pickColour('rainbow');
-$('carColours').append(...swatches,rainbowSwatch,kiwiSwatch);
+// The colour wheel (a free colour) goes in the same row, after the ten colours and before the rainbow and KIWI (it stood a little below them).
+const customSwatch=$('customColour').parentElement;$('carColours').append(...swatches,...(customSwatch?[customSwatch]:[]),rainbowSwatch,kiwiSwatch);
 function pickColour(hex){carColour=hex.toLowerCase();saveProgress();applyRewards();showRewards();}
 function applyRewards(){if(!world)return;const kiwi=carColour==='kiwi'&&kiwiUnlocked;world.setCarColour?.(kiwi?'#5fae36':arrivals>=1&&carColour!=='kiwi'?carColour:'#14171c');world.setCarSkin?.(kiwi?'kiwi':null);world.setTrail?.(arrivals>=3&&trailOn);world.setCarModel?.(catOn&&arrivals>=2?'cat':'car');}
 // Before the first trip to the kindergarten, a KIWI unlock shows only black and the KIWI car.

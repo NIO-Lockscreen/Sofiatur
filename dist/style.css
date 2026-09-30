@@ -17,10 +17,10 @@
 
 .reward-teaser{margin:-8px 0 16px;padding:10px 14px;border-radius:14px;background:#fff4cf;color:#6b5a26;font-size:13px;font-weight:700;line-height:1.4}
 .rewards{margin:-6px 0 18px;padding:12px 14px 13px;border-radius:16px;background:#eef3e7}.rewards-title{font-size:13px;font-weight:800;margin-bottom:9px}
-.swatches{display:flex;flex-wrap:wrap;gap:7px}.swatch-list{display:contents}
+.swatches{display:flex}.swatch-list{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
 .swatch{width:30px;height:30px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px #0002,0 2px 5px #1a3a3222;padding:0;position:relative;overflow:hidden}
 .swatch.on{box-shadow:0 0 0 3px #174e48,0 2px 6px #1a3a3240;transform:scale(1.12)}
-.swatch.custom{background:conic-gradient(#ff4b4b,#ffd94a,#5ccf66,#41a7f4,#a65fe6,#ff4b4b);cursor:pointer;display:inline-block}
+.swatch.custom{background:conic-gradient(#ff4b4b,#ffd94a,#5ccf66,#41a7f4,#a65fe6,#ff4b4b);cursor:pointer;display:block;margin:0;flex:none}
 .swatch.custom input{position:absolute;inset:-6px;width:calc(100% + 12px);height:calc(100% + 12px);opacity:0;cursor:pointer;border:0;padding:0}
 .trail-row{display:flex;align-items:center;gap:9px;margin-top:11px;font-size:13px;font-weight:750;cursor:pointer}.trail-row input{width:20px;height:20px;accent-color:#174e48}
 .unlock{margin:14px 0 4px;padding:12px 14px;border-radius:14px;background:#fff1c4;color:#5d4c17;font-size:15px;font-weight:750;line-height:1.45;animation:reward-pop .6s ease-out}
