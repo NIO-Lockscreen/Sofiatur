@@ -116,11 +116,12 @@ for(const [name,F] of [['main trip',trips.main],['detour to Stavset',trips.detou
  assert.equal(off,0,`${name}: the car stays on the drawn road (${off} frames off it, the first at ${offAt})`);
  assert.ok(into>-.05,`${name}: the car is never more than 5 cm into the drawn road (${(-into*100).toFixed(1)} cm)`);
  // The side of the road, mid-way along every road driven (22 m from each end of its line): two-way roads a quarter of the width to the right, others in the middle.
+ // Sampled every metre along the road, not every frame: frames crowd where the car is slow (in bends, which a lane may cut), and the car is fast on the straights.
  let visits=0,twoWay=0,centred=0,worst=0,worstAt=null,rightSide=true,wrongSide='';const lanes=new Map();
  for(let i=0;i<n;){const e=F[i].e;let j=i;while(j<n&&(F[j].e?.id===e?.id&&F[j].e?.plan===e?.plan))j++;
   if(e&&!e.plan){const edge=edgeById.get(e.id),len=cum[j-1]-cum[i];
    if(len>50){const C=lanes.get(e.id)||lanes.set(e.id,roadLine(edge.path)).get(e.id),exp=expectedOffset(edge),offs=[];
-    for(let k=i;k<j;k++)if(cum[k]-cum[i]>=22&&cum[j-1]-cum[k]>=22)offs.push(signedOffset(F[k].x,F[k].z,C));
+    let last=-1e9;for(let k=i;k<j;k++)if(cum[k]-cum[i]>=22&&cum[j-1]-cum[k]>=22&&cum[k]-last>=1){last=cum[k];offs.push(signedOffset(F[k].x,F[k].z,C));}
     if(offs.length>=5){visits++;if(exp>0)twoWay++;else centred++;offs.sort((p,q)=>p-q);const med=offs[offs.length>>1];
      if(Math.abs(med-exp)>worst){worst=Math.abs(med-exp);worstAt=`${edge.name} #${edge.id}: ${med.toFixed(2)} m, expected ${exp.toFixed(2)}`;}
      if(exp>0&&med<.2){rightSide=false;wrongSide=`${edge.name} #${edge.id}: ${med.toFixed(2)} m`;}}}}

@@ -18,7 +18,7 @@ const before=read();assert.throws(()=>act('choose_road',{edgeId:-1}));assert.equ
 let choices=0,peak=0;while(read().state!=='finished'&&choices<180){let s=read();if(s.state==='decision'){const e=s.choices.find(c=>c.recommended);assert.ok(e,'Every junction has route home');act('choose_road',{edgeId:e.id});choices++;if(choices===2){listeners.get('blur')();const old=read().travelledMetres;for(let i=0;i<20;i++)step();assert.ok(read().travelledMetres>old,'Losing focus does not stop the game');console.log('The game keeps running without focus: OK');}}
  for(let i=0;i<600&&read().state==='driving';i++){step();peak=Math.max(peak,read().speedKmh);assert.ok(read().speedKmh<=200);}}
 assert.equal(read().state,'finished');assert.ok(read().travelledMetres>2900&&read().travelledMetres<3400);assert.equal(element('finish').hidden,false);console.log('Full route arrival: OK',read(),{choices});
-assert.ok(peak>=100,`Automatic acceleration reaches 100 km/h on the longer straights without any speed selector (peak ${peak} km/h; the curvature limit of the line, not a cap of 200, holds the car back in bends: verify-driving-line.mjs)`);
+assert.ok(peak>=195,`Automatic acceleration reaches 200 km/h on the longest stretches without any speed selector (peak ${peak} km/h; the curvature limit of the line holds the car back in bends: verify-driving-line.mjs)`);
 // The first arrival unlocks the colour picker: the button leads to the start screen, where it is shown.
 assert.equal(element('unlock').hidden,false);assert.match(element('again').textContent,/farge/);
 element('again').onclick();assert.equal(read().state,'intro');assert.equal(element('welcome').hidden,false);assert.equal(element('rewards').hidden,false);

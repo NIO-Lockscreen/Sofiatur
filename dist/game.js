@@ -9,7 +9,8 @@ let roundaboutUndo=null,freeMode=false,free=null,carHeight,showDeadEnds=true,cho
 let arrivals=0,carColour='#14171c',trailOn=true,catOn=false,newReward=null;
 const roundaboutKmh=45; // speed round the circle and into it
 // The car speeds up by ACCEL, brakes ahead of a slower stretch (a turn, a junction where it must stop) by DECEL, and by BRAKE at most when a new plan needs it at once.
-const ACCEL=7,DECEL=4.5,BRAKE=8,STOP=2.4;
+// Strong, like a toy car (30 September 2026; 7, 4.5 and 8 before), so it reaches 200 km/h on the longest stretches of the trip again; turns keep their gentle arcs (driving-line.js A_LAT).
+const ACCEL=20,DECEL=12,BRAKE=16,STOP=2.4;
 // Junctions where every road is offered, also with blindveier off: the Palermo traffic lights (left, straight on, right).
 const everyRoadAt=new Set(['91783986']);
 let chooseAhead=false; // Menu option: arrows for the next junction while driving, to queue up to two roads. Off by default.
