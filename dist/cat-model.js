@@ -2,7 +2,7 @@
 // black paint, a rainbow cat with the rainbow car). About the car's size, so the camera frames it the same way. Forward
 // is −z and the ground is y = 0, as for the car. update() swings the legs in a bounding gallop at the car's speed, bobs the
 // body and sways the tail; standing still it breathes and flicks its tail and ears.
-export function createCat(T){
+export function createCat(T,{logos={}}={}){
  const group=new T.Group();group.name='Katt';
  const fur=new T.MeshStandardMaterial({color:'#14171c',roughness:.85}),light=new T.MeshStandardMaterial({color:'#f2eee4',roughness:.9});
  const pink=new T.MeshStandardMaterial({color:'#f29bb2',roughness:.7}),iris=new T.MeshBasicMaterial({color:'#9be15d'}),pupil=new T.MeshBasicMaterial({color:'#101214'}),whisker=new T.MeshBasicMaterial({color:'#f6f4ee'});
@@ -23,6 +23,13 @@ export function createCat(T){
  const tail=[];let joint=new T.Group();joint.position.set(0,1.45,1.5);body.add(joint);
  for(let i=0;i<7;i++){const r=.16-i*.013;part(taper,fur,[0,.19,0],[r,.38,r],joint);part(sphere,fur,[0,0,0],[r,r,r],joint);tail.push(joint);const next=new T.Group();next.position.set(0,.38,0);joint.add(next);joint=next;}
  part(sphere,fur,[0,.05,0],[.09,.12,.09],joint);
+ // Skin logos (logos: skin name -> material; the KIWI car's logo for the KIWI skin), hidden until that skin is chosen: one on
+ // each flank, a strip bent round the body 2 cm off the fur, reading tail to head on the right and head to tail on the
+ // left, as on the car's doors.
+ const skins={};
+ for(const [name,material] of Object.entries(logos))skins[name]=[-1,1].map(s=>{const g=new T.PlaneGeometry(1.3,.42,16,4),p=g.attributes.position;
+  for(let i=0;i<p.count;i++){const y=1.3+p.getY(i),z=.3-s*p.getX(i),e=1-((y-1.25)/.66)**2-((z-.15)/1.45)**2;p.setXYZ(i,s*(.72*Math.sqrt(Math.max(0,e))+.02),y,z);}
+  g.computeVertexNormals();const m=new T.Mesh(g,material);m.name=name+' logo';m.visible=false;body.add(m);return m;});
  let phase=0;
  function update(dt,speed,time,colour){
   if(colour)fur.color.copy(colour);
@@ -37,5 +44,5 @@ export function createCat(T){
   tail.forEach((seg,i)=>{seg.rotation.x=i===0?.55+.75*run:-.16*(1-run)+.04*run;seg.rotation.z=Math.sin(time*(2+2*run)-i*.6)*(.12+.1*(1-run));});
  }
  update(0,0,0);
- return {group,update};
+ return {group,update,skins};
 }

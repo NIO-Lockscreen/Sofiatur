@@ -152,9 +152,10 @@ export function createWorld(canvas, data) {
  const trafficLights=createTrafficLights({T,scene,height,data});
  const {car,wheels,paint,skins}=createET5(T);scene.add(car);
  // The running cat (the reward for the fourth trip) rides in the car's group and takes its place: model 'car' or 'cat'.
- const bodywork=[...car.children],skinParts=new Set(Object.values(skins).flat()),cat=createCat(T);cat.group.visible=false;car.add(cat.group);
+ // The cat wears the car's skin logos on its flanks (the KIWI logo with the KIWI skin).
+ const bodywork=[...car.children],skinParts=new Set(Object.values(skins).flat()),cat=createCat(T,{logos:Object.fromEntries(Object.entries(skins).map(([k,list])=>[k,list[0].material]))});cat.group.visible=false;car.add(cat.group);
  let model='car',skin=null,rainbow=false;
- function showModel(){for(const o of bodywork)if(!skinParts.has(o))o.visible=model==='car';for(const [k,list] of Object.entries(skins))for(const m of list)m.visible=model==='car'&&k===skin;cat.group.visible=model==='cat';}
+ function showModel(){for(const o of bodywork)if(!skinParts.has(o))o.visible=model==='car';for(const [k,list] of Object.entries(skins))for(const m of list)m.visible=model==='car'&&k===skin;for(const [k,list] of Object.entries(cat.skins))for(const m of list)m.visible=k===skin;cat.group.visible=model==='cat';}
  function setCarSkin(name){skin=name||null;car.userData.skin=skin;showModel();}
  function setCarModel(name){model=name==='cat'?'cat':'car';car.userData.body=model;showModel();}
  // Paint colour (a reward). Black keeps the original deep metallic look; brighter colours are less metallic so they read as colour.

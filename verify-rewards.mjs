@@ -7,6 +7,7 @@ import {createDrivingLines} from './dist/driving-line.js';
 import {createFreeDrive} from './dist/free-drive.js';
 import {createMusic} from './dist/music.js';
 import {createRainbowTrail} from './dist/rainbow-trail.js';
+import {createCat} from './dist/cat-model.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8'));
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
 // Starts a fresh game (as after a page reload) with the given browser storage; the world records paint and trail calls.
@@ -102,3 +103,13 @@ game=await launch(()=>storage);assert.equal(game.test.progress().arrivals,2,'The
 for(let i=0;i<4;i++)game.key('z');assert.equal(game.test.progress().arrivals,0,'Never below 0');assert.equal(game.element('rewards').hidden,true);assert.equal(game.world.trail,false);
 game.key('x',{tagName:'INPUT'});assert.equal(game.test.progress().arrivals,0,'Not while typing in a field');
 console.log('Debug keys: X and Z count trips up and down, unlocking and locking the rewards: OK');
+
+// The cat wears the KIWI logo on both flanks with the KIWI skin (world.js shows it): hidden to begin with, one on each side,
+// just outside the fur and facing out, the size of the logo on the car's doors.
+{const logo=new T.MeshBasicMaterial(),cat=createCat(T,{logos:{kiwi:logo}});cat.group.updateMatrixWorld(true);
+ assert.equal(cat.skins.kiwi.length,2);assert.ok(cat.skins.kiwi.every(m=>!m.visible&&m.material===logo),'Hidden until the KIWI skin is chosen');
+ const sides=cat.skins.kiwi.map(m=>{m.geometry.computeBoundingBox();const b=m.geometry.boundingBox,n=m.geometry.attributes.normal;let out=0;for(let i=0;i<n.count;i++)out+=Math.sign(n.getX(i))*Math.sign(b.min.x+b.max.x);return {b,out:out/n.count};});
+ assert.ok(sides[0].b.max.x<-.45&&sides[1].b.min.x>.45,'One logo on each flank');assert.ok(sides.every(s=>s.out>.99),'Both face out');
+ assert.ok(sides.every(({b})=>b.max.z-b.min.z>1.1&&b.max.y-b.min.y>.35),'The size of the logo on the doors');
+ assert.deepEqual(Object.keys(createCat(T).skins),[],'No logos without a skin');}
+console.log('The cat wears the KIWI logo on both flanks with the KIWI skin: OK');
