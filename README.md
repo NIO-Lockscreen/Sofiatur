@@ -186,6 +186,8 @@ Tests: `verify-road-geometry.mjs` asserts the numbers above (fillet purity and t
 
 **Rewards 3 and 4.** The third trip to the kindergarten unlocks a rainbow car: a new swatch among the colours whose paint runs slowly through all colours (about 11 s a round). The fourth trip turns the car into a running cat (`dist/cat-model.js`, drawn with three.js shapes): it gallops at the car's speed, bobs, streams its tail behind, and when it stands it breathes and flicks its tail and ears. The cat has the car's colour, so the rainbow car gives a rainbow cat. A switch on the start screen changes between cat and car. Both rewards are picked when they are unlocked and kept after a reload; storage cannot unlock them early. The start screen hints at a surprise until all four are unlocked. `verify-rewards.mjs` covers both.
 
+**Debug keys** (to test the unlocks; keyboard only, not while typing in a field): X counts one more trip to the kindergarten, Z one fewer, never below 0. Counting up picks the new reward as an arrival does (the rainbow car at 3, the cat at 4); counting down locks what the count no longer allows. A toast shows the count, and the count is saved like a real one. `verify-rewards.mjs` covers them.
+
 ## Driving line: right-hand lane, arcs through junctions, speed from curvature · 29 September 2026
 **Why.** The car followed each edge's centre line and switched to the next edge at the junction node, so at every turn it pivoted on the spot (main trip: 105 frames under 5 m radius, 69 under 2 m, e.g. 105 degrees in one frame at (713,-50); lateral acceleration up to 209 m/s2, since the speed only knew the roundabout cap and the braking for the next stop) and drove on the centre line.
 

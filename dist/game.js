@@ -236,6 +236,13 @@ function showRewards(){$('rewards').hidden=arrivals<1&&!kiwiUnlocked;$('trailRow
  swatches.forEach((b,i)=>{const on=carColours[i][1]===carColour||i===0&&carColour!=='kiwi'&&arrivals<1;b.hidden=arrivals<1&&i>0;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');});
  rainbowSwatch.hidden=arrivals<3;rainbowSwatch.classList.toggle('on',carColour==='rainbow');rainbowSwatch.setAttribute('aria-pressed',carColour==='rainbow'?'true':'false');kiwiSwatch.hidden=!kiwiUnlocked;kiwiSwatch.classList.toggle('on',carColour==='kiwi');kiwiSwatch.setAttribute('aria-pressed',carColour==='kiwi'?'true':'false');
  $('rewardTeaser').hidden=arrivals>=4;$('rewardTeaser').textContent=arrivals<1?'🎁 Kom frem til barnehagen, så får du en overraskelse!':'🎁 Kjør til barnehagen én gang til for en ny overraskelse!';}
+// Debug keys, to test the unlocks (keyboard only, not while typing in a field): X counts one more trip to the
+// kindergarten, Z one fewer. Counting up picks the new reward as an arrival does (the rainbow car at 3, the cat at 4);
+// counting down locks what the count no longer allows. The count is saved like a real one.
+function debugArrivals(delta){const before=arrivals;arrivals=Math.max(0,arrivals+delta);if(arrivals===before)return;
+ if(delta>0){if(arrivals===3)carColour='rainbow';if(arrivals===4)catOn=true;}else{if(arrivals<3&&carColour==='rainbow')carColour='#14171c';if(arrivals<4)catOn=false;}
+ saveProgress();applyRewards();showRewards();
+ const unlocked=['','farge på bilen','regnbuespor','regnbuebil','katt'][arrivals]??'alt låst opp';toast(`🛠 Turer til barnehagen: ${arrivals}${unlocked?' · '+unlocked:''}`);}
 function parkAtKiwi(){
  if(kiwiUnlocked){toast('🥝 Parkert ved KIWI');say('Vi har parkert ved KIWI!');return;}
  kiwiUnlocked=true;carColour='kiwi';saveProgress();applyRewards();showRewards();
@@ -260,7 +267,9 @@ $('chooseAhead').onchange=e=>{chooseAhead=e.target.value==='on';saveSettings();i
 $('driveMode').onchange=e=>{if(!world)return;freeMode=e.target.value==='free';$('recoverCar').hidden=!freeMode;reset();$('menu').close();start();};
 $('recoverCar').onclick=()=>{recoverFree();$('menu').close();};
 for(const [id,action] of [['freeLeft','left'],['freeRight','right'],['freeBrake','brake'],['freeDrift','drift']]){const el=$(id);el.addEventListener('pointerdown',e=>{if(state!=='free')return;e.preventDefault();el.setPointerCapture?.(e.pointerId);heldPointers.set(e.pointerId,action);touch.add(action);el.classList.add('held');});const release=e=>{heldPointers.delete(e.pointerId);if(![...heldPointers.values()].includes(action)){touch.delete(action);el.classList.remove('held');}};for(const type of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(type,release);}
-window.addEventListener('keydown',e=>{if($('menu').open)return;const code=e.code||({' ':'Space',a:'KeyA',d:'KeyD',s:'KeyS',q:'KeyQ',Q:'KeyQ'}[e.key]||e.key);
+window.addEventListener('keydown',e=>{if($('menu').open)return;
+ const letter=(e.key||'').toLowerCase();if((letter==='x'||letter==='z')&&!e.repeat&&!/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName||'')){e.preventDefault();debugArrivals(letter==='x'?1:-1);return;}
+ const code=e.code||({' ':'Space',a:'KeyA',d:'KeyD',s:'KeyS',q:'KeyQ',Q:'KeyQ'}[e.key]||e.key);
  if(state==='free'){if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','KeyA','KeyD','KeyS','Space'].includes(code)){e.preventDefault();keys.add(code);}if(code==='KeyQ'&&!e.repeat){e.preventDefault();recoverFree();}return;}
  if(e.key===' '&&!e.repeat){e.preventDefault();if(state==='intro')start();}const labels={ArrowLeft:'Venstre',ArrowRight:'Høyre',ArrowUp:'Rett frem',ArrowDown:'Snu'};if(state==='decision'){const match=choices.find(c=>directionInfo(c).label===labels[e.key]);if(match){e.preventDefault();choose(match.id,true);}}else if(state==='driving'&&aheadShown&&!e.repeat){const match=preview.list.find(c=>directionInfo(c,preview.h).label===labels[e.key]);if(match){e.preventDefault();queueChoice(match);}}});
 window.addEventListener('keyup',e=>keys.delete(e.code||({' ':'Space',a:'KeyA',d:'KeyD',s:'KeyS'}[e.key]||e.key)));

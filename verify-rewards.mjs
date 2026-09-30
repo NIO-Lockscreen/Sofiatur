@@ -13,12 +13,15 @@ const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'')
 async function launch(localStorage){
  const els=new Map(),world={colour:null,trail:null,skin:null,model:null};let callbacks=[],now=0;const canvasContext=new Proxy({},{get:()=>()=>{}});
  const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',value:'',checked:false,style:{},children:[],attrs:{},classes:new Set(),classList:{add(){},remove(){},toggle(c,on){on?this.owner.classes.add(c):this.owner.classes.delete(c);}},setAttribute(k,v){this.attrs[k]=v;},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(){},getContext(){return canvasContext}});const el=els.get(id);el.classList.owner=el;return el;};
- const env={T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener(){}},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),
+ const listeners=new Map();
+ const env={T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener:(type,fn)=>listeners.set(type,fn)},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),
   createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on})};
  if(localStorage)Object.defineProperty(env,'localStorage',{get:localStorage});
  const ctx=vm.createContext(env);
  const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},progress:()=>({arrivals,carColour,trailOn,catOn})};})()`,ctx);
- for(let i=0;i<12;i++){await Promise.resolve();const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}await init;return {element,test:env.test,world};
+ for(let i=0;i<12;i++){await Promise.resolve();const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}await init;
+ const key=(k,target={tagName:'BODY'})=>listeners.get('keydown')({key:k,repeat:false,target,preventDefault(){}});
+ return {element,test:env.test,world,key};
 }
 const store=new Map(),storage={getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,String(v))};
 
@@ -87,3 +90,15 @@ const alpha=k=>g.attributes.color.array[k*4+3];assert.ok(alpha(newest-14*5)>alph
 for(let i=0;i<80;i++)trail.update(.045,pos,facing);assert.equal(g.drawRange.count,0,'Trail fades away when the car stands still');
 pos.z-=40;trail.update(.045,pos,facing);assert.equal(trail.points.length,1,'A jump (restart) starts a new trail');trail.setOn(false);assert.equal(trail.mesh.visible,false);
 console.log('Rainbow trail follows, fades and resets: OK');
+
+// Debug keys for testing the unlocks: X counts one more trip to the kindergarten, Z one fewer (saved like a real count).
+store.clear();game=await launch(()=>storage);
+for(let i=0;i<4;i++)game.key('x');assert.equal(game.test.progress().arrivals,4);assert.equal(game.world.colour,'rainbow');assert.equal(game.world.trail,true);assert.equal(game.world.model,'cat');
+assert.equal(game.element('catRow').hidden,false);assert.equal(game.element('carColours').children[10].hidden,false);assert.match(game.element('toast').textContent,/4 · katt/);
+game.key('X');assert.equal(game.test.progress().arrivals,5);game.key('z');
+game.key('z');assert.equal(game.test.progress().arrivals,3);assert.equal(game.world.model,'car','Cat locked again below 4');assert.equal(game.element('catRow').hidden,true);assert.equal(game.world.colour,'rainbow');
+game.key('Z');assert.equal(game.test.progress().arrivals,2);assert.equal(game.world.colour,'#14171c','Rainbow car locked again below 3');assert.equal(game.element('carColours').children[10].hidden,true);assert.equal(game.world.trail,true);
+game=await launch(()=>storage);assert.equal(game.test.progress().arrivals,2,'The count is saved');
+for(let i=0;i<4;i++)game.key('z');assert.equal(game.test.progress().arrivals,0,'Never below 0');assert.equal(game.element('rewards').hidden,true);assert.equal(game.world.trail,false);
+game.key('x',{tagName:'INPUT'});assert.equal(game.test.progress().arrivals,0,'Not while typing in a field');
+console.log('Debug keys: X and Z count trips up and down, unlocking and locking the rewards: OK');
