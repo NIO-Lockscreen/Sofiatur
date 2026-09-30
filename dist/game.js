@@ -197,7 +197,7 @@ function undoRoundabout(){
 $('undoRoundabout').onclick=undoRoundabout;
 function arrive(){if(!active)return;previous=active.e.arrivalFrom??active.e.from;current=active.e.to;if(current===kiwiParking)parkAtKiwi();if(current===ishallParking)parkAtIshall();if(current===remaParking)parkAtRema();if(current===bunnprisParking)parkAtBunnpris();if(current===data.lakeside)parkAtLake();active.line.at(active.len,position);active.line.tangent(active.len,heading);lastEdge=active.e;if(active.hold)speed=0;active=null;state='decision';showDecision();}
 function finish(){state='finished';roundaboutUndo=null;queue=[];preview=null;$('undoRoundabout').hidden=true;clearWorldChoices();world.setTurnArrow(null);speed=0;ui.decision.hidden=true;ui.finish.hidden=false;document.body.classList.remove('choosing');$('remaining').textContent='Fremme!';$('finishSummary').textContent=`${(travelled/1000).toLocaleString('nb-NO',{maximumFractionDigits:1})} km gjennom nabolaget · ${turns} veivalg`;
- arrivals++;newReward=['colour','trail','rainbow','cat'][arrivals-1]||null;if(newReward==='rainbow')carColour='rainbow';if(newReward==='cat')catOn=true;saveProgress();if(newReward&&newReward!=='colour')applyRewards();
+ arrivals++;newReward=['colour','cat','trail','rainbow'][arrivals-1]||null;if(newReward==='rainbow')carColour='rainbow';if(newReward==='cat')catOn=true;saveProgress();if(newReward&&newReward!=='colour')applyRewards();
  const reward={colour:['🎨 Ny overraskelse! Nå kan du velge farge på bilen. Fargene finner du på startskjermen.','Velg farge på bilen 🎨',' Nå kan du velge farge på bilen!'],trail:['🌈 Ny overraskelse! Bilen har fått et regnbuespor. Du kan slå det av og på på startskjermen.','Prøv regnbuesporet 🌈',' Og nå har bilen fått et regnbuespor!'],
   rainbow:['🌈 Ny overraskelse! Du har fått en regnbuebil som skifter farge. Du finner den blant fargene på startskjermen.','Se regnbuebilen 🌈',' Nå har du fått en regnbuebil som skifter farge!'],
   cat:['🐱 Ny overraskelse! Nå kan du kjøre som en katt som løper. Du kan bytte mellom bil og katt på startskjermen.','Møt katten 🐱',' Og nå kan du løpe som en katt!']}[newReward];
@@ -212,8 +212,9 @@ $('closeMenu').onclick=()=>$('menu').close();$('menu').addEventListener('close',
 function saveSettings(){try{localStorage.setItem('sofiatur.innstillinger',JSON.stringify({v:2,music:musicOn?'on':'off',deadEnds:showDeadEnds?'on':'off',ahead:chooseAhead?'on':'off'}));}catch{}}
 try{const saved=JSON.parse(localStorage.getItem('sofiatur.innstillinger'))||{};musicOn=saved.music!=='off';showDeadEnds=saved.v===2?saved.deadEnds==='on':true;chooseAhead=saved.ahead==='on';}catch{} // blindveier are on unless chosen off since 29 September 2026 (v:2); older saved values do not count
 $('music').value=musicOn?'on':'off';$('deadEnds').value=showDeadEnds?'on':'off';$('chooseAhead').value=chooseAhead?'on':'off';
-// Rewards: after the first trip to the kindergarten Sofia can pick the car's colour on the start screen;
-// after the second the car gets a rainbow trail. Trips and choices are remembered on this device.
+// Rewards: after the first trip to the kindergarten Sofia can pick the car's colour on the start screen, after the second
+// the car can be a running cat, after the third it gets a rainbow trail, after the fourth the rainbow colour. Trips and
+// choices are remembered on this device.
 const carColours=[['Svart','#14171c'],['Rød','#c62828'],['Rosa','#ec6aa8'],['Lilla','#7b4cc2'],['Blå','#1f63c6'],['Turkis','#17a2a0'],['Grønn','#3b9a43'],['Gul','#f3c531'],['Oransje','#f07b22'],['Hvit','#eef0ef']];
 // A secret: parking at KIWI Dalgård unlocks a KIWI-green car with the shop's logo on the doors (colour 'kiwi').
 const kiwiParking='kiwi-parkering';let kiwiUnlocked=false;
@@ -223,27 +224,28 @@ const ishallParking='ishall-parkering';
 const remaParking='rema-parkering',bunnprisParking='bunnpris-parkering';
 // The car stops at a parking place and waits for a choice, even where a road leads on (Bunnpris has two ways in).
 const parkingPlaces=new Set([kiwiParking,ishallParking,remaParking,bunnprisParking]);
-// Rewards by trips to the kindergarten: 1 the colour picker, 2 the rainbow trail, 3 the rainbow car that changes colour (colour 'rainbow'), 4 the running cat.
+// Rewards by trips to the kindergarten (the order since 30 September 2026): 1 the colour picker, 2 the running cat, 3 the rainbow trail, 4 the rainbow car
+// that changes colour (colour 'rainbow').
 function saveProgress(){try{localStorage.setItem('sofiatur.fremgang',JSON.stringify({arrivals,colour:carColour,trail:trailOn?'on':'off',kiwi:kiwiUnlocked?'on':'off',model:catOn?'cat':'car'}));}catch{}}
-try{const saved=JSON.parse(localStorage.getItem('sofiatur.fremgang'))||{};arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour)||saved.colour==='kiwi'&&kiwiUnlocked||saved.colour==='rainbow'&&arrivals>=3)carColour=saved.colour;trailOn=saved.trail!=='off';catOn=saved.model==='cat'&&arrivals>=4;}catch{}
+try{const saved=JSON.parse(localStorage.getItem('sofiatur.fremgang'))||{};arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour)||saved.colour==='kiwi'&&kiwiUnlocked||saved.colour==='rainbow'&&arrivals>=4)carColour=saved.colour;trailOn=saved.trail!=='off';catOn=saved.model==='cat'&&arrivals>=2;}catch{}
 const swatches=carColours.map(([name,hex])=>{const b=document.createElement('button');b.type='button';b.className='swatch';b.title=name;b.setAttribute('aria-label',name);b.style.background=hex;b.onclick=()=>pickColour(hex);return b;});
 const kiwiSwatch=document.createElement('button');kiwiSwatch.type='button';kiwiSwatch.className='swatch kiwi';kiwiSwatch.title='KIWI';kiwiSwatch.setAttribute('aria-label','Hemmelig KIWI-bil');kiwiSwatch.textContent='K';kiwiSwatch.onclick=()=>pickColour('kiwi');
 const rainbowSwatch=document.createElement('button');rainbowSwatch.type='button';rainbowSwatch.className='swatch rainbow';rainbowSwatch.title='Regnbue';rainbowSwatch.setAttribute('aria-label','Regnbuebil som skifter farge');rainbowSwatch.onclick=()=>pickColour('rainbow');
 $('carColours').append(...swatches,rainbowSwatch,kiwiSwatch);
 function pickColour(hex){carColour=hex.toLowerCase();saveProgress();applyRewards();showRewards();}
-function applyRewards(){if(!world)return;const kiwi=carColour==='kiwi'&&kiwiUnlocked;world.setCarColour?.(kiwi?'#5fae36':arrivals>=1&&carColour!=='kiwi'?carColour:'#14171c');world.setCarSkin?.(kiwi?'kiwi':null);world.setTrail?.(arrivals>=2&&trailOn);world.setCarModel?.(catOn&&arrivals>=4?'cat':'car');}
+function applyRewards(){if(!world)return;const kiwi=carColour==='kiwi'&&kiwiUnlocked;world.setCarColour?.(kiwi?'#5fae36':arrivals>=1&&carColour!=='kiwi'?carColour:'#14171c');world.setCarSkin?.(kiwi?'kiwi':null);world.setTrail?.(arrivals>=3&&trailOn);world.setCarModel?.(catOn&&arrivals>=2?'cat':'car');}
 // Before the first trip to the kindergarten, a KIWI unlock shows only black and the KIWI car.
-function showRewards(){$('rewards').hidden=arrivals<1&&!kiwiUnlocked;$('trailRow').hidden=arrivals<2;$('trail').checked=trailOn;$('catRow').hidden=arrivals<4;$('cat').checked=catOn;$('customColour').value=/^#/.test(carColour)?carColour:'#14171c';$('customColour').parentElement&&($('customColour').parentElement.hidden=arrivals<1);
+function showRewards(){$('rewards').hidden=arrivals<1&&!kiwiUnlocked;$('trailRow').hidden=arrivals<3;$('trail').checked=trailOn;$('catRow').hidden=arrivals<2;$('cat').checked=catOn;$('customColour').value=/^#/.test(carColour)?carColour:'#14171c';$('customColour').parentElement&&($('customColour').parentElement.hidden=arrivals<1);
  swatches.forEach((b,i)=>{const on=carColours[i][1]===carColour||i===0&&carColour!=='kiwi'&&arrivals<1;b.hidden=arrivals<1&&i>0;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');});
- rainbowSwatch.hidden=arrivals<3;rainbowSwatch.classList.toggle('on',carColour==='rainbow');rainbowSwatch.setAttribute('aria-pressed',carColour==='rainbow'?'true':'false');kiwiSwatch.hidden=!kiwiUnlocked;kiwiSwatch.classList.toggle('on',carColour==='kiwi');kiwiSwatch.setAttribute('aria-pressed',carColour==='kiwi'?'true':'false');
+ rainbowSwatch.hidden=arrivals<4;rainbowSwatch.classList.toggle('on',carColour==='rainbow');rainbowSwatch.setAttribute('aria-pressed',carColour==='rainbow'?'true':'false');kiwiSwatch.hidden=!kiwiUnlocked;kiwiSwatch.classList.toggle('on',carColour==='kiwi');kiwiSwatch.setAttribute('aria-pressed',carColour==='kiwi'?'true':'false');
  $('rewardTeaser').hidden=arrivals>=4;$('rewardTeaser').textContent=arrivals<1?'🎁 Kom frem til barnehagen, så får du en overraskelse!':'🎁 Kjør til barnehagen én gang til for en ny overraskelse!';}
 // Debug keys, to test the unlocks (keyboard only, not while typing in a field): X counts one more trip to the
-// kindergarten, Z one fewer. Counting up picks the new reward as an arrival does (the rainbow car at 3, the cat at 4);
+// kindergarten, Z one fewer. Counting up picks the new reward as an arrival does (the cat at 2, the rainbow car at 4);
 // counting down locks what the count no longer allows. The count is saved like a real one.
 function debugArrivals(delta){const before=arrivals;arrivals=Math.max(0,arrivals+delta);if(arrivals===before)return;
- if(delta>0){if(arrivals===3)carColour='rainbow';if(arrivals===4)catOn=true;}else{if(arrivals<3&&carColour==='rainbow')carColour='#14171c';if(arrivals<4)catOn=false;}
+ if(delta>0){if(arrivals===2)catOn=true;if(arrivals===4)carColour='rainbow';}else{if(arrivals<2)catOn=false;if(arrivals<4&&carColour==='rainbow')carColour='#14171c';}
  saveProgress();applyRewards();showRewards();
- const unlocked=['','farge på bilen','regnbuespor','regnbuebil','katt'][arrivals]??'alt låst opp';toast(`🛠 Turer til barnehagen: ${arrivals}${unlocked?' · '+unlocked:''}`);}
+ const unlocked=['','farge på bilen','katt','regnbuespor','regnbuebil'][arrivals]??'alt låst opp';toast(`🛠 Turer til barnehagen: ${arrivals}${unlocked?' · '+unlocked:''}`);}
 function parkAtKiwi(){
  if(kiwiUnlocked){toast('🥝 Parkert ved KIWI');say('Vi har parkert ved KIWI!');return;}
  kiwiUnlocked=true;carColour='kiwi';saveProgress();applyRewards();showRewards();

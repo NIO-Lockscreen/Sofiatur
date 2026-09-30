@@ -1,4 +1,4 @@
-// A running cat, the reward for the fourth trip to the kindergarten: it takes the car's place and colour (a black cat in
+// A running cat, the reward for the second trip to the kindergarten: it takes the car's place and colour (a black cat in
 // black paint, a rainbow cat with the rainbow car). About the car's size, so the camera frames it the same way. Forward
 // is −z and the ground is y = 0, as for the car. update() swings the legs in a bounding gallop at the car's speed, bobs the
 // body and sways the tail; standing still it breathes and flicks its tail and ears.

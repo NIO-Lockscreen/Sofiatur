@@ -151,7 +151,7 @@ export function createWorld(canvas, data) {
  const goalPos=data.nodes[data.goal];const goalRing=new T.Mesh(new T.TorusGeometry(4,.18,6,48),new T.MeshBasicMaterial({color:'#ffe17a'}));goalRing.rotation.x=Math.PI/2;goalRing.position.set(goalPos[0],height(...goalPos)+.7,goalPos[1]);scene.add(goalRing);labels.push(label('⚑  Her er barnehagen!',...goalPos,'#c58b29',14));
  const trafficLights=createTrafficLights({T,scene,height,data});
  const {car,wheels,paint,skins}=createET5(T);scene.add(car);
- // The running cat (the reward for the fourth trip) rides in the car's group and takes its place: model 'car' or 'cat'.
+ // The running cat (the reward for the second trip) rides in the car's group and takes its place: model 'car' or 'cat'.
  // The cat wears the car's skin logos on its flanks (the KIWI logo with the KIWI skin).
  const bodywork=[...car.children],skinParts=new Set(Object.values(skins).flat()),cat=createCat(T,{logos:Object.fromEntries(Object.entries(skins).map(([k,list])=>[k,list[0].material]))});cat.group.visible=false;car.add(cat.group);
  let model='car',skin=null,rainbow=false;
@@ -159,7 +159,7 @@ export function createWorld(canvas, data) {
  function setCarSkin(name){skin=name||null;car.userData.skin=skin;showModel();}
  function setCarModel(name){model=name==='cat'?'cat':'car';car.userData.body=model;showModel();}
  // Paint colour (a reward). Black keeps the original deep metallic look; brighter colours are less metallic so they read as colour.
- // 'rainbow' (the reward for the third trip) runs slowly through all the colours; update() turns it.
+ // 'rainbow' (the reward for the fourth trip) runs through all the colours in a little over three seconds; update() turns it.
  function setCarColour(hex){rainbow=hex==='rainbow';car.userData.colour=hex;if(rainbow){paint.metalness=.3;paint.roughness=.28;return;}paint.color.set(hex);const c=paint.color,dark=Math.max(c.r,c.g,c.b)<.06;paint.metalness=dark?.72:.38;paint.roughness=dark?.24:.3;}
  const trail=createRainbowTrail({T,scene});
  // Soft contact shadow remains visible with economical mobile shadows.
@@ -186,7 +186,7 @@ export function createWorld(canvas, data) {
  function update(dt,pos,tangent,velocity,mode,finished,time,carFacing=tangent){
  adaptResolution();
  trail.update(dt,pos,carFacing);trafficLights.update(dt,pos);updateDuck(dt,pos,time);
- if(rainbow)paint.color.setHSL((time*.09)%1,.9,.42);if(model==='cat')cat.update(dt,Math.abs(velocity),time,paint.color);
+ if(rainbow)paint.color.setHSL((time*.3)%1,.9,.42);if(model==='cat')cat.update(dt,Math.abs(velocity),time,paint.color);
  car.position.copy(pos);const yaw=Math.atan2(-carFacing.x,-carFacing.z);rot.setFromEuler(facing.set(Math.atan2(carFacing.y,Math.hypot(carFacing.x,carFacing.z)),yaw,0));car.quaternion.slerp(rot,1-Math.exp(-dt*9));wheels.forEach(w=>w.rotation.x-=velocity*dt/.39);
  sm.position.set(pos.x,height(pos.x,pos.z)+.25,pos.z);sm.rotation.z=-yaw;turnArrow.position.set(pos.x,pos.y+6.2+Math.sin(time*3)*.22,pos.z);turnArrow.scale.setScalar(4.5+Math.sin(time*3)*.16);if(finished)turnArrow.visible=false;
  const follow=follows[mode]||follows.follow;

@@ -229,3 +229,5 @@ Tests: `verify-road-geometry.mjs` asserts the numbers above (fillet purity and t
 **KIWI cat.** With the secret KIWI skin the cat, KIWI green like the car, wears the KIWI logo on both flanks: a strip bent round its body, reading from tail to head on the right and from head to tail on the left, as on the car's doors (`cat-model.js` takes the skin logos, `world.js` shows the chosen one). `verify-rewards.mjs` checks it.
 
 **Bunnpris.** The driveway from the T-junction where Olav Duuns veg meets Odd Husbys veg into the Bunnpris car park did not exist in reality (the user, 30 September 2026), so it is gone: the car park is reached from Granlivegen, as mapped (`map_fixes.add_bunnpris_parking`, `verify-stavset.mjs`).
+
+**Rewards in a new order** (the user, 30 September 2026): 1 trip the colour picker, 2 the running cat, 3 the rainbow trail, 4 the rainbow colour. The rainbow colour now runs through all colours in a little over three seconds (about eleven before). The debug keys follow the same order. `verify-rewards.mjs` checks each step.

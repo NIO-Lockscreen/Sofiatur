@@ -34,38 +34,41 @@ assert.equal(game.world.colour,'#14171c');assert.equal(game.world.trail,false);
 // First arrival: the colour picker unlocks and the button leads to the start screen, where it is shown.
 game.test.arrive();assert.equal(game.test.progress().arrivals,1);assert.equal(game.element('unlock').hidden,false);assert.match(game.element('unlock').textContent,/farge/);
 game.element('again').onclick();assert.equal(game.element('welcome').hidden,false);assert.equal(game.element('rewards').hidden,false);assert.equal(game.element('trailRow').hidden,true);
-const swatches=game.element('carColours').children;assert.equal(swatches.length,12);assert.equal(swatches[10].hidden,true,'The rainbow car waits for the third trip');assert.equal(swatches[11].hidden,true,'The KIWI car is a secret until parked at KIWI');assert.ok(swatches[0].classes.has('on'),'Black is picked to begin with');
+const swatches=game.element('carColours').children;assert.equal(swatches.length,12);assert.equal(swatches[10].hidden,true,'The rainbow colour waits for the fourth trip');assert.equal(swatches[11].hidden,true,'The KIWI car is a secret until parked at KIWI');assert.ok(swatches[0].classes.has('on'),'Black is picked to begin with');
 swatches[3].onclick();assert.equal(game.world.colour,'#7b4cc2');assert.ok(swatches[3].classes.has('on')&&!swatches[0].classes.has('on'));assert.equal(game.world.trail,false,'No trail yet');
 game.element('customColour').oninput({target:{value:'#12AB34'}});assert.equal(game.world.colour,'#12ab34');
 swatches[3].onclick();
 console.log('First arrival unlocks the colour picker on the start screen: OK');
 
-// After a reload the colour is kept; the second arrival unlocks the rainbow trail (on by default).
+// The order since 30 September 2026: 1 colour picker, 2 running cat, 3 rainbow trail, 4 rainbow colour.
+// After a reload the colour is kept; the second arrival turns the car into a running cat, with a switch back to the car on
+// the start screen; the choice is kept after a reload.
 game=await launch(()=>storage);assert.equal(game.world.colour,'#7b4cc2');assert.equal(game.element('rewards').hidden,false);assert.match(game.element('rewardTeaser').textContent,/én gang til/);
-game.test.arrive();assert.equal(game.test.progress().arrivals,2);assert.equal(game.world.trail,true);assert.match(game.element('unlock').textContent,/regnbuespor/);
-game.element('again').onclick();assert.equal(game.element('trailRow').hidden,false);assert.equal(game.element('trail').checked,true);assert.equal(game.element('rewardTeaser').hidden,false,'More surprises to come');
-game.element('trail').onchange({target:{checked:false}});assert.equal(game.world.trail,false);
-game=await launch(()=>storage);assert.equal(game.world.trail,false,'Trail switch is remembered');assert.equal(game.element('trail').checked,false);
-console.log('Second arrival unlocks the rainbow trail; colour and trail switch survive a reload: OK');
-
-// Third arrival: the rainbow car that changes colour, picked at once and kept after a reload; a colour can still be picked.
-assert.equal(game.world.model,'car');assert.equal(game.element('rewardTeaser').hidden,false,'Still a teaser before the third trip');
-game.test.arrive();assert.equal(game.test.progress().arrivals,3);assert.equal(game.world.colour,'rainbow');assert.match(game.element('unlock').textContent,/regnbuebil/);assert.match(game.element('again').textContent,/regnbuebilen/);
-game.element('again').onclick();let rainbowButton=game.element('carColours').children[10];assert.equal(rainbowButton.hidden,false);assert.ok(rainbowButton.classes.has('on'));assert.equal(game.element('catRow').hidden,true,'The cat waits for the fourth trip');
-game.element('carColours').children[1].onclick();assert.equal(game.world.colour,'#c62828');rainbowButton.onclick();assert.equal(game.world.colour,'rainbow');
-game=await launch(()=>storage);assert.equal(game.world.colour,'rainbow','Rainbow car remembered');assert.equal(game.world.model,'car');
-console.log('Third arrival unlocks the rainbow car that changes colour: OK');
-
-// Fourth arrival: the car becomes a running cat, with a switch back to the car on the start screen; both kept after a reload.
-game.test.arrive();assert.equal(game.test.progress().arrivals,4);assert.equal(game.world.model,'cat');assert.match(game.element('unlock').textContent,/katt/);assert.match(game.element('again').textContent,/katten/);
-game.element('again').onclick();assert.equal(game.element('catRow').hidden,false);assert.equal(game.element('cat').checked,true);assert.equal(game.element('rewardTeaser').hidden,true,'No teaser once everything is unlocked');
+game.test.arrive();assert.equal(game.test.progress().arrivals,2);assert.equal(game.world.model,'cat');assert.match(game.element('unlock').textContent,/katt/);assert.match(game.element('again').textContent,/katten/);
+game.element('again').onclick();assert.equal(game.element('catRow').hidden,false);assert.equal(game.element('cat').checked,true);assert.equal(game.element('trailRow').hidden,true,'The trail waits for the third trip');assert.equal(game.element('rewardTeaser').hidden,false,'More surprises to come');
+assert.equal(game.world.trail,false);assert.equal(game.world.colour,'#7b4cc2','A purple cat');
 game.element('cat').onchange({target:{checked:false}});assert.equal(game.world.model,'car');game=await launch(()=>storage);assert.equal(game.world.model,'car','Car remembered');
-game.element('cat').onchange({target:{checked:true}});game=await launch(()=>storage);assert.equal(game.world.model,'cat','Cat remembered');assert.equal(game.world.colour,'rainbow','A rainbow cat');
+game.element('cat').onchange({target:{checked:true}});game=await launch(()=>storage);assert.equal(game.world.model,'cat','Cat remembered');
+console.log('Second arrival turns the car into a running cat; the switch survives a reload: OK');
+
+// Third arrival: the rainbow trail (on by default), with its switch on the start screen, remembered after a reload.
+game.test.arrive();assert.equal(game.test.progress().arrivals,3);assert.equal(game.world.trail,true);assert.match(game.element('unlock').textContent,/regnbuespor/);
+game.element('again').onclick();assert.equal(game.element('trailRow').hidden,false);assert.equal(game.element('trail').checked,true);assert.equal(game.element('carColours').children[10].hidden,true,'The rainbow colour waits for the fourth trip');
+game.element('trail').onchange({target:{checked:false}});assert.equal(game.world.trail,false);
+game=await launch(()=>storage);assert.equal(game.world.trail,false,'Trail switch is remembered');assert.equal(game.element('trail').checked,false);game.element('trail').onchange({target:{checked:true}});
+console.log('Third arrival unlocks the rainbow trail; the trail switch survives a reload: OK');
+
+// Fourth arrival: the rainbow colour that changes all the time, picked at once and kept after a reload; a colour can still be picked.
+game.test.arrive();assert.equal(game.test.progress().arrivals,4);assert.equal(game.world.colour,'rainbow');assert.match(game.element('unlock').textContent,/regnbuebil/);assert.match(game.element('again').textContent,/regnbuebilen/);
+game.element('again').onclick();let rainbowButton=game.element('carColours').children[10];assert.equal(rainbowButton.hidden,false);assert.ok(rainbowButton.classes.has('on'));assert.equal(game.element('rewardTeaser').hidden,true,'No teaser once everything is unlocked');
+game.element('carColours').children[1].onclick();assert.equal(game.world.colour,'#c62828');rainbowButton.onclick();assert.equal(game.world.colour,'rainbow');
+game=await launch(()=>storage);assert.equal(game.world.colour,'rainbow','Rainbow colour remembered');assert.equal(game.world.model,'cat','A rainbow cat');assert.equal(game.world.trail,true);
 game.test.arrive();assert.equal(game.element('unlock').hidden,true,'No new reward on later trips');assert.match(game.element('again').textContent,/en gang til/);
-console.log('Fourth arrival turns the car into a running cat; the switch survives a reload: OK');
+console.log('Fourth arrival unlocks the rainbow colour; everything survives a reload: OK');
 
 // Rewards that are not unlocked yet cannot be forced through storage.
-store.set('sofiatur.fremgang',JSON.stringify({arrivals:2,colour:'rainbow',model:'cat'}));game=await launch(()=>storage);assert.equal(game.world.colour,'#14171c');assert.equal(game.world.model,'car');
+store.set('sofiatur.fremgang',JSON.stringify({arrivals:1,colour:'rainbow',model:'cat'}));game=await launch(()=>storage);assert.equal(game.world.colour,'#14171c');assert.equal(game.world.model,'car');assert.equal(game.world.trail,false);
+store.set('sofiatur.fremgang',JSON.stringify({arrivals:3,colour:'rainbow',model:'cat'}));game=await launch(()=>storage);assert.equal(game.world.colour,'#14171c','Rainbow colour only after four trips');assert.equal(game.world.model,'cat');
 console.log('Locked rewards stay locked: OK');
 
 // Blocked or damaged storage starts from scratch.
@@ -95,12 +98,13 @@ console.log('Rainbow trail follows, fades and resets: OK');
 // Debug keys for testing the unlocks: X counts one more trip to the kindergarten, Z one fewer (saved like a real count).
 store.clear();game=await launch(()=>storage);
 for(let i=0;i<4;i++)game.key('x');assert.equal(game.test.progress().arrivals,4);assert.equal(game.world.colour,'rainbow');assert.equal(game.world.trail,true);assert.equal(game.world.model,'cat');
-assert.equal(game.element('catRow').hidden,false);assert.equal(game.element('carColours').children[10].hidden,false);assert.match(game.element('toast').textContent,/4 · katt/);
+assert.equal(game.element('catRow').hidden,false);assert.equal(game.element('carColours').children[10].hidden,false);assert.match(game.element('toast').textContent,/4 · regnbuebil/);
 game.key('X');assert.equal(game.test.progress().arrivals,5);game.key('z');
-game.key('z');assert.equal(game.test.progress().arrivals,3);assert.equal(game.world.model,'car','Cat locked again below 4');assert.equal(game.element('catRow').hidden,true);assert.equal(game.world.colour,'rainbow');
-game.key('Z');assert.equal(game.test.progress().arrivals,2);assert.equal(game.world.colour,'#14171c','Rainbow car locked again below 3');assert.equal(game.element('carColours').children[10].hidden,true);assert.equal(game.world.trail,true);
+game.key('z');assert.equal(game.test.progress().arrivals,3);assert.equal(game.world.colour,'#14171c','Rainbow colour locked again below 4');assert.equal(game.element('carColours').children[10].hidden,true);assert.equal(game.world.model,'cat');
+game.key('Z');assert.equal(game.test.progress().arrivals,2);assert.equal(game.world.trail,false,'Trail locked again below 3');assert.equal(game.element('trailRow').hidden,true);assert.equal(game.world.model,'cat');
 game=await launch(()=>storage);assert.equal(game.test.progress().arrivals,2,'The count is saved');
-for(let i=0;i<4;i++)game.key('z');assert.equal(game.test.progress().arrivals,0,'Never below 0');assert.equal(game.element('rewards').hidden,true);assert.equal(game.world.trail,false);
+game.key('z');assert.equal(game.world.model,'car','Cat locked again below 2');assert.equal(game.element('catRow').hidden,true);
+for(let i=0;i<4;i++)game.key('z');assert.equal(game.test.progress().arrivals,0,'Never below 0');assert.equal(game.element('rewards').hidden,true);
 game.key('x',{tagName:'INPUT'});assert.equal(game.test.progress().arrivals,0,'Not while typing in a field');
 console.log('Debug keys: X and Z count trips up and down, unlocking and locking the rewards: OK');
 
