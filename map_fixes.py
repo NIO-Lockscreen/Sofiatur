@@ -10,12 +10,29 @@ SOUTH = [(140, 730), (-30, 1017), (-110, 1161), (-130, 1250), (-130, 1470), (380
          (1200, 730)]
 
 
-def in_south(x, z):
+# West to Lianvannet (30 September 2026): Vetle Vislies veg down to the lake's east shore and Per Sivles veg back along
+# it, with the houses and woods between them and the water (fetch-osm.py, west box). Local metres, as SOUTH.
+WEST = [(-170, -260), (-340, -260), (-340, 130), (-170, 130)]
+# The turning circle by the water where Vetle Vislies veg and Per Sivles veg end (OSM node 201496265): a place to drive
+# to, where the car stops by the lake (prepare-map.py ends the edges there; game.js: the big duck).
+LAKESIDE = '201496265'
+
+
+def in_polygon(polygon, x, z):
     inside = False
-    for (ax, az), (bx, bz) in zip(SOUTH[-1:] + SOUTH[:-1], SOUTH):
+    for (ax, az), (bx, bz) in zip(polygon[-1:] + polygon[:-1], polygon):
         if (az > z) != (bz > z) and x < (bx - ax) * (z - az) / (bz - az) + ax:
             inside = not inside
     return inside
+
+
+def in_south(x, z):
+    return in_polygon(SOUTH, x, z)
+
+
+def in_added(x, z):
+    """In one of the regions added outside the original box: south to Stavset, west to Lianvannet."""
+    return in_polygon(SOUTH, x, z) or in_polygon(WEST, x, z)
 
 
 def apply_road_widths(data):

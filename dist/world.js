@@ -4,6 +4,8 @@ import {roadWidth} from './transit-geometry.js';
 import {createRoadSurface} from './road-surface.js';
 import {createET5} from './car-model.js';
 import {createCat} from './cat-model.js';
+import {createDuck} from './duck.js';
+import {createLakes,inRing} from './lakes.js';
 import {addMunkvoll,addTransit,addMunkvollDetails} from './munkvoll.js';
 import {createTrafficLights} from './traffic-lights.js';
 import {createRainbowTrail} from './rainbow-trail.js';
@@ -19,11 +21,8 @@ export { T };
 export function createWorld(canvas, data) {
  const terrain=data.terrain;
  const verticalExaggeration=1.45,verticalDatum=160;
- // Lakes added by add-lakes.py (OSM multipolygons) lie flat at their level: the ground inside them is lowered to it.
- const lakes=data.areas.filter(a=>a.level!=null).map(a=>({...a,holes:a.holes||[],box:[Math.min(...a.p.map(v=>v[0])),Math.min(...a.p.map(v=>v[1])),Math.max(...a.p.map(v=>v[0])),Math.max(...a.p.map(v=>v[1]))]}));
- function inRing(ring,x,z){let inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const [ax,az]=ring[j],[bx,bz]=ring[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)inside=!inside;}return inside;}
- function lakeAt(x,z){for(const l of lakes)if(x>l.box[0]&&x<l.box[2]&&z>l.box[1]&&z<l.box[3]&&inRing(l.p,x,z)&&!l.holes.some(h=>inRing(h,x,z)))return l;return null;}
- function rawHeight(x,z){if(lakes.length){const lake=lakeAt(x,z);if(lake)return lake.level;}const a=Math.max(0,Math.min(terrain.nx-1.001,(x-terrain.x0)/terrain.step)),b=Math.max(0,Math.min(terrain.nz-1.001,(z-terrain.z0)/terrain.step)),i=Math.floor(a),j=Math.floor(b),u=a-i,v=b-j,h=terrain.heights;return (h[j*terrain.nx+i]*(1-u)+h[j*terrain.nx+i+1]*u)*(1-v)+(h[(j+1)*terrain.nx+i]*(1-u)+h[(j+1)*terrain.nx+i+1]*u)*v;}
+ // Lakes lie flat at their level, and the ground runs down to the water along their outline (lakes.js).
+ const {lakes,lakeAt,rawHeight,duckCircle}=createLakes(data);
  function terrainHeight(x,z){return verticalDatum+(rawHeight(x,z)-verticalDatum)*verticalExaggeration;}
  // The road is built on the plain terrain; the ground everything else stands on is lowered wherever it would poke through a road.
  const roadSurface=createRoadSurface(data.roads,terrainHeight,data);
@@ -59,9 +58,21 @@ export function createWorld(canvas, data) {
 
  const greens={forest:'#7fa562',wood:'#7fa562',grass:'#8fb96b',meadow:'#9ac47a',park:'#8fba68',pitch:'#7eaf68',playground:'#bcca8b',recreation_ground:'#9bbe70',allotments:'#9eb878',water:'#6daeb4'};
  for(const a of data.areas)if(a.type==='water'&&a.level==null)groundPoly(a.p,greens.water,.09);
- // Lake surfaces are flat, a little above the lowered ground, with holes for the islands.
- for(const l of lakes){const y=verticalDatum+(l.level-verticalDatum)*verticalExaggeration+.12,all=[...l.p,...l.holes.flat()];
+ // Lake surfaces are flat, a little above the ground where it meets them at the shore, with holes for the islands.
+ const waterY=l=>verticalDatum+(l.level-verticalDatum)*verticalExaggeration+.12;
+ for(const l of lakes){const y=waterY(l),all=[...l.p,...l.holes.flat()];
   for(const f of T.ShapeUtils.triangulateShape(l.p.map(v=>new T.Vector2(...v)),l.holes.map(h=>h.map(v=>new T.Vector2(...v)))))tri(bucket(all[f[0]][0],all[f[0]][1]),...f.map(i=>[all[i][0],y,all[i][1]]),'#4d9bc9');}
+ // The big duck (duck.js) swims round its circle on Lianvannet by the turning circle at the end of Vetle Vislies veg
+ // (lakes.js duckCircle); the car stops there and the camera turns to it (game.js). It rises out of the lake the first
+ // time the car comes within 140 m of it, and stays for the rest of the visit.
+ const duck=(()=>{const circle=duckCircle();if(!circle)return null;const model=createDuck(T);model.group.visible=false;scene.add(model.group);
+  return {model,centre:circle.centre,R:circle.R,y:waterY(circle.lake),angle:0,rise:0,shown:false};})();
+ function updateDuck(dt,pos,time){
+  if(!duck)return;if(!duck.shown&&Math.hypot(pos.x-duck.centre[0],pos.z-duck.centre[1])<140)duck.shown=true;if(!duck.shown)return;
+  duck.rise=Math.min(1,duck.rise+dt/1.8);duck.angle+=dt*2.2/duck.R;const a=duck.angle,g=duck.model.group,r=duck.rise,pop=1+2.7*(r-1)**3+1.7*(r-1)**2; // rises with a little overshoot
+  g.visible=true;g.position.set(duck.centre[0]+Math.cos(a)*duck.R,duck.y-(1-r)*4,duck.centre[1]+Math.sin(a)*duck.R);g.rotation.y=Math.atan2(Math.sin(a),-Math.cos(a));g.scale.setScalar(1.4*Math.max(.01,pop));
+  duck.model.update(dt,time);
+ }
  const gravel=new Set(data.roads.filter(road=>['gravel','compacted','unpaved'].includes(road.surface)||(road.name==='Herlofsons veg'&&road.p.some(p=>Math.hypot(p[0],p[1])<58))));
  const va=[0,0,0],vb=[0,0,0],vc=[0,0,0],vd=[0,0,0],roadColours=['#737d7b','#b8bbae','#93b96e','#95ba70','#8f9996'];
  roadSurface.paint((cls,road,n,c,flip)=>{const colour=cls===0&&gravel.has(road)?'#989789':roadColours[cls],b=bucket(c[0],c[2]);va[0]=c[0];va[1]=c[1];va[2]=c[2];vb[0]=c[3];vb[1]=c[4];vb[2]=c[5];vc[0]=c[6];vc[1]=c[7];vc[2]=c[8];
@@ -173,7 +184,7 @@ export function createWorld(canvas, data) {
  }
  function update(dt,pos,tangent,velocity,mode,finished,time,carFacing=tangent){
  adaptResolution();
- trail.update(dt,pos,carFacing);trafficLights.update(dt,pos);
+ trail.update(dt,pos,carFacing);trafficLights.update(dt,pos);updateDuck(dt,pos,time);
  if(rainbow)paint.color.setHSL((time*.09)%1,.9,.42);if(model==='cat')cat.update(dt,Math.abs(velocity),time,paint.color);
  car.position.copy(pos);const yaw=Math.atan2(-carFacing.x,-carFacing.z);rot.setFromEuler(facing.set(Math.atan2(carFacing.y,Math.hypot(carFacing.x,carFacing.z)),yaw,0));car.quaternion.slerp(rot,1-Math.exp(-dt*9));wheels.forEach(w=>w.rotation.x-=velocity*dt/.39);
  sm.position.set(pos.x,height(pos.x,pos.z)+.25,pos.z);sm.rotation.z=-yaw;turnArrow.position.set(pos.x,pos.y+6.2+Math.sin(time*3)*.22,pos.z);turnArrow.scale.setScalar(4.5+Math.sin(time*3)*.16);if(finished)turnArrow.visible=false;
@@ -196,5 +207,5 @@ export function createWorld(canvas, data) {
  renderer.render(scene,camera);
  }
  function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
- resize();window.addEventListener('resize',resize);return {height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setTrail:trail.setOn,trafficLights,resetCamera(){initialized=false;orbit.reset();trail.clear();}};
+ resize();window.addEventListener('resize',resize);return {height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setTrail:trail.setOn,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();trail.clear();}};
 }

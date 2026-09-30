@@ -2,15 +2,15 @@
 # although byasen.osm has it: zebra crossings, give-way and stop lines, traffic islands, turning circles at the end of
 # cul-de-sacs, speed tables and humps, sidewalks and gang- og sykkelvei, street lamps. This reads the extract and adds one
 # key, `street`, to dist/map.json (dist/street-details.js draws it); tags and what is approximate: docs/street-details.md.
-# Only what lies in the map region (the original box plus map_fixes.SOUTH) and on, or beside, a drawn road is kept.
-# Run after add-stavset.py; running it again replaces `street`.
+# Only what lies in the map region (the original box plus map_fixes.SOUTH and WEST) and on, or beside, a drawn road is
+# kept. Run after add-stavset.py; running it again replaces `street`.
 import json,math,collections
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from map_fixes import in_south
+from map_fixes import in_added
 
 M=Path('dist/map.json');D=json.loads(M.read_text());lon0,lat0=D['origin'];sx=111320*math.cos(math.radians(lat0))
-in_region=lambda x,z:-220<x<2220 and -700<z<820 or in_south(x,z)
+in_region=lambda x,z:-220<x<2220 and -700<z<820 or in_added(x,z)
 osm=ET.parse('byasen.osm').getroot()
 tags=lambda e:{t.attrib['k']:t.attrib['v'] for t in e.findall('tag')}
 N={n.attrib['id']:(round((float(n.attrib['lon'])-lon0)*sx,2),round((lat0-float(n.attrib['lat']))*111320,2)) for n in osm.iter('node')}

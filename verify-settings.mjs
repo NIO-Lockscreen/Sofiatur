@@ -19,18 +19,18 @@ async function launch(localStorage){
  for(let i=0;i<12;i++){await Promise.resolve();const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}await init;return {element,test:env.test};
 }
 const store=new Map(),storage={getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,String(v))};
-const vetle=data.edges.find(e=>e.from==='201494485'&&e.to==='201497757');
+const vetle=data.edges.find(e=>e.from==='1223193460'&&e.to==='1223193479'); // Kystadhaugen: straight on is a blindvei
 
 // Defaults: music on, blindveier on (since 29 September 2026), choosing ahead off.
 let game=await launch(()=>storage);assert.deepEqual({...game.test.settings()},{musicOn:true,showDeadEnds:true,chooseAhead:false});
 assert.equal(game.element('music').value,'on');assert.equal(game.element('deadEnds').value,'on');assert.equal(game.element('chooseAhead').value,'off');
-assert.ok(game.test.enter(vetle).some(c=>c.name==='Vetle Vislies veg'),'Blindveier are offered by default');
+assert.ok(game.test.enter(vetle).some(c=>c.name==='Kystadhaugen'),'Blindveier are offered by default');
 game.element('music').onchange({target:{value:'off'}});game.element('deadEnds').onchange({target:{value:'off'}});game.element('chooseAhead').onchange({target:{value:'on'}});
 
 // After a reload the choices are back, in the menu and in the game.
 game=await launch(()=>storage);assert.deepEqual({...game.test.settings()},{musicOn:false,showDeadEnds:false,chooseAhead:true});
 assert.equal(game.element('music').value,'off');assert.equal(game.element('deadEnds').value,'off');assert.equal(game.element('chooseAhead').value,'on');
-assert.ok(!game.test.enter(vetle).some(c=>c.name==='Vetle Vislies veg'),'Saved blindvei setting off skips the dead end');
+assert.ok(!game.test.enter(vetle).some(c=>c.name==='Kystadhaugen'),'Saved blindvei setting off skips the dead end');
 game.element('deadEnds').onchange({target:{value:'on'}});game=await launch(()=>storage);assert.equal(game.test.settings().showDeadEnds,true);
 console.log('Music, blindvei and choosing-ahead settings survive a reload: OK');
 

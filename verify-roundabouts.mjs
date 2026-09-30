@@ -24,7 +24,7 @@ const adjacency=new Map();for(const e of data.edges){if(!adjacency.has(e.from))a
 function ring(n){const nodes=new Set();while(!nodes.has(n)){nodes.add(n);const next=(adjacency.get(n)||[]).find(e=>e.roundabout);if(!next)break;n=next.to;}return nodes;}
 // A blindvei exit only leads back into the circle; home, the kindergarten and the car parks the game treats as places
 // to go (KIWI, Dalgård ishall, Rema 1000 Stavset, Bunnpris) count as destinations.
-const places=new Set([data.goal,data.start,'kiwi-parkering','ishall-parkering','rema-parkering','bunnpris-parkering']);
+const places=new Set([data.goal,data.start,'kiwi-parkering','ishall-parkering','rema-parkering','bunnpris-parkering',data.lakeside]);
 function leadsOn(from,blocked){const seen=new Set([...blocked,from]),todo=[from];while(todo.length){const n=todo.pop();if(places.has(n))return true;for(const e of adjacency.get(n)||[])if(!seen.has(e.to)){seen.add(e.to);todo.push(e.to);}}return false;}
 let tested=0,automatic=0;
 for(const entry of entries){

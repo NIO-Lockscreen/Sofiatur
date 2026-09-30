@@ -21,8 +21,9 @@ assert.equal(element('deadEnds').value,'on','Blindveier are offered by default')
 
 // Independent check: from the chosen road, the kindergarten or home is reachable without driving back through the junction.
 const adjacency=new Map();for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);}
-// The car parks at KIWI, Dalgård ishall, Rema 1000 Stavset and Bunnpris count as places to go, like home and the kindergarten.
-const destinations=new Set([data.goal,data.start,'kiwi-parkering','ishall-parkering','rema-parkering','bunnpris-parkering']);
+// The car parks at KIWI, Dalgård ishall, Rema 1000 Stavset and Bunnpris, and the turning circle by Lianvannet, count as
+// places to go, like home and the kindergarten.
+const destinations=new Set([data.goal,data.start,'kiwi-parkering','ishall-parkering','rema-parkering','bunnpris-parkering',data.lakeside]);
 function leadsOn(from,blocked){const seen=new Set([...blocked,from]),todo=[from];if(blocked.includes(from))return false;while(todo.length){const n=todo.pop();if(destinations.has(n))return true;for(const e of adjacency.get(n)||[])if(!seen.has(e.to)){seen.add(e.to);todo.push(e.to);}}return false;}
 function ring(n){const nodes=[];while(!nodes.includes(n)){nodes.push(n);const next=(adjacency.get(n)||[]).find(e=>e.roundabout);if(!next)break;n=next.to;}return nodes;}
 
@@ -33,8 +34,9 @@ while(queue.length){
  const roads=env.test.enter(e),s=env.test.read();
  if(s.state==='driving'){automatic++;queue.push(roads[0]);continue;}
  assert.equal(s.state,'decision');decisions++;
- // The school parking is reached only from the Palermo lights, where every road is offered on purpose.
- assert.ok(s.currentNode===data.start||['kiwi-parkering','ishall-parkering','rema-parkering','bunnpris-parkering','skoleparkering-8'].includes(s.currentNode)||s.choices.some(c=>c.direction!=='Snu'),`Led into a blindvei at ${s.currentNode}`);
+ // The school parking is reached only from the Palermo lights, where every road is offered on purpose; at the places to
+ // go (the car parks, Lianvannet) turning back is fine.
+ assert.ok(s.currentNode===data.start||['kiwi-parkering','ishall-parkering','rema-parkering','bunnpris-parkering','skoleparkering-8',data.lakeside].includes(s.currentNode)||s.choices.some(c=>c.direction!=='Snu'),`Led into a blindvei at ${s.currentNode}`);
  for(const c of roads){
   const shown=s.choices.find(x=>x.id===c.id);offered++;
   if(!shown.recommended&&s.currentNode!=='91783986')assert.ok(leadsOn(c.to,c.roundaboutPlan?ring(s.currentNode):[s.currentNode]),`${c.name} at ${s.currentNode} is a blindvei`);
@@ -44,9 +46,10 @@ while(queue.length){
 const ishallRoad=data.edges.find(e=>e.to==='ishall-parkering');assert.ok(seen.has(ishallRoad.id),'Dalgård ishall can be reached with blindveier off');
 console.log(`Blindveier: ${decisions} reachable junctions offer ${offered} roads, none a dead end; ${automatic} single-road junctions drive on automatically; Dalgård ishall reachable.`);
 
-// Vetle Vislies veg: straight ahead is a blindvei, so the car turns right onto Herlofsons veg by itself.
-const vetle=data.edges.find(e=>e.from==='201494485'&&e.to==='201497757');
-let [taken]=env.test.enter(vetle);assert.equal(env.test.read().state,'driving');assert.equal(taken.name,'Herlofsons veg');assert.equal(taken.to,'254330189');assert.ok(element('worldArrows').children.every(b=>b.className.includes('ahead')),'Only arrows for the next junction are shown');
+// Kystadhaugen: straight ahead is a blindvei, so the car turns onto Jacob B. Bulls veg by itself. (Until 30 September 2026
+// this was Vetle Vislies veg, which now leads on to Lianvannet: below.)
+const vetle=data.edges.find(e=>e.from==='1223193460'&&e.to==='1223193479');
+let [taken]=env.test.enter(vetle);assert.equal(env.test.read().state,'driving');assert.equal(taken.name,'Jacob B. Bulls veg');assert.equal(taken.to,'280511855');assert.ok(element('worldArrows').children.every(b=>b.className.includes('ahead')),'Only arrows for the next junction are shown');
 // Nordre Hallsetveg ahead is a blindvei, so the car follows Adolf Andreassens veg toward the kindergarten.
 [taken]=env.test.enter(data.edges.find(e=>e.from==='91783985'&&e.to==='254465339'));assert.equal(env.test.read().state,'driving');assert.equal(taken.name,'Adolf Andreassens veg');
 console.log('Right-or-blindvei junctions drive on automatically: OK');
@@ -66,12 +69,12 @@ console.log(`Blindveier off: ${run.crossed} km/h through the automatic turn, ${r
 
 // Setting on: dead ends are offered again and the car slows at every junction, as before.
 element('deadEnds').onchange({target:{value:'on'}});
-const withDeadEnds=env.test.enter(vetle);assert.equal(env.test.read().state,'decision');assert.ok(withDeadEnds.some(c=>c.name==='Vetle Vislies veg'),'Blindvei offered when the setting is on');
+const withDeadEnds=env.test.enter(vetle);assert.equal(env.test.read().state,'decision');assert.ok(withDeadEnds.some(c=>c.name==='Kystadhaugen'),'Blindvei offered when the setting is on');
 run=approach(vetle);assert.equal(run.state,'decision');assert.ok(run.beforeChoice<=15,'Slows for the blindvei choice');
 let roundaboutExits=0;for(const e of data.edges.filter(x=>!x.roundabout&&adjacency.get(x.to)?.some(y=>y.roundabout)&&!adjacency.get(x.from)?.some(y=>y.roundabout))){const exits=env.test.enter(e);assert.equal(env.test.read().state,'decision','Every roundabout entrance asks again');roundaboutExits+=exits.length;}
 // Switching off in the menu while a blindvei choice is shown applies when the menu closes (the game runs on behind it).
 env.test.enter(vetle);element('deadEnds').onchange({target:{value:'off'}});assert.equal(env.test.read().state,'decision');element('menu').events.get('close')();
-assert.equal(env.test.read().state,'driving');assert.equal(env.test.active().e.name,'Herlofsons veg');
+assert.equal(env.test.read().state,'driving');assert.equal(env.test.active().e.name,'Jacob B. Bulls veg');
 console.log(`Setting on offers blindveier again (${roundaboutExits} roundabout exits); switching off applies when the menu closes: OK`);
 
 // Olaf Grilstads veg runs from the Myrahallen junction (Konrad Dahls veg / Per Sivles veg) to Kyvannsvegen and can be chosen from both ends.
@@ -105,3 +108,14 @@ assert.ok(granli.some(c=>c.name==='Dalgårdvegen'&&c.to==='280511856'),`Dalgård
 env.test.enter(data.edges.find(e=>e.name==='Dalgårdvegen'&&e.from==='280511856'&&e.to==='1727120658'));const ishall=env.test.read().choices;
 assert.ok(ishall.some(c=>c.street==='Dalgård ishall'),`Dalgård ishall offered: ${ishall.map(c=>c.direction+' '+c.street)}`);
 console.log(`Palermo lights: left, straight on and right from all ${data.edges.filter(e=>e.to==='91783986').length} roads in; KIWI parking offered after the roundabout; Dalgårdvegen to Dalgård ishall (${ishall.map(c=>c.direction+' '+c.street).join(', ')}): OK`);
+
+// Lianvannet (30 September 2026): Vetle Vislies veg runs on from Herlofsons veg down to the turning circle by the water,
+// a place to drive to, so it is offered with blindveier off too; the car stops there by the lake.
+element('deadEnds').onchange({target:{value:'off'}});
+const atVetle=env.test.enter(data.edges.find(e=>e.from==='201494485'&&e.to==='201497757'));
+const lakeRoad=atVetle.find(c=>c.to===data.lakeside);assert.ok(lakeRoad&&lakeRoad.name==='Vetle Vislies veg',`Vetle Vislies veg to Lianvannet offered: ${atVetle.map(c=>c.name+' '+c.to)}`);
+env.test.drive(lakeRoad);for(let i=0;i<4000&&env.test.read().state==='driving';i++)frame();
+assert.equal(env.test.read().currentNode,data.lakeside);assert.equal(env.test.read().state,'decision','The car stops by the lake');assert.match(element('toast').textContent,/Lianvannet/);
+const lake=data.areas.find(a=>a.name==='Lianvannet'),[lx,lz]=data.nodes[data.lakeside],shore=Math.min(...lake.p.map(p=>Math.hypot(p[0]-lx,p[1]-lz)));
+assert.ok(shore<15,`The turning circle is by the water (${shore.toFixed(1)} m)`);
+console.log(`Vetle Vislies veg to the turning circle by Lianvannet (${shore.toFixed(1)} m from the water), offered with blindveier off, the car stops there: OK`);
