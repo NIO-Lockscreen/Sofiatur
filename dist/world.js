@@ -14,6 +14,7 @@ import {buildingStyles,addKiwi} from './building-details.js';
 import {addDalgardSchool,addSportsGrounds,addDalgardDetails} from './dalgard.js';
 import {addStavset,addStavsetDetails,addBridges} from './stavset.js';
 import {addStreetDetails,indexStreetDetails} from './street-details.js';
+import {createLook,createGround,createRoadPainter,ROAD,WATER} from './look.js';
 import {createCameraControls} from './camera-controls.js';
 import {SoftwareRenderer} from './software-renderer.js';
 import * as T from './vendor/three.js';
@@ -22,22 +23,20 @@ export function createWorld(canvas, data) {
  const terrain=data.terrain;
  const verticalExaggeration=1.45,verticalDatum=160;
  // Lakes lie flat at their level, and the ground runs down to the water along their outline (lakes.js).
- const {lakes,lakeAt,rawHeight,duckCircle}=createLakes(data);
+ const {lakes,lakeAt,shoreDistance,rawHeight,duckCircle}=createLakes(data);
  function terrainHeight(x,z){return verticalDatum+(rawHeight(x,z)-verticalDatum)*verticalExaggeration;}
  // The road is built on the plain terrain; the ground everything else stands on is lowered wherever it would poke through a road.
  const roadSurface=createRoadSurface(data.roads,terrainHeight,data);
  function height(x,z){return terrainHeight(x,z)+roadSurface.lowerAt(x,z);}
- const scene=new T.Scene();scene.background=new T.Color('#bfdfed');scene.fog=new T.Fog('#bfdfed',165,510);
- // Small procedural sky/ground reflection map keeps the black sedan's curvature
- // readable on mobile, without an external HDR download or a mirror-render pass.
- const skyFaces=Array.from({length:6},(_,face)=>{const c=document.createElement('canvas');c.width=128;c.height=128;const q=c.getContext('2d'),g=q.createLinearGradient(0,0,0,128);g.addColorStop(0,face===3?'#879575':'#b6d1df');g.addColorStop(.48,face===2?'#dce8eb':'#e3e8e1');g.addColorStop(.58,'#a5b19f');g.addColorStop(1,'#65775d');q.fillStyle=g;q.fillRect(0,0,128,128);return c;});const skyEnv=new T.CubeTexture(skyFaces);skyEnv.colorSpace=T.SRGBColorSpace;skyEnv.needsUpdate=true;scene.environment=skyEnv;
+ // look.js: fog, sun and sky light, the sky with clouds and hills, the water and the world's material (the look of the world is decided there).
+ const scene=new T.Scene(),mood=createLook({T,scene});
+ // Small procedural sky/ground reflection map keeps the black sedan's curvature readable on mobile, without an external HDR download or a mirror-render pass.
+ scene.environment=mood.environment();
  const camera=new T.PerspectiveCamera(51,1,.2,1700);
  const orbit=createCameraControls(canvas);
  let renderer; const supported=!!document.createElement('canvas').getContext('webgl2'); if(supported){renderer=new T.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});}else{renderer=new SoftwareRenderer(canvas);console.info('WebGL unavailable: using software 3D renderer');}
- renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.28;renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
- const hemi=new T.HemisphereLight('#d9efff','#81935e',2.1);scene.add(hemi);
- const sun=new T.DirectionalLight('#fff0cc',2.8);sun.position.set(-70,180,-90);scene.add(sun);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-45,right:45,top:45,bottom:-45,near:1,far:420});sun.shadow.normalBias=.04;sun.shadow.bias=-.0006;scene.add(sun.target);
- const staticMaterial=new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide});
+ mood.configureRenderer(renderer);if(!supported)mood.sky.group.visible=false; // the software rasteriser draws no sky; water is see-through, which it skips, so the lake bed shows
+ const staticMaterial=mood.staticMaterial;
  const buckets=new Map();const colorCache=new Map();
  function col(c){if(!colorCache.has(c))colorCache.set(c,new T.Color(c));return colorCache.get(c);}
  function bucket(x,z){const i=Math.floor(x/160),j=Math.floor(z/160),k=i*4096+j;let b=buckets.get(k);if(!b){b={x:i*160+80,z:j*160+80,p:new Float32Array(2304),c:new Float32Array(2304),n:0};buckets.set(k,b);}return b;}
@@ -46,6 +45,10 @@ export function createWorld(canvas, data) {
   p[n]=a[0];p[n+1]=a[1];p[n+2]=a[2];p[n+3]=c[0];p[n+4]=c[1];p[n+5]=c[2];p[n+6]=d[0];p[n+7]=d[1];p[n+8]=d[2];
   for(let i=n;i<n+9;i+=3){cc[i]=q.r;cc[i+1]=q.g;cc[i+2]=q.b;}b.n=n+9;}
  function quad(b,a,c,d,e,colour){tri(b,a,c,d,colour);tri(b,a,d,e,colour);}
+ // A triangle with a colour per corner: k holds linear r,g,b triples, i/j/l pick the corners' colours (the ground and the road surface are painted this way).
+ function triV(b,a,c,d,k,i,j,l){let n=b.n;if(n+9>b.p.length){const p=new Float32Array(b.p.length*2),q=new Float32Array(b.p.length*2);p.set(b.p);q.set(b.c);b.p=p;b.c=q;}const p=b.p,cc=b.c;
+  p[n]=a[0];p[n+1]=a[1];p[n+2]=a[2];p[n+3]=c[0];p[n+4]=c[1];p[n+5]=c[2];p[n+6]=d[0];p[n+7]=d[1];p[n+8]=d[2];
+  cc[n]=k[3*i];cc[n+1]=k[3*i+1];cc[n+2]=k[3*i+2];cc[n+3]=k[3*j];cc[n+4]=k[3*j+1];cc[n+5]=k[3*j+2];cc[n+6]=k[3*l];cc[n+7]=k[3*l+1];cc[n+8]=k[3*l+2];b.n=n+9;}
  function box(b,cx,cy,cz,wx,wy,wz,colour,angle=0){let pts=[];for(let y of [-.5,.5])for(let z of [-.5,.5])for(let x of [-.5,.5])pts.push([cx+x*wx*Math.cos(angle)+z*wz*Math.sin(angle),cy+y*wy,cz-x*wx*Math.sin(angle)+z*wz*Math.cos(angle)]);for(let f of [[0,1,3,2],[4,6,7,5],[0,4,5,1],[2,3,7,6],[0,2,6,4],[1,5,7,3]])quad(b,...f.map(i=>pts[i]),colour);}
  function groundPoly(poly,colour,lift=.07){if(poly.length<3)return;let p=poly.slice();if(p[0][0]===p.at(-1)[0]&&p[0][1]===p.at(-1)[1])p.pop();const shapes=p.map(v=>new T.Vector2(v[0],v[1]));for(const f of T.ShapeUtils.triangulateShape(shapes,[])){const vertices=f.map(i=>[p[i][0],height(...p[i])+lift,p[i][1]]);tri(bucket(vertices[0][0],vertices[0][2]),...vertices,colour);}}
  function ribbon(points,width,colour,lift=.13,ground=height){for(let j=0;j<points.length-1;j++){let a=points[j],b=points[j+1],len=Math.hypot(b[0]-a[0],b[1]-a[1]);if(len<.01)continue;let dx=(b[0]-a[0])/len,dz=(b[1]-a[1])/len;for(let d=0;d<len;d+=8){let e=Math.min(len,d+8),ax=a[0]+d*dx,az=a[1]+d*dz,bx=a[0]+e*dx,bz=a[1]+e*dz;quad(bucket(ax,az),[ax-dz*width/2,ground(ax-dz*width/2,az+dx*width/2)+lift,az+dx*width/2],[ax+dz*width/2,ground(ax+dz*width/2,az-dx*width/2)+lift,az-dx*width/2],[bx+dz*width/2,ground(bx+dz*width/2,bz-dx*width/2)+lift,bz-dx*width/2],[bx-dz*width/2,ground(bx-dz*width/2,bz+dx*width/2)+lift,bz+dx*width/2],colour);}}}
@@ -54,14 +57,19 @@ export function createWorld(canvas, data) {
  // Each grid vertex is looked up once (four cells share it), as the road surface has it: the terrain there less how far the road lowered it.
  const groundStep=8,gxn=Math.round((terrain.nx-1)*terrain.step/groundStep),gzn=Math.round((terrain.nz-1)*terrain.step/groundStep),gh=new Float32Array((gxn+1)*(gzn+1));
  for(let j=0;j<=gzn;j++)for(let i=0;i<=gxn;i++)gh[j*(gxn+1)+i]=roadSurface.meshAt(terrain.x0+i*groundStep,terrain.z0+j*groundStep);
- for(let j=0;j<gzn;j++)for(let i=0;i<gxn;i++){const x=terrain.x0+i*groundStep,z=terrain.z0+j*groundStep,s=groundStep,k=j*(gxn+1)+i,c=['#93b96e','#96bc71','#99bd73','#91b56c'][Math.abs(Math.floor(x/40)*7+Math.floor(z/40)*11)%4];quad(bucket(x,z),[x,gh[k],z],[x+s,gh[k+1],z],[x+s,gh[k+gxn+2],z+s],[x,gh[k+gxn+1],z+s],c);}
-
- const greens={forest:'#7fa562',wood:'#7fa562',grass:'#8fb96b',meadow:'#9ac47a',park:'#8fba68',pitch:'#7eaf68',playground:'#bcca8b',recreation_ground:'#9bbe70',allotments:'#9eb878',water:'#6daeb4'};
- for(const a of data.areas)if(a.type==='water'&&a.level==null)groundPoly(a.p,greens.water,.09);
- // Lake surfaces are flat, a little above the ground where it meets them at the shore, with holes for the islands.
+ // The ground is painted per vertex (look.js): lawn where people live, rough meadow and forest floor where they do not, rock on steep
+ // ground, noise, darker at the foot of buildings, a lake bed coloured by depth. The diagonal of each cell is the one the road surface lowers the ground for.
  const waterY=l=>verticalDatum+(l.level-verticalDatum)*verticalExaggeration+.12;
+ const ground=createGround({data,gh,nx:gxn+1,nz:gzn+1,step:groundStep,x0:terrain.x0,z0:terrain.z0,lakes,shoreDistance,waterY}),gv=ground.colours;
+ for(let j=0;j<gzn;j++)for(let i=0;i<gxn;i++){const x=terrain.x0+i*groundStep,z=terrain.z0+j*groundStep,s=groundStep,k=j*(gxn+1)+i,b=bucket(x,z),A=[x,gh[k],z],B=[x+s,gh[k+1],z],C=[x+s,gh[k+gxn+2],z+s],D=[x,gh[k+gxn+1],z+s];triV(b,A,B,C,gv,k,k+1,k+gxn+2);triV(b,A,C,D,gv,k,k+gxn+2,k+gxn+1);}
+
+ for(const a of data.areas)if(a.type==='water'&&a.level==null)groundPoly(a.p,WATER.pond,.09);
+ // Lake surfaces are flat, a little above the ground where it meets them at the shore, with holes for the islands. They are one see-through mesh
+ // (look.js) over the lake bed, which is coloured by depth, so the water is light at the shore and deep blue further out.
+ const waterTriangles=[];
  for(const l of lakes){const y=waterY(l),all=[...l.p,...l.holes.flat()];
-  for(const f of T.ShapeUtils.triangulateShape(l.p.map(v=>new T.Vector2(...v)),l.holes.map(h=>h.map(v=>new T.Vector2(...v)))))tri(bucket(all[f[0]][0],all[f[0]][1]),...f.map(i=>[all[i][0],y,all[i][1]]),'#4d9bc9');}
+  for(const f of T.ShapeUtils.triangulateShape(l.p.map(v=>new T.Vector2(...v)),l.holes.map(h=>h.map(v=>new T.Vector2(...v)))))for(const i of f)waterTriangles.push(all[i][0],y,all[i][1]);}
+ if(waterTriangles.length)scene.add(mood.water.build(waterTriangles));
  // The big duck (duck.js) swims round its circle on Lianvannet by the turning circle at the end of Vetle Vislies veg
  // (lakes.js duckCircle); the car stops there and the camera turns to it (game.js). It rises out of the lake the first
  // time the car comes within 140 m of it, and stays for the rest of the visit.
@@ -74,11 +82,12 @@ export function createWorld(canvas, data) {
   duck.model.update(dt,time);
  }
  const gravel=new Set(data.roads.filter(road=>['gravel','compacted','unpaved'].includes(road.surface)||(road.name==='Herlofsons veg'&&road.p.some(p=>Math.hypot(p[0],p[1])<58))));
- const va=[0,0,0],vb=[0,0,0],vc=[0,0,0],vd=[0,0,0],roadColours=['#737d7b','#b8bbae','#93b96e','#95ba70','#8f9996'];
- roadSurface.paint((cls,road,n,c,flip)=>{const colour=cls===0&&gravel.has(road)?'#989789':roadColours[cls],b=bucket(c[0],c[2]);va[0]=c[0];va[1]=c[1];va[2]=c[2];vb[0]=c[3];vb[1]=c[4];vb[2]=c[5];vc[0]=c[6];vc[1]=c[7];vc[2]=c[8];
-  if(n===3)tri(b,va,vb,vc,colour);else{vd[0]=c[9];vd[1]=c[10];vd[2]=c[11];if(flip)quad(b,vb,vc,vd,va,colour);else quad(b,va,vb,vc,vd,colour);}});
+ // Asphalt, kerb band, island grass, verge and steep faces get their colour per corner (look.js); the verges take the colour of the ground beside them.
+ const va=[0,0,0],vb=[0,0,0],vc=[0,0,0],vd=[0,0,0],roadCol=new Float32Array(12),paintRoad=createRoadPainter(ground);
+ roadSurface.paint((cls,road,n,c,flip)=>{const b=bucket(c[0],c[2]);paintRoad(cls,cls===0&&gravel.has(road),n,c,roadCol);va[0]=c[0];va[1]=c[1];va[2]=c[2];vb[0]=c[3];vb[1]=c[4];vb[2]=c[5];vc[0]=c[6];vc[1]=c[7];vc[2]=c[8];
+  if(n===3)triV(b,va,vb,vc,roadCol,0,1,2);else{vd[0]=c[9];vd[1]=c[10];vd[2]=c[11];if(flip){triV(b,vb,vc,vd,roadCol,1,2,3);triV(b,vb,vd,va,roadCol,1,3,0);}else{triV(b,va,vb,vc,roadCol,0,1,2);triV(b,va,vc,vd,roadCol,0,2,3);}}});
  // Centre-line dashes sit on the drawn road in 1.5 m pieces, so they neither float above nor sink into it.
- for(const d of roadSurface.dashes)quad(bucket(d[0][0],d[0][2]),...d,'#e8d797');
+ for(const d of roadSurface.dashes)quad(bucket(d[0][0],d[0][2]),...d,ROAD.dash);
  // The car rides 8 cm above the drawn road (wheel bottoms on the asphalt), on terrain elsewhere.
  const roadTop=(x,z)=>roadSurface.heightAt(x,z)??height(x,z)+.39,carHeight=(x,z)=>roadTop(x,z)+.08;
  // Trees, bus stops and the like keep clear of the smoothed centre lines.
@@ -200,7 +209,7 @@ export function createWorld(canvas, data) {
  // With the colour picker on the start screen, turn a little left so the parked car shows beside the card, house still in view.
  if(mode==='introCar'&&!orbit.active){target.set(-27,height(-27,-15)+5,-15);camLook.set(2.8,height(-7,-3)+2.4,-11.3);}
  if(!initialized){camera.position.copy(target);look.copy(camLook);initialized=true;}else{camera.position.lerp(target,1-Math.exp(-dt*3));look.lerp(camLook,1-Math.exp(-dt*4));}camera.lookAt(look);
- sun.position.set(pos.x-70,pos.y+160,pos.z-90);sun.target.position.copy(pos);sun.target.updateMatrixWorld();
+ mood.update(time,camera.position,pos,orbitDirection.x,orbitDirection.z); // the sun's shadow box follows the car, the sky follows the camera
  for(const c of chunks){const d=Math.hypot(c.x-pos.x,c.z-pos.z);c.mesh.visible=d<680;c.mesh.castShadow=d<110;}
  for(const l of labels)l.visible=l.position.distanceTo(pos)<165&&l.position.distanceTo(pos)>27;
  goalRing.visible=Math.hypot(pos.x-goalPos[0],pos.z-goalPos[1])<150;goalRing.scale.setScalar(1+.08*Math.sin(time*2));

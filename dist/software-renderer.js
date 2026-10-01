@@ -4,6 +4,7 @@ import * as T from './vendor/three.js';
 export class SoftwareRenderer {
  constructor(canvas){this.canvas=canvas;this.ctx=canvas.getContext('2d');this.shadowMap={};this.ratio=1;this.cache=new WeakMap();this.textures=new WeakMap();this.materialColours=new WeakMap();this.last=0;}
  setPixelRatio(r){this.ratio=Math.min(r,1);}
+ getPixelRatio(){return this.ratio;}
  setSize(w,h){this.width=w;this.height=h;const scale=Math.min(this.ratio,820/w);this.canvas.width=Math.round(w*scale);this.canvas.height=Math.round(h*scale);}
  render(scene,camera){const now=performance.now();if(now-this.last<66)return;this.last=now;scene.updateMatrixWorld();camera.updateMatrixWorld();const ctx=this.ctx,w=this.canvas.width,h=this.canvas.height,f=h/(2*Math.tan(camera.fov*Math.PI/360)),cx=w/2,cy=h/2;ctx.fillStyle='#bfdfed';ctx.fillRect(0,0,w,h);const view=camera.matrixWorldInverse,polys=[],matrix=new T.Matrix4(),worldMatrix=new T.Matrix4();
  const srgb=v=>Math.round(255*(v<=.0031308?v*12.92:1.055*Math.pow(v,1/2.4)-.055));

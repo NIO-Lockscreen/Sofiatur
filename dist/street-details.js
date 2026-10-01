@@ -1,14 +1,15 @@
 import {roadWidth,streetSegments,segmentIndex,projectPoint} from './transit-geometry.js';
+import {ROAD as ROAD_LOOK,PATH as PATH_LOOK} from './look.js'; // the colours of the road, kerbs and paths are decided in look.js
 // Street details drawn the Norwegian way, from data.street (add-street-details.py reads them from OpenStreetMap; tags and
 // what is approximate: docs/street-details.md): gangfelt with signs, haitenner at give-way points, stop lines, raised and
 // painted traffic islands, turning circles, speed tables, sidewalks and gang- og sykkelvei, street lamps. Everything on the
 // road stands on roadTop() and everything beside it on ground() (the ground as it is seen: the world passes the verge strips over the ground mesh, else height), so the road surface can change without touching this.
-const WHITE='#f1f1e8',KERB='#cfcdc4',PAVING='#b7b4aa',GRASS='#86b364',POLE='#7f898d',BLUE='#1f57a8',RED='#c62330';
-const ROAD='#737d7b',GRAVEL='#989789',ROAD_KERB='#b8bbae'; // as world.js draws the road
+const WHITE='#f1f1e8',KERB=PATH_LOOK.kerbStone,PAVING=PATH_LOOK.paving,GRASS=ROAD_LOOK.island,POLE='#7f898d',BLUE='#1f57a8',RED='#c62330';
+const ROAD=ROAD_LOOK.asphalt,GRAVEL=ROAD_LOOK.gravel,ROAD_KERB=ROAD_LOOK.kerb; // as world.js draws the road
 export const COLOURS={WHITE,KERB,TABLE:'#858c89'}; // for the test
 const MARK=.06; // markings float this far above the asphalt, over the centre-line dashes (4 cm): enough for the depth buffer at a distance, not enough to see
 export const PATH_WIDTH={sidewalk:2.2,cycleway:3},KERB_BAND=.7,PATH_GAP=.4; // road-surface.js draws a kerb band .7 m wider than the carriageway on each side
-const PATH_LIFT={sidewalk:.22,cycleway:.24},PATH_COLOUR={sidewalk:'#aeaca2',cycleway:'#6d7573'};
+const PATH_LIFT={sidewalk:.22,cycleway:.24},PATH_COLOUR={sidewalk:PATH_LOOK.sidewalk,cycleway:PATH_LOOK.cycleway};
 const SURFACE={gravel:'#a49d8b',fine_gravel:'#a49d8b',compacted:'#a8a08b',unpaved:'#a39a83',dirt:'#9b8d72',ground:'#9b8d72',paving_stones:'#b3afa4',cobblestone:'#a7a398',sett:'#a7a398',concrete:'#bdbcb4'};
 export const PATH_COLOURS=new Set([...Object.values(PATH_COLOUR),...Object.values(SURFACE)]); // for the test
 const TABLE={table:{top:3,ramp:1.5,h:.09},hump:{top:0,ramp:1.8,h:.08}}; // a raised band across the road; the car does not bump
