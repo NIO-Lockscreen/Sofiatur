@@ -89,7 +89,9 @@ export function addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,bo
  }
 
  // ---- Give way and stop: haitenner or a stop line across the lane entering the junction, and the sign beside it ------------
- for(const g of S.give_way){const [x,z]=g.p,d=g.d,r=right(d),w=widthOf(g.r),cx=x+r[0]*w/4,cz=z+r[1]*w/4;teeth(cx,cz,d,r,w/4-.15);sign('vikeplikt',x-d[0]*.8+r[0]*(w/2+1.2),z-d[1]*.8+r[1]*(w/2+1.2),-d[0],-d[1]);}
+ for(const g of S.give_way){const [x,z]=g.p,d=g.d,r=right(d),w=widthOf(g.r),cx=x+r[0]*w/4,cz=z+r[1]*w/4;
+  if(g.ow)teeth(x,z,d,r,w/2-.35);else teeth(cx,cz,d,r,w/4-.15); // a one-way lane (the entry beside a splitter island) is given way across its whole width, a two-way road in its right-hand lane
+sign('vikeplikt',x-d[0]*.8+r[0]*(w/2+1.2),z-d[1]*.8+r[1]*(w/2+1.2),-d[0],-d[1]);}
  for(const g of [...S.stop,...S.traffic_signals]){const [x,z]=g.p,d=g.d,r=right(d),w=widthOf(g.r);stopLine(x+r[0]*w/4,z+r[1]*w/4,d,r,w/4-.1);}
 
  // ---- Speed tables and humps: a gentle band with white triangles on both ramps (a table with a crossing has the stripes instead) --
@@ -137,7 +139,7 @@ export function addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,bo
      quad(b,P([m[0]-uz*.17,m[1]+ux*.17]),P([m[0]+uz*.17,m[1]-ux*.17]),P([n[0]+uz*.17,n[1]-ux*.17]),P([n[0]-uz*.17,n[1]+ux*.17]),WHITE);}}}}
  for(const i of S.islands){if(i.f)paintedIsland(i.p);else raisedIsland(i.p,i.s==='paving_stones'?PAVING:i.s==='cobblestone'?'#a9a59a':GRASS);out.islands.push({p:i.p,flush:!!i.f});}
  // Roundabouts: a kerbed, grass-topped island in the middle of every circle wide enough (add-street-details.py has the rings).
- for(const r of S.roundabouts||[]){const w=widthOf(r.r),ri=r.rad-w/2-KERB_BAND-.25,n=Math.max(12,Math.round(ri*3));if(ri<1.6)continue;
+ for(const r of S.roundabouts||[]){const w=widthOf(r.r),ri=r.rad-w/2-KERB_BAND-.25,n=Math.max(48,Math.round(ri*8)); // round: a point every 0.8 m of the rim (12 to 17 points made the islands look polygonal)if(ri<1.6)continue;
   raisedIsland(Array.from({length:n},(_,i)=>[r.p[0]+Math.cos(i/n*Math.PI*2)*ri,r.p[1]+Math.sin(i/n*Math.PI*2)*ri]),GRASS);out.central.push({p:r.p,rad:ri});}
 
  // ---- Sidewalks and gang- og sykkelvei ------------------------------------------------------------------------------------------

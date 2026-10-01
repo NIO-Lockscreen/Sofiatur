@@ -45,6 +45,13 @@ export function smoothPlan(p,type,isFixed,ring,blocked){
  return {pts,first,last};
 }
 const cross2=(a,b)=>a[0]*b[1]-a[1]*b[0];
+// Least-squares circle through points (Kasa): centre and mean radius. A roundabout ring is a circle, so its centre, radius and level plane come from this.
+export function fitCircle(p){const n=p.length;let sx=0,sz=0;for(const q of p){sx+=q[0];sz+=q[1];}sx/=n;sz/=n;let uu=0,uv=0,vv=0,uuu=0,vvv=0,uvv=0,vuu=0;
+ for(const q of p){const u=q[0]-sx,v=q[1]-sz;uu+=u*u;uv+=u*v;vv+=v*v;uuu+=u*u*u;vvv+=v*v*v;uvv+=u*v*v;vuu+=v*u*u;}
+ const det=uu*vv-uv*uv,a=(.5*(uuu+uvv)*vv-.5*(vvv+vuu)*uv)/det,b=(.5*(vvv+vuu)*uu-.5*(uuu+uvv)*uv)/det,cx=sx+a,cz=sz+b;
+ return {cx,cz,R:p.reduce((s,q)=>s+Math.hypot(q[0]-cx,q[1]-cz),0)/n};}
+// The point s metres along a chain.
+function chainXZ(c,s){let lo=0,hi=c.s.length-1;if(s<=0)return [c.x[0],c.z[0]];if(s>=c.len)return [c.x[hi],c.z[hi]];while(hi-lo>1){const m=(lo+hi)>>1;if(c.s[m]<=s)lo=m;else hi=m;}const f=(s-c.s[lo])/((c.s[hi]-c.s[lo])||1);return [c.x[lo]+(c.x[hi]-c.x[lo])*f,c.z[lo]+(c.z[hi]-c.z[lo])*f];}
 // Paved patch at a node. Every arm is a strip (half-width w, unit direction d, corner radius rc, longest setback maxT); neighbouring
 // arms are joined by a curb return (a circular arc tangent to both carriageway edges), by a straight edge where a road carries on,
 // or by a sharp mitre on the outside of a bend. Each arm gets a setback t: the station where its own ribbon starts.
@@ -119,6 +126,9 @@ export function createRoadGeometry(data,height,tune={}){
  const R=roads.map((road,ri)=>{const type=road.type,width=roadWidth(road),p=road.p,ring=p.length>3&&nk(p[0])===nk(p.at(-1))&&p.every(q=>ringKeys.has(nk(q))),plan=smoothPlan(p,type,isFixed,ring,path=>hits(path,width/2)),n=plan.pts.length,s=new Float64Array(n);
   for(let i=1;i<n;i++)s[i]=s[i-1]+Math.hypot(plan.pts[i][0]-plan.pts[i-1][0],plan.pts[i][1]-plan.pts[i-1][1]);
   return {road,ri,type,width,hw:width/2,pts:plan.pts,first:plan.first,last:plan.last,s,y:new Float64Array(n).fill(NaN),bridge:!!road.bridge,ring};});
+ // Roundabouts: the circle of each ring (centre, radius of the centre line, half the carriageway) and, once the levels are known, its one plane.
+ const rings=R.filter(r=>r.ring).map(r=>({ri:r.ri,...fitCircle(r.pts.slice(0,-1)),hw:r.hw,plane:null}));
+ const ringOf=n=>rings.find(g=>Math.abs(Math.hypot(n.x-g.cx,n.z-g.cz)-g.R)<.6)||null;
  // 3. Nodes: road ends and every vertex several roads share; arms leave a node along a road.
  const reg=new Map(),armOf=new Map();
  for(const r of R){const m=r.road.p.length-1;r.road.p.forEach((q,i)=>{const k=nk(q);if(!(i===0||i===m||cnt.get(k)>1))return;let n=reg.get(k);if(!n){n={key:k,x:q[0],z:q[1],arms:[],kind:'end',links:[]};reg.set(k,n);}
@@ -136,6 +146,15 @@ export function createRoadGeometry(data,height,tune={}){
   const [a,b]=n.arms;n.kind=k===2&&n.links.length&&a.d[0]*b.d[0]+a.d[1]*b.d[1]<-.94&&Math.abs(a.w-b.w)<.01?'through':'patch';}
  const patches=[];
  for(const n of reg.values()){for(const a of n.arms)a.t=0;if(n.kind!=='patch')continue;
+  // Where a lane meets a roundabout ring there is no junction patch: a straight strip cannot follow a circle of 7 to 16 m, and the patches bulged and kinked on it.
+  // The ring runs straight through (one closed ribbon), each lane ends at the ring's outer edge (t = how far along the lane the circle lies) and road-surface.js draws the mouth.
+  const ring=ringOf(n);
+  if(ring){n.round=ring;const Ro=ring.R+ring.hw,ox=n.x-ring.cx,oz=n.z-ring.cz;
+   for(const a of n.arms){if(R[a.ri].ring)continue;
+    // Where the lane's straight cut can stand: both its corners (half a width either side of the axis) outside the ring's outer circle, or an oblique lane's inner corner would lie over the ring.
+    let t=0;for(const side of [0,1,-1]){const bx=ox-a.d[1]*a.w*side,bz=oz+a.d[0]*a.w*side,b=bx*a.d[0]+bz*a.d[1],disc=b*b-(bx*bx+bz*bz-Ro*Ro);if(disc>0)t=Math.max(t,-b+Math.sqrt(disc));}
+    a.t=Math.max(0,Math.min(t,a.straight*.97));a.mouth=ring;}
+   patches.push({node:n,x:n.x,z:n.z,arms:n.arms,chains:[],mouths:[],level:0,round:ring});n.patch=patches.at(-1);continue;}
   const arms=n.arms.map(a=>({d:a.d,w:a.w,rc:cornerRadius(R[a.ri].type),maxT:R[a.ri].bridge?0:Math.max(0,Math.min(22,a.straight*.97,a.len*(a.dead?.9:.45))),src:a}));
   const geo=junctionPatch([n.x,n.z],arms);for(const a of arms)a.src.t=a.t;
   patches.push({node:n,x:n.x,z:n.z,arms:arms.map(a=>a.src),chains:geo.chains,mouths:geo.mouths,level:0});n.patch=patches.at(-1);}
@@ -175,6 +194,13 @@ export function createRoadGeometry(data,height,tune={}){
  for(const l of groups.values())if(l.length>1){const P=l.reduce((a,n)=>a+n.P,0)/l.length;for(const n of l)n.P=P;}
  const pairs=[];for(const c of chains){const order=c.pins.map(o=>[c.s[o.i],o.node]).sort((a,b)=>a[0]-b[0]);for(let k=0;k+1<order.length;k++){const [sa,A]=order[k],[sb,B]=order[k+1];if(A!==B)pairs.push([A,B,c.g*.85*Math.max(sb-sa,1.5)]);}}
  for(let it=0;it<200;it++){let moved=0;for(const [A,B,lim] of pairs){const d=B.P-A.P;if(Math.abs(d)>lim){const e=(Math.abs(d)-lim)/2*Math.sign(d);A.P+=e;B.P-=e;moved++;}}if(!moved)break;}
+ // A roundabout lies in one plane: the best fit through the smoothed ground under its ring, sampled evenly round it. A ribbon that is level across, round a circle on a slope,
+ // is a twisted strip whose quads shade in spokes; in a plane they are flat. The ring's nodes take their levels from it, so the lanes that end on it follow.
+ for(const g of rings){const c=chains.find(c=>c.ri.every(ri=>ri===g.ri));if(!c)continue;const N=24;let y0=0,sxx=0,szz=0,sxy=0,szy=0;const pts=[];
+  for(let j=0;j<N;j++){const s=c.len*j/N,q=chainXZ(c,s),y=c.target(s);pts.push([q[0]-g.cx,q[1]-g.cz,y]);y0+=y/N;}
+  for(const [u,v,y] of pts){sxx+=u*u;szz+=v*v;sxy+=u*(y-y0);szy+=v*(y-y0);}
+  const gx=sxy/sxx,gz=szy/szz;g.plane=(x,z)=>y0+gx*(x-g.cx)+gz*(z-g.cz);g.slope=Math.hypot(gx,gz);c.plane=g.plane;
+  for(const n of reg.values())if(n.round===g&&n.P!==undefined)n.P=g.plane(n.x,n.z);}
  function solve(c,extra){
   const pl=[...c.pins.map(o=>({s:c.s[o.i],v:o.node.P})),...(extra||[])];
   // A closed chain (a ring) meets itself: both ends get the same level.
@@ -183,7 +209,7 @@ export function createRoadGeometry(data,height,tune={}){
   for(let k=0;k+1<bps.length;k++){const len=bps[k+1]-bps[k],cn=Math.max(1,Math.round(len/2));for(let m=0;m<cn;m++)gs.push(bps[k]+len*m/cn);}gs.push(bps.at(-1));
   const G=gs.length,S=Float64Array.from(gs,c.target),pinned=new Uint8Array(G);
   for(const p of pl){let lo=0,hi=G-1;while(hi-lo>1){const mid=(lo+hi)>>1;if(gs[mid]<=p.s)lo=mid;else hi=mid;}const j=p.s-gs[lo]<gs[hi]-p.s?lo:hi;S[j]=p.v;pinned[j]=1;}
-  let y;if(c.bridge)y=Float64Array.from(gs,v=>S[0]+(S[G-1]-S[0])*v/c.len);else{limitGrade(gs,S,c.g,pinned);y=fitProfile(gs,S,pinned,tune.lambda??9000);}
+  let y;if(c.plane)y=Float64Array.from(gs,v=>{const q=chainXZ(c,v);return c.plane(q[0],q[1]);});else if(c.bridge)y=Float64Array.from(gs,v=>S[0]+(S[G-1]-S[0])*v/c.len);else{limitGrade(gs,S,c.g,pinned);y=fitProfile(gs,S,pinned,tune.lambda??9000);}
   c.gs=Float64Array.from(gs);c.gy=y;c.at=sv=>{let lo=0,hi=G-1;if(sv<=gs[0])return y[0];if(sv>=gs[hi])return y[hi];while(hi-lo>1){const mid=(lo+hi)>>1;if(gs[mid]<=sv)lo=mid;else hi=mid;}return y[lo]+(y[hi]-y[lo])*(sv-gs[lo])/(gs[hi]-gs[lo]);};
   for(let i=0;i<c.x.length;i++)R[c.ri[i]].y[c.di[i]]=c.at(c.s[i]);
   for(const o of c.occ)for(const {arm} of o.arms)R[arm.ri].y[arm.di]=c.at(c.s[o.i]);}
@@ -191,18 +217,18 @@ export function createRoadGeometry(data,height,tune={}){
  const extras=new Map();
  for(const n of reg.values()){if(n.kind!=='patch'||!n.links.length)continue;const [a,b]=n.links[0],c=a.chain;if(!c||b.chain!==c)continue;
   const sN=c.s[a.ci],s0=Math.max(0,sN-3),s1=Math.min(c.len,sN+3),g=(c.at(s1)-c.at(s0))/((s1-s0)||1),u=a.sign===1?a.d:[-a.d[0],-a.d[1]];
-  for(const arm of n.arms){if(!arm.chain||arm.t<.5||n.links.some(l=>l.includes(arm))||Math.abs(arm.d[0]*u[0]+arm.d[1]*u[1])<.5)continue;const cc=arm.chain,sp=cc.s[arm.ci]+arm.sign*arm.t;if(sp<=.05||sp>=cc.len-.05)continue;
-   if(!extras.has(cc))extras.set(cc,[]);extras.get(cc).push({s:sp,v:n.P+g*(arm.d[0]*u[0]+arm.d[1]*u[1])*arm.t});}}
+  for(const arm of n.arms){if(!arm.chain||arm.t<.5||n.links.some(l=>l.includes(arm))||!n.round&&Math.abs(arm.d[0]*u[0]+arm.d[1]*u[1])<.5)continue;const cc=arm.chain,sp=cc.s[arm.ci]+arm.sign*arm.t;if(sp<=.05||sp>=cc.len-.05)continue;
+   if(!extras.has(cc))extras.set(cc,[]);extras.get(cc).push({s:sp,v:n.round?n.round.plane(n.x+arm.d[0]*arm.t,n.z+arm.d[1]*arm.t):n.P+g*(arm.d[0]*u[0]+arm.d[1]*u[1])*arm.t});}}
  const steep=c=>{for(let j=0;j+1<c.gs.length;j++)if(Math.abs(c.gy[j+1]-c.gy[j])>c.g*1.3*(c.gs[j+1]-c.gs[j]))return true;return false;};
  for(const [c,list] of extras){solve(c,list);if(steep(c)){solve(c);}}
  for(const r of R)for(let i=0;i<r.pts.length;i++)if(Number.isNaN(r.y[i]))r.y[i]=height(...r.pts[i])+.3;
  // 7. Ribbons (each reaches 3 cm into the patch it meets, so there is no crack): the stretches of a chain between patch nodes, cut short by the setback of the patch at each end. Patch levels: each arm's mouth level comes from its own road.
  const ribbons=[];
- for(const c of chains){const idx=[0,...c.occ.filter(o=>o.node.kind==='patch').map(o=>o.i),c.x.length-1].sort((a,b)=>a-b).filter((v,i,l)=>i===0||v!==l[i-1]);
+ for(const c of chains){const idx=[0,...c.occ.filter(o=>o.node.kind==='patch'&&!o.node.round).map(o=>o.i),c.x.length-1].sort((a,b)=>a-b).filter((v,i,l)=>i===0||v!==l[i-1]);
   const armOf2=(i,sign)=>{const a=c.occ.find(o=>o.i===i)?.arms.find(a=>a.sign===sign)?.arm;return a&&a.node.kind==='patch'&&a.t>0?a:null;},tOf=(i,sign)=>armOf2(i,sign)?.t||0;
   for(let k=0;k+1<idx.length;k++){const i0=idx[k],i1=idx[k+1],t0=tOf(i0,1),t1=tOf(i1,-1),s0=c.s[i0]+t0-(t0>0?.03:0),s1=c.s[i1]-t1+(t1>0?.03:0);if(s1-s0>.3)ribbons.push({c,i0,i1,s0,s1,hw:R[c.ri[Math.min(i0+1,c.ri.length-1)]].hw,arm0:armOf2(i0,1),arm1:armOf2(i1,-1)});}}
  for(const pt of patches){pt.level=pt.node.P;for(const a of pt.arms)a.mouthY=a.chain?a.chain.at(a.chain.s[a.ci]+a.sign*a.t):pt.level;}
- const geometry={roads:R,nodes:reg,patches,chains,ribbons};
+ const geometry={roads:R,nodes:reg,patches,chains,ribbons,rings};
  geometry.edgeLine=(path,lift=0)=>edgeLine(geometry,data,path,lift);
  // The centre lines as straight segments for proximity checks (trees, bus stops): a segment runs as far as the road stays within 30 cm of it.
  geometry.roadSegments=()=>R.flatMap(r=>{const out=[],p=r.pts,n=p.length;let a=0;

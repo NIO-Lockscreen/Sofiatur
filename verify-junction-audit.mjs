@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {roadWidth} from './dist/transit-geometry.js';
+import {fitCircle} from './dist/road-geometry.js';
 // Junction audit, 29 September 2026: carriageway widths (road_widths.py) and roundabout islands (map_fixes.ROUNDABOUT_ISLANDS) in dist/map.json.
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8')),byId=new Map(data.roads.map(r=>[String(r.id),r]));
 
@@ -23,8 +24,17 @@ console.log(`Road widths: ${data.roads.filter(r=>r.width!==undefined).length} ro
 
 // The roundabout islands, as the roads are drawn (ring radius - half the width - the 0.7 m kerb band), are the measured grass islands.
 const measured={176064627:12,18911623:10,176064616:22,18661699:10.3,22898628:10,176064583:6,727900565:7.4,727900566:13.4};
+let spread=0,radiusError=0,centreOffset=0;
 for(const [id,island] of Object.entries(measured)){
- const ring=byId.get(id).p.slice(0,-1),cx=ring.reduce((s,p)=>s+p[0],0)/ring.length,cz=ring.reduce((s,p)=>s+p[1],0)/ring.length,radius=ring.reduce((s,p)=>s+Math.hypot(p[0]-cx,p[1]-cz),0)/ring.length;
- const drawn=2*(radius-roadWidth(byId.get(id))/2-.7);
- assert.ok(Math.abs(drawn-island)<.3,`Roundabout ${id} at (${cx.toFixed(0)}, ${cz.toFixed(0)}): island ${drawn.toFixed(1)} m, measured ${island} m`);}
-console.log('Roundabout islands: 8 rings, drawn island within 0.3 m of the measured grass island: OK');
+ // 30 September 2026: the ring is a true circle (least squares, not the centroid of its unevenly spaced nodes), every node on it, and the island the street details draw is centred on it.
+ const road=byId.get(id),ring=road.p.slice(0,-1),{cx,cz,R}=fitCircle(ring),dist=ring.map(p=>Math.hypot(p[0]-cx,p[1]-cz));
+ spread=Math.max(spread,Math.max(...dist)-Math.min(...dist));
+ const drawn=2*(R-roadWidth(road)/2-.7);
+ assert.ok(Math.abs(drawn-island)<.3,`Roundabout ${id} at (${cx.toFixed(0)}, ${cz.toFixed(0)}): island ${drawn.toFixed(1)} m, measured ${island} m`);
+ radiusError=Math.max(radiusError,Math.abs(R-(island/2+.7+roadWidth(road)/2)));
+ const st=data.street.roundabouts.find(q=>Math.hypot(q.p[0]-cx,q.p[1]-cz)<6);assert.ok(st,`Roundabout ${id} has its island in the street details`);centreOffset=Math.max(centreOffset,Math.hypot(st.p[0]-cx,st.p[1]-cz));
+ assert.equal(st.r,id,'the island belongs to the ring way (the same on every run)');}
+assert.ok(spread<.05,`ring nodes on one circle (spread ${(spread*100).toFixed(1)} cm; the OSM rings at Stabells veg and Stavset were 30 and 38 cm out)`);
+assert.ok(radiusError<.03,`ring radius = island/2 + kerb band + half the width (${(radiusError*100).toFixed(1)} cm)`);
+assert.ok(centreOffset<.05,`island centre = ring centre (${(centreOffset*100).toFixed(1)} cm)`);
+console.log(`Roundabout islands: 8 rings, drawn island within 0.3 m of the measured grass island, nodes on one circle to ${(spread*100).toFixed(1)} cm, radius to ${(radiusError*100).toFixed(1)} cm, island centred to ${(centreOffset*100).toFixed(1)} cm: OK`);

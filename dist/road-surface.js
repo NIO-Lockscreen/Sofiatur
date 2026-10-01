@@ -29,6 +29,8 @@ export function createRoadSurface(roads,height,data,tune={}){
  // Steep corners: where two neighbouring arms leave at levels too far apart for the short curb return between them (a step face), the corner takes the mean of the
  // two levels and each arm's ribbon tilts into it over its first WARP metres: a slope instead of a wall. wL/wR: level change of an arm's left/right mouth corner.
  for(const pt of geo.patches){for(const a of pt.arms)a.wL=a.wR=0;
+  // A lane that ends on a roundabout tilts into the ring's plane over its last metres: its mouth corners take the plane's level.
+  if(pt.round){for(const a of pt.arms){if(!a.mouth||!a.chain)continue;const pl=pt.round.plane,X=pt.x+a.d[0]*a.t,Z=pt.z+a.d[1]*a.t;a.wL=pl(X-a.d[1]*a.w,Z+a.d[0]*a.w)-a.mouthY;a.wR=pl(X+a.d[1]*a.w,Z-a.d[0]*a.w)-a.mouthY;}continue;}
   for(const ch of pt.chains){const q=ch.pts;let len=0;for(let k=1;k<q.length;k++)len+=Math.hypot(q[k][0]-q[k-1][0],q[k][1]-q[k-1][1]);
    if(ch.A!==ch.B&&Math.abs(ch.B.mouthY-ch.A.mouthY)>(tune.steep??STEEP)*Math.max(len,.3)){const m=(ch.A.mouthY+ch.B.mouthY)/2;ch.A.wL=m-ch.A.mouthY;ch.B.wR=m-ch.B.mouthY;}}}
  const ease=x=>{x=Math.max(0,Math.min(1,x));return 1-x*x*(3-2*x);};
@@ -74,12 +76,68 @@ export function createRoadSurface(roads,height,data,tune={}){
  function tilt(k,ax,ay,az,bx,by,bz,cx,cy,cz){const ux=bx-ax,uy=by-ay,uz=bz-az,vx=cx-ax,vy=cy-ay,vz=cz-az,nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,l=Math.hypot(nx,ny,nz)||1;nrm[k]=nx/l;nrm[k+1]=ny/l;nrm[k+2]=nz/l;}
  function asphalt(ri,x0,y0,z0,x1,y1,z1,x2,y2,z2,x3,y3,z3){
   tilt(0,x0,y0,z0,x1,y1,z1,x2,y2,z2);tilt(3,x0,y0,z0,x2,y2,z2,x3,y3,z3);tilt(6,x1,y1,z1,x2,y2,z2,x3,y3,z3);tilt(9,x1,y1,z1,x3,y3,z3,x0,y0,z0);
-  quad(stores.ribbon,0,ri,x0,y0,z0,x1,y1,z1,x2,y2,z2,x3,y3,z3,nrm[0]*nrm[3]+nrm[1]*nrm[4]+nrm[2]*nrm[5]<nrm[6]*nrm[9]+nrm[7]*nrm[10]+nrm[8]*nrm[11]);}
+  const flip=nrm[0]*nrm[3]+nrm[1]*nrm[4]+nrm[2]*nrm[5]<nrm[6]*nrm[9]+nrm[7]*nrm[10]+nrm[8]*nrm[11];quad(stores.ribbon,0,ri,x0,y0,z0,x1,y1,z1,x2,y2,z2,x3,y3,z3,flip);return flip;}
  // A triangle of a patch: drawn, and the ground below its corners, middle and edge midpoints kept lower.
  function fan(ri,x0,y0,z0,x1,y1,z1,x2,y2,z2){
   const ux=x1-x0,uy=y1-y0,uz=z1-z0,vx=x2-x0,vy=y2-y0,vz=z2-z0,wall=Math.hypot(uy*vz-uz*vy,ux*vy-uy*vx)>.7*Math.abs(uz*vx-ux*vz); // steep (over 35 degrees): a step between two roads' levels at a tight corner, drawn a little lighter to make up for the side lighting
   tri(stores.patch,wall?4:0,ri,x0,y0,z0,x1,y1,z1,x2,y2,z2);
   need(x0,z0,y0-CLEAR);need(x1,z1,y1-CLEAR);need(x2,z2,y2-CLEAR);need((x0+x1+x2)/3,(z0+z1+z2)/3,(y0+y1+y2)/3-CLEAR);need((x0+x1)/2,(z0+z1)/2,(y0+y1)/2-CLEAR);need((x1+x2)/2,(z1+z2)/2,(y1+y2)/2-CLEAR);}
+ // Mouth of a lane that ends on a roundabout ring (road-geometry.js gives such a node no patch): the lane's ribbon stops square at the ring's outer edge and tilts into the ring's plane over its last metres.
+ // Rows of quads in the ring's plane carry the lane's width on to the circle, and on each side a curb return (an arc tangent to the lane's edge and to the ring's outer circle, radius as large as R_MAX allows,
+ // but opening no more than the room beside the lane leaves for the splitter island, ISLAND_MIN between the kerb bands) flares the entry and the exit. Kerb bands follow every edge that lies outside the circle.
+ const R_MAX=5,OPEN_MAX=2.6,ISLAND_MIN=2.4,REACH=11;
+ function laneAt(c,s){const n=c.s.length;let q=s<0?0:s>c.len?c.len:s,lo=0,hi=n-1;while(hi-lo>1){const m=(lo+hi)>>1;if(c.s[m]<=q)lo=m;else hi=m;}
+  const dx=c.x[hi]-c.x[lo],dz=c.z[hi]-c.z[lo],l=Math.hypot(dx,dz)||1,f=Math.max(0,Math.min(1,(q-c.s[lo])/((c.s[hi]-c.s[lo])||1)));return [c.x[lo]+dx*f+dx/l*(s-q),c.z[lo]+dz*f+dz/l*(s-q),dx/l,dz/l];}
+ function mouth(pt,a){
+  const g=pt.round,c=a.chain,plane=g.plane;if(!c||!plane)return;
+  const sN=c.s[a.ci],sg=a.sign,Ro=g.R+g.hw,hw=a.w,ri=a.ri,tc=Math.max(.3,a.t),rb=geo.ribbons.find(r=>r.arm0===a||r.arm1===a),Lw=rb?warpLen(rb):1;
+  const P=u=>{const q=laneAt(c,sN+sg*u);return {x:q[0],z:q[1],dx:q[2]*sg,dz:q[3]*sg};}; // the lane's centre line u metres from the node, and its direction away from the node
+  const mm=plane(pt.x+a.d[0]*a.t,pt.z+a.d[1]*a.t)-a.mouthY,avail=(sg>0?c.len-sN:sN)-.5;
+  // The level at a point: the ring's plane from the cut inwards, from there out the lane's own level, eased into the plane by the same blend as the ribbon's tilt (so it meets the ribbon's edge exactly).
+  const lev=(x,z,u)=>{if(u<=tc)return plane(x,z);const p=P(u);return c.at(sN+sg*u)+ease((u-(a.t-.03))/Lw)*(plane(x,z)-plane(p.x,p.z)+mm);};
+  const uOf=(x,z)=>Math.max(0,(x-pt.x)*a.d[0]+(z-pt.z)*a.d[1]);
+  const pv=(x,z,u=uOf(x,z))=>[x,lev(x,z,u),z];
+  const qf=(p0,p1,p2,p3)=>{fan(ri,...p0,...p1,...p2);fan(ri,...p0,...p2,...p3);};
+  // Room at the ring on each side (0 left, 1 right of the lane as it leaves the node): the gap to the nearest other lane, less the narrowest island, shared between the two.
+  const axis=[pt.x+a.d[0]*tc,pt.z+a.d[1]*tc],room=[Infinity,Infinity];
+  for(const q of geo.patches){if(q.round!==g)continue;for(const b of q.arms){if(b===a||!b.mouth)continue;const tb=Math.max(.3,b.t),bx=q.x+b.d[0]*tb,bz=q.z+b.d[1]*tb,
+    arc=Ro*Math.abs(Math.atan2((axis[0]-g.cx)*(bz-g.cz)-(axis[1]-g.cz)*(bx-g.cx),(axis[0]-g.cx)*(bx-g.cx)+(axis[1]-g.cz)*(bz-g.cz)));
+    if(arc>Ro*1.1)continue;const side=(bx-axis[0])*-a.d[1]+(bz-axis[1])*a.d[0]>0?0:1;room[side]=Math.min(room[side],arc-hw-b.w);}}
+  const open=room.map(r=>Math.max(0,Math.min(OPEN_MAX,(r-ISLAND_MIN)/2)));
+  // Rows across the lane's width from just before the cut to the ring: until both edges and the middle lie inside the ring's asphalt.
+  const us=[tc+.5,tc];for(let u=tc;u>0;){u=Math.max(0,u-.4);us.push(u);const p=P(u);if([-hw,0,hw].every(o=>Math.hypot(p.x-p.dz*o-g.cx,p.z+p.dx*o-g.cz)<=Ro-.25))break;}
+  const rows=us.map(u=>({u,p:P(u)})),V=(r,o)=>pv(r.p.x-r.p.dz*o,r.p.z+r.p.dx*o,r.u);
+  for(let j=0;j+1<rows.length;j++)qf(V(rows[j],hw),V(rows[j],-hw),V(rows[j+1],-hw),V(rows[j+1],hw));
+  // Kerb band along a polyline of asphalt-edge points [x,y,z] with outward normals [nx,nz]; only the stretches outside the circle.
+  const kerb=(pts,nrm)=>{let run=[];const flush=()=>{if(run.length>1)edges.push(run);run=[];};
+   for(let k=0;k+1<pts.length;k++){const q0=pts[k],q1=pts[k+1];if(Math.hypot(q0[0]-g.cx,q0[2]-g.cz)<Ro+.05||Math.hypot(q1[0]-g.cx,q1[2]-g.cz)<Ro+.05){flush();continue;}
+    // The band's inner edge (0.3 m under the asphalt) and outer edge take the level of the surface at their own places, 9 cm down: on a tilted ring a level band would rise above the asphalt.
+    const at=(q,n,o)=>{const x=q[0]+n[0]*o,z=q[2]+n[1]*o;return [x,pv(x,z)[1]-KERB_DROP,z];},i0=at(q0,nrm[k],-.3),i1=at(q1,nrm[k+1],-.3),o0=at(q0,nrm[k],KERB),o1=at(q1,nrm[k+1],KERB);
+    quad(stores.patch,1,ri,...i0,...o0,...o1,...i1);need(o0[0],o0[2],o0[1]+KERB_DROP-CLEAR);
+    if(!run.length)run.push({x:o0[0],z:o0[2],y:o0[1],nx:nrm[k][0],nz:nrm[k][1]});run.push({x:o1[0],z:o1[2],y:o1[1],nx:nrm[k+1][0],nz:nrm[k+1][1]});}
+   flush();};
+  for(const [side,sgn] of [[0,1],[1,-1]]){
+   // The lane's own edge carried on past the cut to the circle: kerb where it lies outside.
+   const edge=rows.map(r=>V(r,sgn*hw)),en=rows.map(r=>[-r.p.dz*sgn,r.p.dx*sgn]);kerb(edge,en);
+   // Curb return: the largest radius whose arc starts on the lane's edge within REACH m of the cut and opens no more than the room allows.
+   if(open[side]<.35)continue;
+   for(const r of [R_MAX,4,3,2.2,1.5]){
+    let uS=tc+4,fit=null;
+    for(let it=0;it<4&&uS>tc&&uS<tc+REACH+4;it++){const p=P(uS),ex=p.x-p.dz*sgn*hw,ez=p.z+p.dx*sgn*hw,wx=-p.dx,wz=-p.dz,nx=-p.dz*sgn,nz=p.dx*sgn,Ax=ex+nx*r-g.cx,Az=ez+nz*r-g.cz,b=Ax*wx+Az*wz,disc=b*b-(Ax*Ax+Az*Az-(Ro+r)*(Ro+r));
+     if(disc<0){fit=null;break;}const v=-b-Math.sqrt(disc);uS-=v;fit={p,ex,ez,wx,wz,nx,nz,v};if(Math.abs(v)<.02)break;}
+    if(!fit||uS<=tc+.3||uS>tc+REACH||uS>avail)continue;
+    // Tangent point on the edge at station uS, arc centre Q (on the outward side), tangent point T on the circle.
+    const p=P(uS),tx=p.x-p.dz*sgn*hw,tz=p.z+p.dx*sgn*hw,qx=tx+-p.dz*sgn*r,qz=tz+p.dx*sgn*r,k=Ro/(Ro+r),Tx=g.cx+(qx-g.cx)*k,Tz=g.cz+(qz-g.cz)*k;
+    if(Math.hypot(Tx-tx,Tz-tz)<.2)continue;
+    // How far the curb return opens the mouth: T's distance from the lane's edge line.
+    const grow=Math.abs((Tx-tx)*-p.dz*sgn+(Tz-tz)*p.dx*sgn);if(grow>open[side]+.05)continue;
+    // The corner where the edge line meets the circle: the fan's apex.
+    const Ex=tx,Ez=tz,wx=-p.dx,wz=-p.dz,Bx=Ex-g.cx,Bz=Ez-g.cz,bb=Bx*wx+Bz*wz,dd=bb*bb-(Bx*Bx+Bz*Bz-Ro*Ro);if(dd<0)continue;const vc=-bb-Math.sqrt(dd),Xc=[Ex+wx*vc,Ez+wz*vc];
+    let a0=Math.atan2(tz-qz,tx-qx),a1=Math.atan2(Tz-qz,Tx-qx),sw=a1-a0;while(sw>Math.PI)sw-=2*Math.PI;while(sw<-Math.PI)sw+=2*Math.PI;
+    const n=Math.max(3,Math.ceil(Math.abs(sw)*r/.5)),arc=[],an=[];for(let j=0;j<=n;j++){const ang=a0+sw*j/n,x=qx+r*Math.cos(ang),z=qz+r*Math.sin(ang);arc.push(pv(x,z));an.push([-Math.cos(ang),-Math.sin(ang)]);} // outward = towards the arc's centre
+    const apex=pv(Xc[0],Xc[1]);for(let j=0;j+1<arc.length;j++)fan(ri,...apex,...arc[j],...arc[j+1]);
+    kerb(arc,an);break;}}
+ }
  // Stretch of a chain between stations s0 and s1: its dense samples, thinned wherever a straight chord keeps within 2 cm sideways and 1.2 cm in level.
  function stations(c,rb){
   const S=[],I=[],X=[],Z=[],Y=[],at=s=>{let i=rb.i0;while(i<rb.i1-1&&c.s[i+1]<=s)i++;const f=Math.max(0,Math.min(1,(s-c.s[i])/((c.s[i+1]-c.s[i])||1)));S.push(s);I.push(i);X.push(c.x[i]+(c.x[i+1]-c.x[i])*f);Z.push(c.z[i]+(c.z[i+1]-c.z[i])*f);Y.push(c.at(s));};
@@ -98,22 +156,31 @@ export function createRoadSurface(roads,height,data,tune={}){
  // Left/right cross-section directions at each station: mitre joins, so consecutive strips share their corners and leave no wedge.
  function sections(st,rb){
   const n=st.X.length,dx=[],dz=[],NX=[],NZ=[],MF=[];for(let k=0;k+1<n;k++){const ex=st.X[k+1]-st.X[k],ez=st.Z[k+1]-st.Z[k],l=Math.hypot(ex,ez)||1;dx.push(ex/l);dz.push(ez/l);}
-  for(let k=0;k<n;k++){const a=Math.max(0,k-1),b=Math.min(n-2,k);let tx=dx[a]+dx[b],tz=dz[a]+dz[b];const tl=Math.hypot(tx,tz);if(tl<1e-6){tx=dx[b];tz=dz[b];}else{tx/=tl;tz/=tl;}NX.push(-tz);NZ.push(tx);MF.push(Math.min(2,1/Math.max(.5,tx*dx[b]+tz*dz[b])));}
+  const loop=rb.c.closed&&!rb.arm0&&!rb.arm1&&rb.i0===0&&rb.i1===rb.c.x.length-1; // a roundabout ring is one closed ribbon: its ends meet with one cross-section
+  for(let k=0;k<n;k++){const a=loop&&k===0?n-2:Math.max(0,k-1),b=loop&&k===n-1?0:Math.min(n-2,k);let tx=dx[a]+dx[b],tz=dz[a]+dz[b];const tl=Math.hypot(tx,tz);if(tl<1e-6){tx=dx[b];tz=dz[b];}else{tx/=tl;tz/=tl;}NX.push(-tz);NZ.push(tx);MF.push(Math.min(2,1/Math.max(.5,tx*dx[b]+tz*dz[b])));}
   if(rb.arm0){NX[0]=-rb.arm0.d[1];NZ[0]=rb.arm0.d[0];MF[0]=1;}
   if(rb.arm1){NX[n-1]=rb.arm1.d[1];NZ[n-1]=-rb.arm1.d[0];MF[n-1]=1;}
   return {NX,NZ,MF};
  }
  const ribs=[];
- for(const rb of geo.ribbons){const c=rb.c,st=stations(c,rb),sc=sections(st,rb),hw=rb.hw,n=st.X.length,ka=hw+KERB,bridge=c.bridge,wp=[],wm=[];for(let k=0;k<n;k++){edgeWarp(rb,st.S[k]);wp.push(ew[0]);wm.push(ew[1]);}ribs.push({st,sc,hw,bridge,wp,wm,roads:c.ri});
+ for(const rb of geo.ribbons){const c=rb.c,st=stations(c,rb),sc=sections(st,rb),hw=rb.hw,n=st.X.length,ka=hw+KERB,bridge=c.bridge,wp=[],wm=[];for(let k=0;k<n;k++){edgeWarp(rb,st.S[k]);wp.push(ew[0]);wm.push(ew[1]);}
+  // A roundabout ring lies in its plane (level along the centre line, tilted across like the plane), so its quads are flat.
+  if(c.plane)for(let k=0;k<n;k++){const f=sc.MF[k],X=st.X[k],Z=st.Z[k],y=c.plane(X,Z);st.Y[k]=y;wp[k]+=c.plane(X+sc.NX[k]*f*hw,Z+sc.NZ[k]*f*hw)-y;wm[k]+=c.plane(X-sc.NX[k]*f*hw,Z-sc.NZ[k]*f*hw)-y;}
+  ribs.push({st,sc,hw,bridge,wp,wm,roads:c.ri,plane:c.plane});
   for(let k=0;k+1<n;k++){const ri=c.ri[Math.min(st.I[k]+1,c.ri.length-1)],ax=st.X[k],az=st.Z[k],ay=st.Y[k],bx=st.X[k+1],bz=st.Z[k+1],by=st.Y[k+1],fa=sc.MF[k],fb=sc.MF[k+1],anx=sc.NX[k]*fa,anz=sc.NZ[k]*fa,bnx=sc.NX[k+1]*fb,bnz=sc.NZ[k+1]*fb,d=KERB_DROP,pa=wp[k],ma=wm[k],pb=wp[k+1],mb=wm[k+1];
-   quad(stores.ribbon,1,ri,ax+anx*ka,ay-d+pa,az+anz*ka,ax-anx*ka,ay-d+ma,az-anz*ka,bx-bnx*ka,by-d+mb,bz-bnz*ka,bx+bnx*ka,by-d+pb,bz+bnz*ka);
-   asphalt(ri,ax+anx*hw,ay+pa,az+anz*hw,ax-anx*hw,ay+ma,az-anz*hw,bx-bnx*hw,by+mb,bz-bnz*hw,bx+bnx*hw,by+pb,bz+bnz*hw);
+   const k0x=ax+anx*ka,k0z=az+anz*ka,k1x=ax-anx*ka,k1z=az-anz*ka,k2x=bx-bnx*ka,k2z=bz-bnz*ka,k3x=bx+bnx*ka,k3z=bz+bnz*ka,pl=c.plane; // the kerb band of a ring lies in the ring's plane, 9 cm down
+   // Where the ribbon tilts (pa differs from ma) the kerb band under it continues the same tilt out to its edges, so it stays 9 cm under the asphalt on both sides.
+   const rk=ka/hw,ca=(pa+ma)/2,da=(pa-ma)/2*rk,cb=(pb+mb)/2,db=(pb-mb)/2*rk;
+   const fl=asphalt(ri,ax+anx*hw,ay+pa,az+anz*hw,ax-anx*hw,ay+ma,az-anz*hw,bx-bnx*hw,by+mb,bz-bnz*hw,bx+bnx*hw,by+pb,bz+bnz*hw);
+   // the kerb band under it is split on the same diagonal, or its twisted halves could rise above the asphalt
+   quad(stores.ribbon,1,ri,k0x,pl?pl(k0x,k0z)-d:ay-d+ca+da,k0z,k1x,pl?pl(k1x,k1z)-d:ay-d+ca-da,k1z,k2x,pl?pl(k2x,k2z)-d:by-d+cb-db,k2z,k3x,pl?pl(k3x,k3z)-d:by-d+cb+db,k3z,fl);
    if(!bridge&&tr){const len=Math.hypot(bx-ax,bz-az),m=Math.max(1,Math.ceil(len/2));
-    for(let q=0;q<=m;q++){const t=q/m,y=ay+(by-ay)*t-CLEAR,cx=ax+(bx-ax)*t,cz=az+(bz-az)*t,nx=anx+(bnx-anx)*t,nz=anz+(bnz-anz)*t,u=pa+(pb-pa)*t,v=ma+(mb-ma)*t;need(cx,cz,y+(u+v)/2);need(cx+nx*ka,cz+nz*ka,y+u);need(cx-nx*ka,cz-nz*ka,y+v);}}}}
+    for(let q=0;q<=m;q++){const t=q/m,y=ay+(by-ay)*t-CLEAR,cx=ax+(bx-ax)*t,cz=az+(bz-az)*t,nx=anx+(bnx-anx)*t,nz=anz+(bnz-anz)*t,u=pa+(pb-pa)*t,v=ma+(mb-ma)*t;
+     if(pl){for(const [ox,oz] of [[0,0],[nx*ka,nz*ka],[-nx*ka,-nz*ka]])need(cx+ox,cz+oz,pl(cx+ox,cz+oz)-CLEAR);}else{need(cx,cz,y+(u+v)/2);need(cx+nx*ka,cz+nz*ka,y+u);need(cx-nx*ka,cz-nz*ka,y+v);}}}}}
  // Junction patches: a fan from the node over the outline, heights blended from the node level to each arm's mouth level; kerb bands along the curb returns.
  const edges=[]; // outer kerb edges of the patches: points, outward normals and heights
- const planes=clusterPlanes(geo.patches);
- for(const pt of geo.patches){const P=pt.level,plane=planes.get(pt),ri=pt.arms.reduce((best,a)=>R[a.ri].hw>R[best.ri].hw?a:best,pt.arms[0]).ri,X=pt.x,Z=pt.z;
+ const planes=clusterPlanes(geo.patches.filter(p=>!p.round));
+ for(const pt of geo.patches){if(pt.round){for(const a of pt.arms)if(a.mouth)mouth(pt,a);continue;}const P=pt.level,plane=planes.get(pt),ri=pt.arms.reduce((best,a)=>R[a.ri].hw>R[best.ri].hw?a:best,pt.arms[0]).ri,X=pt.x,Z=pt.z;
   for(const m of pt.mouths){const a=m.arm;fan(ri,X,P,Z,m.R[0],a.mouthY+a.wR,m.R[1],m.L[0],a.mouthY+a.wL,m.L[1]);}
   // Each arm's own strip from the node to its mouth, under the fan (6 cm at the mouth, 45 cm at the node, where the fans around may dip): it only shows where an acute corner leaves the fan short.
   for(const a of pt.arms){if(a.t<.2)continue;const w=a.w,px=-a.d[1]*w,pz=a.d[0]*w,ex=X+a.d[0]*a.t,ez=Z+a.d[1]*a.t,d=.06,e=.45;quad(stores.patch,0,a.ri,X-px,P-e,Z-pz,X+px,P-e,Z+pz,ex+px,a.mouthY+a.wL-d,ez+pz,ex-px,a.mouthY+a.wR-d,ez-pz);}
@@ -128,7 +195,8 @@ export function createRoadSurface(roads,height,data,tune={}){
  // Roundabout islands: a grass disc inside each ring, level with the ring's inner kerb; the ring's centre and size also keep verges off the island.
  const rings=[];
  for(const r of R){if(!r.ring)continue;const pts=r.pts,n=pts.length-1;let cx=0,cz=0;for(let i=0;i<n;i++){cx+=pts[i][0];cz+=pts[i][1];}cx/=n;cz/=n;
-  const ex=[],ey=[],ez=[];for(let i=0;i<=n;i++){const a=pts[(i+n-1)%n],b=pts[(i+1)%n],p=pts[i%n],dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz)||1;let nx=-dz/l,nz=dx/l;if(nx*(cx-p[0])+nz*(cz-p[1])<0){nx=-nx;nz=-nz;}ex.push(p[0]+nx*(r.hw+KERB));ey.push(r.y[i%n]-KERB_DROP);ez.push(p[1]+nz*(r.hw+KERB));}
+  const plane=geo.rings.find(g=>g.ri===r.ri)?.plane; // the island's rim lies in the ring's plane, as the ring's inner kerb does
+  const ex=[],ey=[],ez=[];for(let i=0;i<=n;i++){const a=pts[(i+n-1)%n],b=pts[(i+1)%n],p=pts[i%n],dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz)||1;let nx=-dz/l,nz=dx/l;if(nx*(cx-p[0])+nz*(cz-p[1])<0){nx=-nx;nz=-nz;}const X=p[0]+nx*(r.hw+KERB),Z=p[1]+nz*(r.hw+KERB);ex.push(X);ey.push((plane?plane(X,Z):r.y[i%n])-KERB_DROP);ez.push(Z);}
   const yc=ey.reduce((a,v)=>a+v,0)/ey.length;
   for(let i=0;i<n;i++){tri(stores.patch,2,r.ri,cx,yc,cz,ex[i],ey[i],ez[i],ex[i+1],ey[i+1],ez[i+1]);need(ex[i],ez[i],ey[i]-CLEAR);need((cx+ex[i]+ex[i+1])/3,(cz+ez[i]+ez[i+1])/3,(yc+ey[i]+ey[i+1])/3-CLEAR);need((cx+ex[i])/2,(cz+ez[i])/2,(yc+ey[i])/2-CLEAR);}
   rings.push({cx,cz,radius:Math.max(...ex.map((x,i)=>Math.hypot(x-cx,ez[i]-cz)))});}
@@ -175,11 +243,11 @@ if(tr)buildGrid();
   for(let k=0;k+1<n;k++)if(pd[k]>0||pd[k+1]>0)quad(stores.verge,3,0,ex[k],ey[k],ez[k],px[k],py[k],pz[k],px[k+1],py[k+1],pz[k+1],ex[k+1],ey[k+1],ez[k+1]);
  }
  if(tr){for(const rib of ribs){if(rib.bridge)continue;const {st,sc,hw,wp,wm}=rib,n=st.X.length;for(const ri of rib.roads)own[ri]=1;
-   for(const side of [1,-1]){const ex=[],ey=[],ez=[],nx=[],nz=[];for(let k=0;k<n;k++){const o=(hw+KERB)*side*sc.MF[k];ex.push(st.X[k]+sc.NX[k]*o);ez.push(st.Z[k]+sc.NZ[k]*o);ey.push(st.Y[k]-KERB_DROP+(side>0?wp[k]:wm[k]));nx.push(sc.NX[k]*side);nz.push(sc.NZ[k]*side);}verge(ex,ey,ez,nx,nz);}for(const ri of rib.roads)own[ri]=0;}
+   for(const side of [1,-1]){const ex=[],ey=[],ez=[],nx=[],nz=[];for(let k=0;k<n;k++){const o=(hw+KERB)*side*sc.MF[k];ex.push(st.X[k]+sc.NX[k]*o);ez.push(st.Z[k]+sc.NZ[k]*o);ey.push(rib.plane?rib.plane(ex[k],ez[k])-KERB_DROP:st.Y[k]-KERB_DROP+(side>0?wp[k]:wm[k]));nx.push(sc.NX[k]*side);nz.push(sc.NZ[k]*side);}verge(ex,ey,ez,nx,nz);}for(const ri of rib.roads)own[ri]=0;}
   for(const e of edges)verge(e.map(p=>p.x),e.map(p=>p.y),e.map(p=>p.z),e.map(p=>p.nx),e.map(p=>p.nz));}
  // Centre-line dashes on marked roads: 1.5 m pieces every 9 m along each chain, wherever a ribbon (not a patch) lies, just above the asphalt.
  const dashes=[],byChain=new Map();for(const rb of geo.ribbons){if(!byChain.has(rb.c))byChain.set(rb.c,[]);byChain.get(rb.c).push(rb);}
- for(const [c,list] of byChain){if(!c.ri.some(ri=>R[ri].road.mark))continue;let i=0;
+ for(const [c,list] of byChain){if(!c.ri.some(ri=>R[ri].road.mark)||c.plane)continue;let i=0; // a roundabout ring has no centre line
   const pos=sv=>{while(i<c.s.length-2&&c.s[i+1]<=sv)i++;while(i>0&&c.s[i]>sv)i--;const f=Math.max(0,Math.min(1,(sv-c.s[i])/((c.s[i+1]-c.s[i])||1))),dx=c.x[i+1]-c.x[i],dz=c.z[i+1]-c.z[i],l=Math.hypot(dx,dz)||1;return {x:c.x[i]+dx*f,z:c.z[i]+dz*f,nx:-dz/l*.065,nz:dx/l*.065,y:c.at(sv)+.04};};
   for(let sv=3;sv+1.5<c.len-2;sv+=9){if(!list.some(rb=>sv>=rb.s0+.5&&sv+1.5<=rb.s1-.5))continue;if(!R[c.ri[Math.min(c.ri.length-1,Math.round(sv/c.len*(c.ri.length-1)))]].road.mark)continue;
    const a=pos(sv),b=pos(sv+1.5);dashes.push([[a.x+a.nx,a.y,a.z+a.nz],[a.x-a.nx,a.y,a.z-a.nz],[b.x-b.nx,b.y,b.z-b.nz],[b.x+b.nx,b.y,b.z+b.nz]]);}}

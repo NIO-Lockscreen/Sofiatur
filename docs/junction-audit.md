@@ -126,4 +126,6 @@ Owner A is the road surface and junction shape work, B the street details from O
   service way, so it is drawn but not offered. Not on a trip.
 - **Ring radius.** The correction is a scale of the ring nodes about the ring centre, 0.3-2.9 m (about 2 m on most), so the exit order and arrows
   are unchanged (`verify-roundabouts.mjs`). If A draws islands from explicit measured radii instead, drop `fit_roundabouts`.
+  Since 30 September 2026 `fit_roundabouts` fits the circle by least squares and puts every ring node on it, and the roundabouts have their own
+  surface (no junction patches on the ring, one plane, curb returns): see `docs/roundabouts.md`.
 - The tests that could have been affected all pass: `node verify-*.mjs` (16 scripts plus `verify-junction-audit.mjs`).

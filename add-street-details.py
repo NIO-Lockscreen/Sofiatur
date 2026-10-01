@@ -7,7 +7,7 @@
 import json,math,collections
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from map_fixes import in_added
+from map_fixes import in_added,fit_circle
 
 M=Path('dist/map.json');D=json.loads(M.read_text());lon0,lat0=D['origin'];sx=111320*math.cos(math.radians(lat0))
 in_region=lambda x,z:-220<x<2220 and -700<z<820 or in_added(x,z)
@@ -173,7 +173,8 @@ for n,t in NT.items():
 # --- Roundabouts ---------------------------------------------------------------------------------------------------------------
 # Every circle gets a kerbed island in the middle (dist/street-details.js) and haitenner on each arm that enters it: in Norway a
 # roundabout is always entered giving way to the traffic in the circle, but OSM only maps a few of the give-way points. The circle
-# is the ring of the game's roundabout edges: centre = middle of its bounding box, rad = mean distance of its nodes from it.
+# is the ring of the game's roundabout edges: centre and rad = the least-squares circle through its nodes (30 September 2026; the
+# bounding box and the nearest road were off by up to half a metre and nondeterministic).
 parent={}
 def find(n):
  while parent.setdefault(n,n)!=n:parent[n]=parent[parent[n]];n=parent[n]
@@ -185,13 +186,13 @@ groups=collections.defaultdict(set)
 for n in list(parent):groups[find(n)].add(n)
 roundabouts=[]
 for ring in groups.values():
- pts=[D['nodes'][n] for n in ring if n in D['nodes']]
+ pts=[D['nodes'][n] for n in sorted(ring) if n in D['nodes']]
  if len(pts)<6:continue
- cx,cz=(min(p[0] for p in pts)+max(p[0] for p in pts))/2,(min(p[1] for p in pts)+max(p[1] for p in pts))/2
- rad=sum(math.hypot(p[0]-cx,p[1]-cz) for p in pts)/len(pts);q=nearest_road(*pts[0],3)
- if not in_region(cx,cz) or not q or not 3<=rad<=40:continue
- roundabouts.append({'p':[R(cx),R(cz)],'rad':R(rad,1),'r':q[1]})
- back=half(ROADS[q[1]])+1.6 # from the ring's centre line to the line the arm gives way at
+ cx,cz,rad=fit_circle(pts) # the least-squares circle: the bounding box (and the centroid) are off by up to half a metre when the nodes are unevenly spaced
+ ringroad=next((rid for rid,r in sorted(ROADS.items()) if r['p'][0]==r['p'][-1] and len(r['p'])>6 and pts[0] in r['p']),None) # the ring's own way, the same on every run
+ if not in_region(cx,cz) or ringroad is None or not 3<=rad<=40:continue
+ roundabouts.append({'p':[R(cx),R(cz)],'rad':R(rad,2),'r':ringroad})
+ back=half(ROADS[ringroad])+1.6 # from the ring's centre line to the line the arm gives way at
  for e in D['edges']:
   if e['to'] not in ring or e['from'] in ring or e.get('roundabout'):continue
   path=[D['nodes'][n] for n in e['path']][::-1];left=back # walk back from the ring along the arm
@@ -199,7 +200,7 @@ for ring in groups.values():
    l=math.hypot(b[0]-a[0],b[1]-a[1])
    if l>=left:
     f=left/l;x,z=a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f;d=unit(a[0]-b[0],a[1]-b[1]);arm=nearest_road(x,z,3)
-    if arm and not any(math.hypot(g['p'][0]-x,g['p'][1]-z)<12 for g in give):give.append({'p':[R(x),R(z)],'d':[R(d[0],3),R(d[1],3)],'r':arm[1],'o':'roundabout'})
+    if arm and not any(math.hypot(g['p'][0]-x,g['p'][1]-z)<12 for g in give):give.append({'p':[R(x),R(z)],'d':[R(d[0],3),R(d[1],3)],'r':arm[1],'o':'roundabout',**({'ow':1} if WAYS.get(arm[1],{}).get('t',{}).get('oneway') in ('yes','1','true') else {})}) # ow: a one-way lane, given way across its whole width
     break
    left-=l
 

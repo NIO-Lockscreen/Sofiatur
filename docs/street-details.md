@@ -27,6 +27,7 @@ back along its way. Drawn as a row of white haitenner across the right-hand lane
 vikeplikt sign. Not OSM: every arm that enters one of the 8 roundabouts (22 arms, `o: "roundabout"`) also gets haitenner,
 because OSM maps only a few of them and a Norwegian roundabout is always entered giving way; they lie on the arm just
 before the circle (half a road plus 1.6 m from its centre line), and are left out where a mapped point is within 12 m.
+An arm that is a one-way lane (the entry beside a splitter island, `ow: 1`) is given way across its whole width; a two-way road in its right-hand lane (30 September 2026).
 
 **Traffic signals** (`traffic_signals`, 1 node, 4 legs). The Palermo junction (`highway=traffic_signals`, node 91783986).
 A stop line 7.5 m out on every road that leads into it. The signals themselves are `dist/traffic-lights.js`.
@@ -42,9 +43,10 @@ long thin islands, but they are not exact polygon differences. Island `w13645250
 `traffic_calming=island` (one node, the refuge at a crossing on Odd Husbys veg) is not drawn: the car would drive through it.
 
 **Roundabouts** (`roundabouts`, 8). Not OSM: OSM has no polygon for the middle of a circle. The ring is the game's
-roundabout edges (`edges[].roundabout`); centre = middle of the ring's bounding box, `rad` = mean distance of its nodes.
+roundabout edges (`edges[].roundabout`); centre and `rad` = the least-squares circle through its nodes (30 September 2026; the
+bounding box was off by up to half a metre when the nodes are unevenly spaced), `r` = the ring's own OSM way.
 The island is a grass-topped, kerbed disc of radius `rad` - half the road - 0.7 m kerb band - 0.25 m, raised 0.12 m over
-the road, and kept free of trees.
+the road (its rim has a point every 0.8 m, at least 48: it was a 12 to 17-gon), and kept free of trees.
 
 **Turning circles** (`turning_circles`, 15 of 19 nodes). `highway=turning_circle` at the end of a drawn way (the others
 lie on ways left out of the game or in the middle of a way). OSM puts the node in the middle of the turning area, so the

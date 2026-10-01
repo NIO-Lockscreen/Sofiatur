@@ -98,9 +98,12 @@ function roadChoices(node,prev,h){
 // roundabout on Byåsveien by Midelfarts veg, Byåsveien straight ahead read as a right turn and Midelfarts veg, to the
 // left, as straight on).
 // Of two exits within 45°, only the straighter is straight on.
+// The centre of a ring: the least-squares circle through its nodes. Their centroid is pulled off by up to half a metre where the arms hang on some of them.
+function circleCentre(p){const n=p.length,mx=p.reduce((s,q)=>s+q[0],0)/n,mz=p.reduce((s,q)=>s+q[1],0)/n;let uu=0,uv=0,vv=0,uuu=0,vvv=0,uvv=0,vuu=0;for(const q of p){const u=q[0]-mx,v=q[1]-mz;uu+=u*u;uv+=u*v;vv+=v*v;uuu+=u**3;vvv+=v**3;uvv+=u*v*v;vuu+=v*u*u;}
+ const det=uu*vv-uv*uv;if(Math.abs(det)<1e-9)return [mx,mz];return [mx+(.5*(uuu+uvv)*vv-.5*(vvv+vuu)*uv)/det,mz+(.5*(vvv+vuu)*uu-.5*(uuu+uvv)*uv)/det];}
 function roundaboutLabels(list,node,prev,h){
  const entry=(adjacency.get(prev)||[]).find(e=>e.to===node&&!e.roundabout),ring=ringNodes(node);if(!entry){straightest(list,h);return;}
- const pts=[...ring].map(n=>data.nodes[n]),c=[pts.reduce((s,p)=>s+p[0],0)/pts.length,pts.reduce((s,p)=>s+p[1],0)/pts.length];
+ const c=circleCentre([...ring].map(n=>data.nodes[n]));
  const a=alongRoad(entry,35,true,ring),inX=c[0]-a[0],inZ=c[1]-a[1];
  for(const e of list){const x=alongRoad(e.segments.find(s=>!s.roundabout),35,false,ring),dx=x[0]-c[0],dz=x[1]-c[1];e.turn=Math.atan2(inX*dz-inZ*dx,inX*dx+inZ*dz);
   e.label=e.uTurn?'Snu':Math.abs(e.turn)<Math.PI/4?'Rett frem':e.turn>0?'Høyre':'Venstre';}

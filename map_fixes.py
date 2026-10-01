@@ -67,26 +67,48 @@ ROUNDABOUT_ISLANDS = {
 KERB_BAND = .7  # the lighter kerb band drawn along both sides of every road (road-surface.js: width + 1.4 in all)
 
 
+def fit_circle(points):
+    """Least-squares circle (Kasa) through [(x, z), ...]: (centre x, centre z, mean radius). The centroid of the points is
+    not the centre when they are unevenly spaced, as the nodes of a mapped roundabout are (the arms hang on some of them)."""
+    n = len(points)
+    mx = sum(p[0] for p in points) / n
+    mz = sum(p[1] for p in points) / n
+    suu = suv = svv = suuu = svvv = suvv = svuu = 0.0
+    for x, z in points:
+        u, v = x - mx, z - mz
+        suu += u * u; suv += u * v; svv += v * v
+        suuu += u ** 3; svvv += v ** 3; suvv += u * v * v; svuu += v * u * u
+    det = suu * svv - suv * suv
+    a = (.5 * (suuu + suvv) * svv - .5 * (svvv + svuu) * suv) / det
+    b = (.5 * (svvv + svuu) * suu - .5 * (suuu + suvv) * suv) / det
+    cx, cz = mx + a, mz + b
+    return cx, cz, sum(math.hypot(x - cx, z - cz) for x, z in points) / n
+
+
 def fit_roundabouts(nodes, ways):
-    """Scale the ring nodes of each measured roundabout about the ring's centre so that the island left inside the
-    drawn ring (ring radius - half the drawn width - kerb band) has the measured diameter. nodes maps OSM node ids to
-    dicts with 'x' and 'z' (local metres), ways is the list of OSM ways ({'id', 'ids', ...}); the nodes are changed in
-    place, so the arms that leave the ring follow. Returns {way id: (old radius, new radius)}."""
+    """Make each measured roundabout's ring a true circle of the measured size (Junction audit 29 September 2026, rounded
+    up 30 September 2026): the centre is the least-squares circle through the ring nodes (not their centroid, which the
+    uneven node spacing pulls 0.3-0.6 m off), the radius is the one that leaves the measured island inside the drawn ring
+    (ring radius - half the drawn width - kerb band), and every ring node moves radially onto that circle, keeping its
+    angle, so the arms that hang on the nodes keep their places and the exit order, arrows and choices are unchanged.
+    nodes maps OSM node ids to dicts with 'x' and 'z' (local metres), ways is the list of OSM ways ({'id', 'ids', ...});
+    the nodes are changed in place. Returns {way id: (old radius, new radius, old spread, centre shift)} where the spread
+    is the largest minus the smallest distance of a ring node from the fitted centre before the fit."""
     result = {}
     for way in ways:
         island = ROUNDABOUT_ISLANDS.get(way['id'])
         if island is None:
             continue
         ring = way['ids'][:-1] if way['ids'][0] == way['ids'][-1] else way['ids']
-        cx = sum(nodes[n]['x'] for n in ring) / len(ring)
-        cz = sum(nodes[n]['z'] for n in ring) / len(ring)
-        radius = sum(math.hypot(nodes[n]['x'] - cx, nodes[n]['z'] - cz) for n in ring) / len(ring)
+        cx0 = sum(nodes[n]['x'] for n in ring) / len(ring)
+        cz0 = sum(nodes[n]['z'] for n in ring) / len(ring)
+        cx, cz, radius = fit_circle([(nodes[n]['x'], nodes[n]['z']) for n in ring])
+        dist = [math.hypot(nodes[n]['x'] - cx, nodes[n]['z'] - cz) for n in ring]
         target = island / 2 + KERB_BAND + ROAD_WIDTHS[way['id']] / 2
-        k = target / radius
-        for n in ring:
-            nodes[n]['x'] = cx + (nodes[n]['x'] - cx) * k
-            nodes[n]['z'] = cz + (nodes[n]['z'] - cz) * k
-        result[way['id']] = (round(radius, 2), round(target, 2))
+        for n, d in zip(ring, dist):
+            nodes[n]['x'] = cx + (nodes[n]['x'] - cx) * target / d
+            nodes[n]['z'] = cz + (nodes[n]['z'] - cz) * target / d
+        result[way['id']] = (round(radius, 2), round(target, 2), round(max(dist) - min(dist), 2), round(math.hypot(cx - cx0, cz - cz0), 2))
     return result
 
 

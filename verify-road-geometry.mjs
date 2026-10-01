@@ -10,6 +10,7 @@ import {KIWI_CHARGERS} from './dist/building-details.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8')),terrain=data.terrain;
 function rawHeight(x,z){const a=Math.max(0,Math.min(terrain.nx-1.001,(x-terrain.x0)/terrain.step)),b=Math.max(0,Math.min(terrain.nz-1.001,(z-terrain.z0)/terrain.step)),i=Math.floor(a),j=Math.floor(b),u=a-i,v=b-j,h=terrain.heights;return (h[j*terrain.nx+i]*(1-u)+h[j*terrain.nx+i+1]*u)*(1-v)+(h[(j+1)*terrain.nx+i]*(1-u)+h[(j+1)*terrain.nx+i+1]*u)*v;}
 const height=(x,z)=>160+(rawHeight(x,z)-160)*1.45,surface=createRoadSurface(data.roads,height,data),geo=surface.geometry,R=geo.roads;
+const KERB_DROP_T=.09;
 const pct=(list,p)=>{const a=list.slice().sort((x,y)=>x-y);return a[Math.min(a.length-1,Math.floor(a.length*p))];};
 const chainAt=(c,s)=>{let lo=0,hi=c.s.length-1;s=Math.max(0,Math.min(c.len,s));while(hi-lo>1){const m=(lo+hi)>>1;if(c.s[m]<=s)lo=m;else hi=m;}const f=(s-c.s[lo])/((c.s[hi]-c.s[lo])||1),dx=c.x[hi]-c.x[lo],dz=c.z[hi]-c.z[lo],l=Math.hypot(dx,dz)||1;return {x:c.x[lo]+dx*f,z:c.z[lo]+dz*f,tx:dx/l,tz:dz/l,i:lo};};
 
@@ -35,11 +36,12 @@ const chainAt=(c,s)=>{let lo=0,hi=c.s.length-1;s=Math.max(0,Math.min(c.len,s));w
   for(const n of [e.path[0],e.path.at(-1)]){const q=data.nodes[n];assert.ok(line.some(p=>Math.hypot(p[0]-q[0],p[1]-q[1])<.02),`edge ${e.id} passes its end node`);}}
  console.log(`Edge lines: ${checked} edges, continuous and through their nodes: OK`);}
 
-// 4. Cross slope: the carriageway is level across (ribbons), sampled with the drawn surface both sides of the centre line. Where a ribbon meets a steep junction corner
+// 4. Cross slope: the carriageway is level across (ribbons; not the rings of roundabouts, which lie in one plane, item 14), sampled with the drawn surface both sides of the centre line. Where a ribbon meets a steep junction corner
 // (a neighbouring arm leaves at a level the short curb return cannot reach) its first 4 m tilt into the patch instead of ending in a step face: those throat samples are
 // counted apart, and may tilt, but only gently.
 {const slopes=[],throat=[];
- for(const rb of geo.ribbons){const c=rb.c,off=rb.hw-.15,tilted=a=>a&&(a.wL||a.wR);for(let s=rb.s0+.5;s<rb.s1-.5;s+=3){const p=chainAt(c,s),nx=-p.tz,nz=p.tx,l=surface.heightAt(p.x+nx*off,p.z+nz*off),r=surface.heightAt(p.x-nx*off,p.z-nz*off);if(l===null||r===null)continue;
+ for(const rb of geo.ribbons){const c=rb.c,off=rb.hw-.15,tilted=a=>a&&(a.wL||a.wR);if(c.plane)continue; // a roundabout ring lies in one plane and may tilt across (see item 14)
+  for(let s=rb.s0+.5;s<rb.s1-.5;s+=3){const p=chainAt(c,s),nx=-p.tz,nz=p.tx,l=surface.heightAt(p.x+nx*off,p.z+nz*off),r=surface.heightAt(p.x-nx*off,p.z-nz*off);if(l===null||r===null)continue;
   const v=Math.abs(l-r)/(2*off)*100;(tilted(rb.arm0)&&s-rb.s0<4||tilted(rb.arm1)&&rb.s1-s<4?throat:slopes).push(v);}}
  const p99=pct(slopes,.99),within=slopes.filter(v=>v<=3).length/slopes.length;
  assert.ok(within>=.99,`carriageway cross slope <= 3 % on 99 % of samples (${(within*100).toFixed(2)} %)`);
@@ -131,3 +133,38 @@ const chainAt=(c,s)=>{let lo=0,hi=c.s.length-1;s=Math.max(0,Math.min(c.len,s));w
 // The chargers at KIWI Dalgård stand beside the car park's bays, off every drawn road (they stood in Drivhusvegen, the way in).
 {for(const [x,z] of KIWI_CHARGERS)for(let dx=-1;dx<=1;dx+=.5)for(let dz=-1;dz<=1;dz+=.5)assert.equal(surface.heightAt(x+dx,z+dz),null,`KIWI charger at (${x}, ${z}) is off the road`);
  console.log('KIWI chargers stand beside the parking bays, at least 1 m from any drawn road: OK');}
+
+// 14. Roundabouts (30 September 2026). Each ring is one closed ribbon in one plane, round to a few centimetres, with its island rim in the same plane and a mouth at every lane that meets it: no kerb band above the asphalt, no hole between
+// the lane and the ring, no spokes (the quads of a level strip round a tilted circle were twisted: the flat shading showed them as radial streaks, normals up to 90 degrees off).
+{const cells=new Map(),tris=[];const add=(list,kerbOf)=>{for(const q of list){const c=q.corners;for(const t of c.length===3?[[c[0],c[1],c[2]]]:(q.flip?[[c[1],c[2],c[3]],[c[1],c[3],c[0]]]:[[c[0],c[1],c[2]],[c[0],c[2],c[3]]])){const T={t,kerb:q.kerb,grass:q.grass},xs=t.map(p=>p[0]),zs=t.map(p=>p[2]);
+   for(let i=Math.floor(Math.min(...xs)/8);i<=Math.floor(Math.max(...xs)/8);i++)for(let j=Math.floor(Math.min(...zs)/8);j<=Math.floor(Math.max(...zs)/8);j++){const k=i*4096+j;if(!cells.has(k))cells.set(k,[]);cells.get(k).push(T);}tris.push(T);}}};
+ add(surface.quads);add(surface.extra);
+ const yIn=(t,x,z)=>{const [a,b,c]=t,d=(b[2]-c[2])*(a[0]-c[0])+(c[0]-b[0])*(a[2]-c[2]);if(Math.abs(d)<1e-12)return null;const u=((b[2]-c[2])*(x-c[0])+(c[0]-b[0])*(z-c[2]))/d,v=((c[2]-a[2])*(x-c[0])+(a[0]-c[0])*(z-c[2]))/d,w=1-u-v;if(u<-1e-6||v<-1e-6||w<-1e-6)return null;return u*a[1]+v*b[1]+w*c[1];};
+ // The highest asphalt, kerb band and island grass at (x,z) (null where there is none).
+ const tops=(x,z)=>{const r={asphalt:null,kerb:null,grass:null};for(const T of cells.get(Math.floor(x/8)*4096+Math.floor(z/8))||[]){const y=yIn(T.t,x,z);if(y===null)continue;const k=T.grass?'grass':T.kerb?'kerb':'asphalt';if(r[k]===null||y>r[k])r[k]=y;}return r;};
+ const notes=[],rings=geo.rings,worst={round:0,flat:0,rim:0,centre:0,kerb:-9,hole:0};let lanes=0,samples=0,holes=0,kerbHigh=0,tilt=0;
+ assert.equal(rings.length,8,'eight roundabouts');
+ for(const g of rings){assert.ok(g.plane,'every ring has its plane');const r=R[g.ri],n=r.pts.length-1;
+  // Round: the centre line within 10 cm of the circle, the circle's centre where the street details put the island.
+  for(let i=0;i<n;i++)worst.round=Math.max(worst.round,Math.abs(Math.hypot(r.pts[i][0]-g.cx,r.pts[i][1]-g.cz)-g.R));
+  const st=data.street.roundabouts.find(q=>Math.hypot(q.p[0]-g.cx,q.p[1]-g.cz)<6);assert.ok(st,'the island of the ring is in the street details');worst.centre=Math.max(worst.centre,Math.hypot(st.p[0]-g.cx,st.p[1]-g.cz));
+  // Flat: every corner of the ring's own asphalt quads lies in the plane; the island rim too, 9 cm down.
+  for(const q of surface.quads){if(q.road!==r.road||q.kerb)continue;for(const c of q.corners){samples++;worst.flat=Math.max(worst.flat,Math.abs(c[1]-g.plane(c[0],c[2])));}}
+  for(let a=0;a<360;a+=4){const cs=Math.cos(a*Math.PI/180),sn=Math.sin(a*Math.PI/180);
+   for(const rr of [g.R-g.hw+.3,g.R,g.R+g.hw-.6]){const x=g.cx+cs*rr,z=g.cz+sn*rr,t=tops(x,z);if(t.asphalt!==null&&t.kerb!==null&&t.kerb>t.asphalt-.03){kerbHigh++;notes.push(`ring ${g.ri} a=${a} r=${rr.toFixed(1)} (${x.toFixed(1)},${z.toFixed(1)}) asphalt ${t.asphalt.toFixed(3)} kerb ${t.kerb.toFixed(3)}`);}}
+   const rim=g.R-g.hw-.9,xr=g.cx+cs*rim,zr=g.cz+sn*rim,tg=tops(xr,zr);if(tg.grass!==null)worst.rim=Math.max(worst.rim,Math.abs(tg.grass-(g.plane(xr,zr)-KERB_DROP_T)));}
+  // Mouths: along every lane that meets the ring, from 0.3 m before its cut to 6 m out, the top is asphalt (no kerb band above it) and the asphalt has no hole.
+  for(const pt of geo.patches){if(pt.round!==g)continue;for(const a of pt.arms){if(!a.mouth)continue;lanes++;const tc=Math.max(.3,a.t);
+   for(let u=tc-.3;u<=tc+6;u+=.5)for(const o of [-.6,0,.6]){const c=a.chain,sN=c.s[a.ci],p=chainAt(c,sN+a.sign*u),x=p.x-p.tz*a.sign*o*a.w/1.2,z=p.z+p.tx*a.sign*o*a.w/1.2,t=tops(x,z);
+    if(t.asphalt===null){holes++;continue;}if(t.kerb!==null&&t.kerb>t.asphalt-.005){kerbHigh++;notes.push(`mouth ${g.ri} u=${u.toFixed(1)} o=${o} (${x.toFixed(1)},${z.toFixed(1)}) asphalt ${t.asphalt.toFixed(3)} kerb ${t.kerb.toFixed(3)}`);}}}}}
+ assert.ok(worst.round<.1,`rings are round (centre line within ${(worst.round*100).toFixed(1)} cm of the circle)`);
+ assert.ok(worst.centre<.1,`island centre = ring centre (${(worst.centre*100).toFixed(1)} cm)`);
+ assert.ok(worst.flat<.005,`ring asphalt lies in its plane (${(worst.flat*1000).toFixed(2)} mm worst, ${samples} quad corners)`);
+ assert.ok(worst.rim<.03,`island rim in the ring's plane, 9 cm down (${(worst.rim*100).toFixed(1)} cm worst)`);
+ assert.equal(kerbHigh,0,`no kerb band above the asphalt on rings and lane mouths (${kerbHigh} samples: ${notes.slice(0,6).join('; ')})`);
+ assert.ok(holes<=lanes*2,`no holes at the lane mouths (${holes} of ${lanes*39} samples bare)`);
+ // Spokes: the normals of the ring's own asphalt triangles are one direction (flat shading shows any spread as streaks).
+ let spread=0;for(const g of rings){const ns=[];for(const T of tris){const [a,b,c]=T.t;if(T.kerb||T.grass)continue;const m=[(a[0]+b[0]+c[0])/3,(a[2]+b[2]+c[2])/3];const d=Math.hypot(m[0]-g.cx,m[1]-g.cz);if(d<g.R-g.hw+.2||d>g.R+g.hw-.2)continue;const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;const l=Math.hypot(nx,ny,nz)||1;if(ny<0){nx=-nx;ny=-ny;nz=-nz;}ns.push([nx/l,ny/l,nz/l]);}
+  const mean=ns.reduce((s,v)=>[s[0]+v[0],s[1]+v[1],s[2]+v[2]],[0,0,0]),ml=Math.hypot(...mean);for(const v of ns)spread=Math.max(spread,Math.acos(Math.min(1,(v[0]*mean[0]+v[1]*mean[1]+v[2]*mean[2])/ml))*180/Math.PI);tilt=Math.max(tilt,Math.atan(g.slope)*180/Math.PI);}
+ assert.ok(spread<2,`ring asphalt normals within ${spread.toFixed(2)} degrees of one another: no spokes`);
+ console.log(`Roundabouts: ${rings.length} rings round to ${(worst.round*100).toFixed(1)} cm, islands centred to ${(worst.centre*100).toFixed(1)} cm, asphalt in its plane to ${(worst.flat*1000).toFixed(2)} mm (${samples} quad corners; planes tilt up to ${tilt.toFixed(1)} degrees), island rims to ${(worst.rim*100).toFixed(1)} cm, ${lanes} lane mouths without a kerb band above the asphalt, normals within ${spread.toFixed(2)} degrees (no spokes): OK`);}
