@@ -1,5 +1,5 @@
-import {addBuildingRoof} from './building-roofs.js';
-import {createJunctionBuildings,addJunctionDetails} from './junction-buildings.js';
+import {createHouses} from './houses.js';
+import {createJunctionBuildings} from './junction-buildings.js';
 import {roadWidth} from './transit-geometry.js';
 import {createRoadSurface} from './road-surface.js';
 import {createET5} from './car-model.js';
@@ -98,7 +98,8 @@ export function createWorld(canvas, data) {
  const houseBounds=[[-22,-16,16,16],[1798,226,1861,268],[1790,270,1850,337],[1450,169,1648,285]];
  // Pitches, the running track and car parks at Dalgård: drawn on the ground and kept free of trees.
  houseBounds.push(...addSportsGrounds({T,data,height,bucket,tri,box,ribbon}));
- const wallBase=new Map(); // Wall base and height per footprint, for details added after the loop.
+ const houses=createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly,junctionBuildings,buildingStyles});
+const wallBase=new Map(); // Wall base and height per footprint, for details added after the loop.
  for(const building of data.buildings){let p=building.p.slice(0,-1);if(p.length<3)continue;let cx=p.reduce((a,b)=>a+b[0],0)/p.length,cz=p.reduce((a,b)=>a+b[1],0)/p.length;
  let area=0;for(let i=0;i<p.length;i++)area+=p[i][0]*p[(i+1)%p.length][1]-p[(i+1)%p.length][0]*p[i][1];area=Math.abs(area/2);if(area<4)continue;
  const landmark=addMunkvoll({T,scene,building,height,bucket,tri,quad,box})||addLandmark({T,scene,building,height,bucket,tri,quad,box})||addDalgardSchool({T,scene,data,building,height,bucket,tri,quad,box,groundPoly})||addStavset({T,scene,building,height,bucket,tri,quad,box});if(landmark){houseBounds.push(landmark.bounds);continue;}
@@ -108,31 +109,8 @@ export function createWorld(canvas, data) {
   for(const f of T.ShapeUtils.triangulateShape(p.map(v=>new T.Vector2(...v)),[])){tri(b,...f.map(i=>[p[i][0],top,p[i][1]]),'#e6e8e4');tri(b,...f.map(i=>[p[i][0],top-.4,p[i][1]]),'#cfd2cd');}
   for(let i=0;i<p.length;i++){const a=p[i],c=p[(i+1)%p.length];quad(b,[a[0],top-.4,a[1]],[c[0],top-.4,c[1]],[c[0],top,c[1]],[a[0],top,a[1]],'#d7dad5');const x=a[0]+(cx-a[0])*.12,z=a[1]+(cz-a[1])*.12;box(b,x,(height(x,z)+top)/2,z,.22,top-height(x,z),.22,'#9aa0a2');}
   houseBounds.push([Math.min(...p.map(v=>v[0]))-1,Math.min(...p.map(v=>v[1]))-1,Math.max(...p.map(v=>v[0]))+1,Math.max(...p.map(v=>v[1]))+1]);continue;}
- const style={...buildingStyles[building.id],...junctionBuildings.style(building)};const t=building.t;const garage=['garage','garages','shed','carport'].includes(t.building)||area<35;
- const levels=style.levels||(parseFloat(t['building:levels'])||((t.building==='apartments'||area>800)?3:garage?1:2));
- const h=style.height||Math.min(26,parseFloat(t.height)||levels*2.65+(garage?.1:.5));
- const heights=p.map(v=>height(...v)).sort((a,b)=>a-b);const y=style.base==='low'?heights[Math.floor(heights.length*.25)]:Math.max(...heights);const base=Math.min(...p.map(v=>height(...v)))-.4;
- wallBase.set(String(building.id),{y,h});
- const b=bucket(cx,cz);let hash=parseInt(building.id)%997;const palette=['#f0efea','#e1e2df','#ebeae1','#bfc4c0','#f4f0e5','#d9dbd7','#aaafa9','#7b4236','#575951','#e8e7df'];const colour=style.wall||t['building:colour']||palette[hash%palette.length];const roofcolour=style.roof||t['roof:colour']||['#3e4547','#494b4a','#68625a','#624b40','#545851'][hash%5];const shapes=p.map(v=>new T.Vector2(...v));
- // Board joints are a darker shade of the cladding, so dark houses do not get pale stripes.
- const boardLine=style.horizontalSiding?'#'+new T.Color(colour).multiplyScalar(.82).getHexString():'#91897d';
- houseBounds.push([Math.min(...p.map(v=>v[0]))-2,Math.min(...p.map(v=>v[1]))-2,Math.max(...p.map(v=>v[0]))+2,Math.max(...p.map(v=>v[1]))+2]);
- // Ground shadow, foundation, walls and windows follow the original footprint.
- groundPoly(p,'#6f8e57',.105);
- for(let i=0;i<p.length;i++){const a=p[i],c=p[(i+1)%p.length];quad(b,[a[0],base,a[1]],[c[0],base,c[1]],[c[0],y+.5,c[1]],[a[0],y+.5,a[1]],'#bcbfb2');quad(b,[a[0],y+.5,a[1]],[c[0],y+.5,c[1]],[c[0],y+h,c[1]],[a[0],y+h,a[1]],colour);
- const edgeLength=Math.hypot(c[0]-a[0],c[1]-a[1]);
- if(style.sections&&edgeLength>25){const dx=(c[0]-a[0])/edgeLength,dz=(c[1]-a[1])/edgeLength;for(let j=0;j<4;j++){const aa=[a[0]+dx*edgeLength*j/4,a[1]+dz*edgeLength*j/4],cc=[a[0]+dx*edgeLength*(j+1)/4,a[1]+dz*edgeLength*(j+1)/4];for(const sign of [-1,1])quad(b,[aa[0]-dz*.04*sign,y+.5,aa[1]+dx*.04*sign],[cc[0]-dz*.04*sign,y+.5,cc[1]+dx*.04*sign],[cc[0]-dz*.04*sign,y+h,cc[1]+dx*.04*sign],[aa[0]-dz*.04*sign,y+h,aa[1]+dx*.04*sign],style.sections[j]);}}
- if(style.balconies&&edgeLength>25){const dx=(c[0]-a[0])/edgeLength,dz=(c[1]-a[1])/edgeLength;let nx=-dz,nz=dx;if(nx*((a[0]+c[0])/2-cx)+nz*((a[1]+c[1])/2-cz)<0){nx=-nx;nz=-nz;}if(style.balconies==='south'?nz>.65:nx<-.65){const at=(d,yy,o)=>[a[0]+dx*d+nx*o,yy,a[1]+dz*d+nz*o];for(let floor=0;floor<3;floor++){const yy=y+.55+floor*2.65;for(let d=1;d<edgeLength-3;d+=7){const end=Math.min(d+6.6,edgeLength-1);quad(b,at(d,yy,0),at(end,yy,0),at(end,yy,1.55),at(d,yy,1.55),'#ddd7c7');quad(b,at(d,yy,1.55),at(end,yy,1.55),at(end,yy+.9,1.55),at(d,yy+.9,1.55),'#e7ddc9');for(let s=d;s<end;s+=.28){const p=at(s,yy+.48,1.59);box(b,p[0],p[1],p[2],.035,.87,.035,'#a89c84');}}}}}
- if(style.siding&&edgeLength>1){const dx=(c[0]-a[0])/edgeLength,dz=(c[1]-a[1])/edgeLength;for(let d=.3;d<edgeLength;d+=.48){const x=a[0]+dx*d,z=a[1]+dz*d;for(const sign of [-1,1])quad(b,[x-dz*.025*sign,y+.5,z+dx*.025*sign],[x+dx*.027-dz*.025*sign,y+.5,z+dz*.027+dx*.025*sign],[x+dx*.027-dz*.025*sign,y+h,z+dz*.027+dx*.025*sign],[x-dz*.025*sign,y+h,z+dx*.025*sign],'#'+new T.Color(colour).multiplyScalar(.82).getHexString());}box(b,(a[0]+c[0])/2,y+h-.04,(a[1]+c[1])/2,edgeLength,.14,.17,'#ecece5',Math.atan2(-dz,dx));}
- if(style.brick||style.horizontalSiding){for(let hy=y+.7;hy<y+h;hy+=style.horizontalSiding?.23:.32){const dx=(c[0]-a[0])/edgeLength,dz=(c[1]-a[1])/edgeLength;for(const sign of [-1,1])quad(b,[a[0]-dz*.025*sign,hy,a[1]+dx*.025*sign],[c[0]-dz*.025*sign,hy,c[1]+dx*.025*sign],[c[0]-dz*.025*sign,hy+.025,c[1]+dx*.025*sign],[a[0]-dz*.025*sign,hy+.025,a[1]+dx*.025*sign],boardLine);}}
- const len=Math.hypot(c[0]-a[0],c[1]-a[1]);if(len>3){const dx=(c[0]-a[0])/len,dz=(c[1]-a[1])/len;
- // Windows only on the outside of the wall: a copy facing into the building is never seen.
- const out=insideFootprint(p,(a[0]+c[0])/2-dz*.3,(a[1]+c[1])/2+dx*.3)?-1:1;for(let f=0;f<levels;f++)for(let j=1;j<=Math.floor(len/3.7);j++){const q=j/(Math.floor(len/3.7)+1),wx=a[0]+(c[0]-a[0])*q,wz=a[1]+(c[1]-a[1])*q,wy=y+1.5+f*2.65;const half=garage?.45:.63;const wa=[wx-dx*half,wy,wz-dz*half],wb=[wx+dx*half,wy,wz+dz*half],wc=[wb[0],wy+1.04,wb[2]],wd=[wa[0],wy+1.04,wa[2]];const nx=-dz*.065*out,nz=dx*.065*out;quad(b,...[wa,wb,wc,wd].map(v=>[v[0]+nx,v[1],v[2]+nz]),style.frame||'#fff6df');const glass=[[-.46,.15],[.46,.15],[.46,.92],[-.46,.92]].map(v=>[wx+dx*v[0],wy+v[1],wz+dz*v[0]]);quad(b,...glass.map(v=>[v[0]+nx*2,v[1],v[2]+nz*2]),'#718b91');}}
- }
- const roofTop=addBuildingRoof({T,p,cx,cz,y,h,style,t,area,b,tri,quad,colour,roofcolour});
-
- if(style.junction)addJunctionDetails({T,scene,building,p,cx,cz,y,h,levels,garage,style,roads:junctionBuildings.roads,roadIndex:junctionBuildings.roadIndex,height,bucket,tri,quad,box,roofTop});
- if(area>55&&area<260&&(style.chimney||!style.source&&hash%4===0))box(b,cx+1,y+h+.7,cz+.5,.65,2,.7,'#a39c8d');
+ // Ordinary buildings (houses.js): walls, plinth, cladding, windows, doors, roof with eaves, chimney, balcony or veranda.
+ houses.add({building,p,cx,cz,area,wallBase,houseBounds});
  }
  function insideFootprint(poly,x,z){let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const [ax,az]=poly[j],[bx,bz]=poly[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)inside=!inside;}return inside;}
  function distanceSegment(x,z,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz||1)));return Math.hypot(x-a[0]-t*dx,z-a[1]-t*dz);}
@@ -220,5 +198,5 @@ export function createWorld(canvas, data) {
  renderer.render(scene,camera);
  }
  function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
- resize();window.addEventListener('resize',resize);return {height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setTrail:trail.setOn,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();trail.clear();}};
+ resize();window.addEventListener('resize',resize);return {houseStats:houses.stats,height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setTrail:trail.setOn,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();trail.clear();}};
 }

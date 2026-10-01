@@ -10,7 +10,7 @@ export const buildingStyles={
  '188005702':{wall:'#4a4234',roof:'#3e413b',levels:2,siding:true,source:'user-home-downhill'},
  '89233508':{wall:'#bda399',roof:'#56574e',levels:3,height:8.7,gabled:true,roofRise:3.1,sections:['#bda399','#b77b59','#c2a69a','#bb8361'],balconies:'south',source:'hallset84-listing'},
  '89233417':{wall:'#c9b493',roof:'#56574e',levels:3,height:8.7,gabled:true,roofRise:3.1,balconies:'south',source:'hallset84-courtyard-photo'},
- '186841243':{wall:'#e9e7df',roof:'#56574e',levels:3,height:8.5,gabled:true,roofRise:2.7,siding:true,source:'adolf2b-balcony-photo'},
+ '186841243':{wall:'#e9e7df',roof:'#9a4a34',levels:3,height:8.5,gabled:true,roofRise:2.7,siding:true,source:'adolf2b-balcony-photo'},
  '187113250':{wall:'#40251f',roof:'#303237',levels:1,height:3.4,roofRise:3.2,siding:true,source:'user-home'},
  '1037053935':{wall:'#37241e',roof:'#303237',levels:1,height:2.8,siding:true,source:'user-home'},
  '89233532':{wall:'#ae9182',roof:'#4e5050',levels:2,height:7.1,flat:true,base:'low',brick:true,source:'svv-selsbakk'},
@@ -36,6 +36,27 @@ export const buildingStyles={
  // roof. The shop in front of it is modelled in stavset.js.
  '191198632':{wall:'#efeee7',roof:'#36312e',levels:2,siding:true,frame:'#8e2b27',gabled:true,roofRise:3.4,chimney:true,source:'bunnpris-photos'}
 };
+
+// Bøckmans veg, west of the Palermo lights (Statens vegvesen road image, feature Vegbilder_2025.2025-07-14T09.11.26_FV06650_S2D1_m03570_Planar_1,
+// looking south-west from (1495, 147)): a red timber house with white-framed windows, a small canopy over the door and a black tiled roof with
+// chimneys, and behind it a brown timber house with red-brown tiles. Matched by position and bearing; docs/building-references.md.
+buildingStyles['169707663']={wall:'#9a3a33',roof:'#2b3331',levels:2,siding:true,gabled:true,chimney:true,canopy:true,source:'vegbilder-2025-07-14-m03570'};
+buildingStyles['169707648']={wall:'#6a4034',roof:'#6b3f33',levels:2,horizontalSiding:true,gabled:true,chimney:true,source:'vegbilder-2025-07-14-m03570'};
+
+// Roof colours and a few roof shapes judged by eye while looking at the Esri World Imagery aerial photo (30 September 2026) along the main
+// trip and the Stavset detour: D black/dark grey, G light grey, R red-orange tile, B brown. The photo was only looked at, nothing was
+// traced or sampled from it. Buildings with a photo-matched record above or in junction-observations.js keep that record; garages
+// take their house's roof (house-looks.js). Which buildings and what was changed: docs/junction-buildings.md.
+const EYE_ROOFS={D:'#3a3e40',G:'#858a8c',R:'#9a4a34',B:'#6a5242'};
+const roofsByEye={
+ D:['181024605','188005889','188005894','1037053404','154609884','188006986','1037053611','1037053559','190519360','188007028','190519287','190519285','190519355','190519333','188007029','188007922','190519372','191187594','188008410','191314920','191190928','191190933','1037054079','191187648','191187560','191187566','191319201','191314960','191198628','191188457','191187579','191190968','1219894794','1219894793','1219894792','191319195','191319128','191320646','m300849953','191320601','1037054293','191360410','191360353','191198624','191198631','1037054019','191198635','191360448','1036715642','1036715640','221087550','221092510','186837281','1036715620','1036715661','221092507','1036715660','m300766685','m300842459','930791644','930791642','930791641','186839228'],
+ G:['190519302','196781636','190519337','1037053609','188005877','188005904','181024636','188007017','188006999','191187561','191187636','188009364','188008367','191187644','191319205','190258430','1037054006','1037054008','1037054009','190258422','191320613','221087506','186839162'],
+ R:['188005888','188007148','1037053118','188007150','191198686','191187641','191198684','441033021','191198627','455267660','1037053414','1037053723','191320625','191360469','186841244'],
+ B:['191314918','191187567','191187580','191187574','191187576','191319137','1037053686','191198608','191320623','191320563','221087517']
+};
+for(const [letter,ids] of Object.entries(roofsByEye))for(const id of ids)if(!(id in buildingStyles))buildingStyles[id]={roof:EYE_ROOFS[letter],source:'aerial-esri-2026-09-30'};
+// Seen as pitched, not flat (the type tag says nothing); seen as a flat light roof.
+Object.assign(buildingStyles['191314918'],{roofShape:'gabled'});Object.assign(buildingStyles['221087506'],{flat:true,roofShape:'flat'});
 
 // Two chargers at the head of the parking bays on the car park's south-west edge, between bays, 8 m from Drivhusvegen's
 // centre line. They used to stand in Drivhusvegen itself, where the car drives in to KIWI.

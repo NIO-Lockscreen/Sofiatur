@@ -77,3 +77,14 @@ https://dnbeiendom.no/bolig/Tr%C3%B8ndelag/Trondheim/Vest/Adolf-andreassens-veg-
 The public balcony photograph confirms light/white timber frontage for OSM 186841243. It does not document every elevation of that block; no claim of full reconstruction is made.
 
 Mapped parking polygon 1323632156 is surfaced explicitly. Random full-size trees are excluded from the home forecourt, preschool porch area and the photographed lawn/parking courtyard. Sources were inspected as references only; original photographs are not bundled in the published game.
+
+## Houses, register and aerial photo · 30 September 2026
+
+The house look (`dist/houses.js`, `dist/house-looks.js`) is procedural; colours, doors, windows and chimneys of buildings without a record below or in `junction-photo-matches.json` are seeded estimates. What was added this day, and from what:
+
+- **Matrikkelen - Bygningspunkt** (Kartverket, https://wfs.geonorge.no/skwms1/wfs.matrikkelen-bygningspunkt, CC BY 4.0), downloaded 30 September 2026 by `fetch-matrikkel.py`: the type, status and number of dwellings of every registered building. Used for missing buildings, for the kind of a building (terrace, semi-detached, block, garage) and for flats per block. The register gives a point per building, not an outline.
+- **OpenStreetMap** (ODbL), OSM API 30 September 2026 (`add-buildings.py --fetch`): footprints outside the boxes of the first extract, and four building multipolygons.
+- **Esri World Imagery**, looked at only: roof colour and shape of 112 houses along the main trip and the Stavset detour (source `aerial-esri-2026-09-30` in `building-details.js`), and the roof of Adolf Andreassens veg 2A/2B (186841243, 186841244), which is red-orange, not grey-brown. Nothing was traced or sampled; the image is not in the repository.
+- **Statens vegvesen road image** Vegbilder_2025.2025-07-14T09.11.26_FV06650_S2D1_m03570_Planar_1 (NLOD), Bøckmans veg west of the Palermo lights, looking south-west from (1495, 147): OSM 169707663 is a red timber house with white-framed windows, a canopy over the door, chimneys and a black tiled roof; OSM 169707648 behind it is brown timber with red-brown tiles. Matched by position and bearing. Images nearest to the big roundabout on Byåsveien (Vegbilder_2025.2025-07-14T09.11.52_FV06650_S2D1_m03789_Planar_1), at Kystadlia (…08.43.41_FV06650_S2D1_m04536_Planar_2) and at Dalgård (…09.12.46_FV06650_S2D1_m04498_Planar_1) were looked at too: hedges, fences and houses set well back; no record was made from them.
+
+The complete junction table (what was wrong, what was done, source) is `docs/junction-buildings.md`.
