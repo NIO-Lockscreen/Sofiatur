@@ -307,7 +307,7 @@ for i,w in WAYS.items():
  t=w['t'];hw=t.get('highway')
  if hw not in ('footway','cycleway') or 'crossing' in t or t.get('footway')=='crossing' or t.get('cycleway')=='crossing':continue
  pts=[N[n] for n in w['ids']]
- if not any(in_region(*p) for p in pts) or t.get('indoor') or t.get('tunnel','no')!='no' or t.get('bridge','no')!='no':continue # bridges and tunnels are not modelled
+ if not any(in_region(*p) for p in pts) or t.get('indoor') or t.get('tunnel','no')!='no' or t.get('bridge','no')!='no':continue # bridges and tunnels: add-footbridges.py, dist/footbridges.js
  if hw=='cycleway':kind='cycleway'
  elif t.get('footway')=='sidewalk':kind='sidewalk'
  elif not t.get('footway') and sum(math.hypot(b[0]-a[0],b[1]-a[1]) for a,b in zip(pts,pts[1:]))>=8 and near_road_frac(pts)>=.6:kind='sidewalk';counts['unlabelled']+=1
