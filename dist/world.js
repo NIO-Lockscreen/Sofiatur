@@ -16,6 +16,7 @@ import {addStavset,addStavsetDetails,addBridges} from './stavset.js';
 import {addStreetDetails,indexStreetDetails} from './street-details.js';
 import {createLook,createGround,createRoadPainter,ROAD,WATER,RENDER} from './look.js';
 import {addFootbridges} from './footbridges.js';
+import {addLudvig} from './ludvig.js';
 import {addRoadside} from './roadside.js';
 import {createSchoolyard} from './schoolyard.js';
 import {createCameraControls} from './camera-controls.js';
@@ -97,7 +98,8 @@ export function createWorld(canvas, data) {
  const roadSegments=roadSurface.geometry.roadSegments();
  addTransit({T,scene,data,height,bucket,quad,box,groundPoly,ribbon,roadSegments});
  const junctionBuildings=createJunctionBuildings(data);
- const houseBounds=[[-22,-16,16,16],[1798,226,1861,268],[1790,270,1850,337],[1450,169,1648,285]];
+ const houseBounds=[[1775,101,1810.5,124], // the gravel yard at Bøckmans veg 102 (ludvig.js): no trees on it
+  [-22,-16,16,16],[1798,226,1861,268],[1790,270,1850,337],[1450,169,1648,285]];
  // Pitches, the running track and car parks at Dalgård: drawn on the ground and kept free of trees.
  houseBounds.push(...addSportsGrounds({T,data,height,bucket,tri,box,ribbon}));
  const houses=createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly,junctionBuildings,buildingStyles,groundColour:ground.sample,onRoad:(x,z)=>roadSurface.heightAt(x,z)!==null});
@@ -126,6 +128,8 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  addMunkvollDetails({T,scene,data,wallBase,bucket,quad,box});
  addDalgardDetails({T,scene,data,wallBase,bucket,quad,box});
  addStavsetDetails({T,scene,data,wallBase,height,bucket,quad,box,ribbon});addBridges({data,roadTop,roadWidth,bucket,quad,box,height,geometry:roadSurface.geometry});
+ // Bøckmans veg 102 (ludvig.js): the gravel yard in front of the houses, the earth bed and the dark timber terrace of 102C-D, from the photos.
+ addLudvig({data,wallBase,ground:roadSurface.groundTop,bucket,quad,box,onRoad:(x,z)=>roadSurface.heightAt(x,z)!==null});
  // Street details (gangfelt, haitenner, islands, sidewalks, lamps...): the paths and roundabout islands keep the trees off them.
  indexStreetDetails(addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,box,ribbon,groundPoly,segments:roadSegments,ground:roadSurface.groundTop}),index);
  // Footbridges and underpasses (footbridges.js): decks over the roads, dips under them cut out of the ground mesh drawn above.

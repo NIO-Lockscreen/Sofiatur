@@ -249,16 +249,17 @@ def add_ishall_parking(data):
 def add_ludvig_parking(data):
     """Bøckmans veg 102 (2 October 2026, the user: "a visit to Ludvig"). The four dwellings 102A-D (Kartverket's address
     register: 102A (1824.6, 110.7), 102B (1813.2, 114.2), 102C (1798.6, 117.7), 102D (1791.0, 119.8)) stand just south of
-    Bøckmans veg on the main trip, and OSM maps no driveway to them. A short drawn driveway (asphalt, 3 m) leaves Bøckmans
-    veg at OSM node 8910717721 and ends in a parking place between the semi-detached 102A-B and the house 102C-D, where the
-    game says "Du besøker Ludvig"."""
-    if 'ludvig-parkering' in data['nodes'] or '8910717721' not in data['nodes']:
+    Bøckmans veg near the kindergarten, and OSM maps no driveway to them. Between the road and the houses lies an open gravel
+    yard (the user's Google Street View photo of May 2026 and Statens vegvesen's road images of 14 July 2025); the car parks
+    where the user marked it, on the gravel in front of the white garage west of 102C-D (OSM 189462749), as the car in the photo
+    does. A short gravel driveway leaves Bøckmans veg at OSM node 8910717720 (1783.8, 106.9)."""
+    if 'ludvig-parkering' in data['nodes'] or '8910717720' not in data['nodes']:
         return
-    entrance = '8910717721'  # Bøckmans veg at (1804.7, 101.1)
+    entrance = '8910717720'
     x, z = data['nodes'][entrance]
-    points = [[round(x + .9, 2), round(z + 4.9, 2)], [round(x + 1.6, 2), round(z + 9.5, 2)]]
-    data['roads'].append({'id': 'ludvig-innkjorsel', 'name': '', 'type': 'service', 'surface': 'asphalt', 'mark': False,
-                          'width': 3.0, 'p': [[x, z], *points, [round(x + 1.95, 2), round(z + 11.8, 2)]]})
+    points = [[round(x + .8, 2), round(z + 5.7, 2)], [round(x + 1.8, 2), round(z + 11.5, 2)]]
+    data['roads'].append({'id': 'ludvig-innkjorsel', 'name': '', 'type': 'service', 'surface': 'gravel', 'mark': False,
+                          'width': 3.2, 'p': [[x, z], *points, [round(x + 2.1, 2), round(z + 13.3, 2)]]})
     _add_place(data, entrance, points, 'Ludvig', 'Bøckmans veg', 'ludvig')
 
 

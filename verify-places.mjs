@@ -4,9 +4,15 @@ import {roundaboutChoices} from './dist/roundabouts.js';import {createDrivingLin
 import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';import * as T from './dist/vendor/three.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8'));
 assert.ok(data.nodes['ludvig-parkering'],'Bøckmans veg 102 has a parking place');assert.ok(data.roads.some(r=>r.id==='ludvig-innkjorsel'),'and a drawn driveway');
-const [lx,lz]=data.nodes['ludvig-parkering'];assert.ok(Math.hypot(lx-1806,lz-110.5)<2,'between 102A-B and 102C-D');
+const [lx,lz]=data.nodes['ludvig-parkering'];assert.ok(Math.hypot(lx-1785.6,lz-118.4)<1.5,'on the gravel in front of the garage west of 102C-D, where the user marked it');
+assert.equal(data.roads.find(r=>r.id==='ludvig-innkjorsel').surface,'gravel','a gravel driveway');
 const inside=(p,x,z)=>{let c=false;for(let i=0,j=p.length-1;i<p.length;j=i++){const [ax,az]=p[j],[bx,bz]=p[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)c=!c;}return c;};
 for(const b of data.buildings)for(const [dx,dz] of [[0,0],[0,2.4],[0,-2.4],[1,0],[-1,0]])assert.ok(!inside(b.p,lx+dx,lz+dz),'The parked car stands clear of the houses ('+b.id+')');
+{const {LUDVIG_YARD,ludvigStyles,addLudvig}=await import('./dist/ludvig.js');assert.ok(inside(LUDVIG_YARD,lx,lz),'The car parks on the gravel yard');
+ for(const id of ['189462739','1036716392','1036716393','189462749','1036716586'])assert.ok(ludvigStyles[id]?.source,'Style record from the photos for '+id);
+ assert.ok(ludvigStyles['189462739'].wall==='#efeee9'&&ludvigStyles['189462749'].flat,'102C-D white, the garage flat-roofed');
+ let quads=0;const r=addLudvig({data,wallBase:new Map([['189462739',{y:120,h:4.3}]]),ground:()=>118,bucket:()=>({}),quad:()=>quads++,box:()=>{},onRoad:(x,z)=>z<106});
+ assert.ok(r.triangles>100&&quads>50,'The yard, the bed and the terrace are drawn ('+r.triangles+' triangles)');}
 function launch(){
  const elements=new Map(),tools=new Map(),listeners=new Map();let raf=[],now=0;const context=new Proxy({},{get:(o,p)=>p==='measureText'?()=>({width:20}):()=>{}});
  const element=id=>{if(!elements.has(id))elements.set(id,{id,hidden:false,textContent:'',style:{},classList:{add(){},remove(){},toggle(){}},dataset:{},children:[],events:new Map(),append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},setAttribute(){},getContext(){return context},addEventListener(type,fn){this.events.set(type,fn);},showModal(){this.open=true},close(){this.open=false;this.events.get('close')?.();},width:700,height:520});return elements.get(id);};

@@ -5,13 +5,13 @@ buildings within 60 m: 37 are on the main trip from Herlofsons veg to the kinder
 to Stavset, 121 on the other branches. Method, in the order it was done:
 
 1. **Missing buildings.** `fetch-matrikkel.py` downloads Kartverket's building register (Matrikkelen, one point per registered building with type, status and
-   number of dwellings; CC BY 4.0). A registered building with no OSM footprint within 6 m is a candidate. 3556 registered buildings (in use or finished)
+   number of dwellings; CC BY 4.0). A registered building with no OSM footprint within 6 m is a candidate. 3558 registered buildings (in use or finished)
    lie within 60 m of a junction; 100 of them had no footprint, 35 still have none (forest clearings, building sites, sheds in deep shade, points that belong to a
    neighbour's footprint: looked at one by one, none of those is drawn). Two causes: the OSM extract stops at the edges of its boxes while the game shows
    more (`add-buildings.py`: 430 footprints from a new OSM download, west (x < -113): 80, east (x > 2083): 224, south-east (z > 720): 125, other: 1), and houses and garages built after the OSM building import (53 drawn from the register
    by `audit-buildings.py`, as a typical rectangle of the registered type on the register's point, turned like the neighbours; the outline is not surveyed).
 2. **Kind of building.** Where the register and OSM disagree (a row of houses mapped as building=house, a garage mapped as building=yes, flats mapped as a
-   detached house) the register wins in `dist/house-looks.js` (`kindOf`): 295 buildings near junctions. Dwellings counted in the register give a door for
+   detached house) the register wins in `dist/house-looks.js` (`kindOf`): 294 buildings near junctions. Dwellings counted in the register give a door for
    every dwelling in a terrace and the storeys of a block that OSM gives no `building:levels` (about 62 m2 of flat per 0.78 of the floor plate).
 3. **Roofs, walls, colours.** Looked at on the Esri aerial photo with the game's footprints, ridge lines and roof colours laid over it (viewing only: nothing was
    traced, sampled or committed from the photo). Every house within 34 m of the main trip and the Stavset detour (403 buildings, 56 views) was compared; 112 roofs
@@ -253,8 +253,8 @@ Position in local metres (x east, z south of home). Route: hovedtur = on the mai
 | 12459246736 | (1663, -108) | Kaptein Mitlids veg | avstikker | 14 | 13 | 0 → 0 | Checked, nothing to change | Matrikkelen (Kartverket) |
 | 249204921 | (1682, -118) | Kaptein Mitlids veg / Munkvollstien | avstikker | 18 | 15 | 1 → 0 | 1 registered buildings without a footprint are drawn from the register | Matrikkelen (Kartverket) |
 | 245075449 | (1772, -388) | Stabells veg / Havsteinekra | avstikker | 11 | 8 | 0 → 0 | 1 footprints were missing from the OSM extract (edge of its boxes) and are added from a new OSM download | Matrikkelen (Kartverket), OSM API 30.9.2026 |
+| 8910717720 | (1784, 107) | Bøckmans veg / Ludvig | avstikker | 22 | 18 | 0 → 0 | register and OSM disagree on 3× house as semi; the register wins | Matrikkelen (Kartverket), 5 listing/road photo matches of earlier passes |
 | 249204946 | (1802, 25) | Michel Grendahls veg / Munkvollstien | avstikker | 24 | 20 | 0 → 0 | register and OSM disagree on 1× house as garage, 1× house as semi; the register wins | Matrikkelen (Kartverket) |
-| 8910717721 | (1805, 101) | Bøckmans veg / Ludvig | avstikker | 21 | 16 | 0 → 0 | register and OSM disagree on 4× house as semi; the register wins | Matrikkelen (Kartverket), 3 listing/road photo matches of earlier passes |
 | 245075446 | (1859, -290) | Otto Skirstads veg / Stabells veg / Michel Grendahls veg | avstikker | 32 | 31 | 3 → 3 | 3 registered points still have no footprint (forest, building sites, sheds in shade: not drawn); register and OSM disagree on 1× house as semi; the register wins | Matrikkelen (Kartverket) |
 | 267184698 | (1907, 169) | Skjermvegen / Adolf Andreassens veg | avstikker | 24 | 24 | 0 → 0 | register and OSM disagree on 2× terrace as semi, 1× house as semi, 1× yes as garage; the register wins | Matrikkelen (Kartverket) |
 | 245072991 | (1946, -77) | Henry Gleditsch veg / Otto Skirstads veg | avstikker | 24 | 23 | 0 → 0 | register and OSM disagree on 2× house as semi; the register wins | Matrikkelen (Kartverket) |
