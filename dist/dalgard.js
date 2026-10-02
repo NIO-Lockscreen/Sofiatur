@@ -3,81 +3,149 @@ import {drawSign,createFacades} from './munkvoll.js';
 // Ugla, across Odd Husbys veg: stavset.js). Footprints, pitches and car parks are OSM (add-dalgard.py); roof forms, colours and signs follow
 // the photographs and the aerial listed in docs/dalgard-references.md. Dimensions are visual estimates.
 
-// Dalgård skole: brown brick, one storey, large low-pitched hipped roofs in light grey metal with dark timber
-// eaves, square glass roof lanterns on B-bygget and the southern wings, a brown-roofed hall to the north-east.
+// Dalgård skole. The 1977/78 buildings (A-bygget, B-bygget, the dormitory) are brown brick with large, low light-grey
+// metal roofs; the hall to the north-east has a single brown mono-pitch roof and tall brick gables, with the school's
+// name on its north-west gable. The 1998 southern wings (C, D) and the pavilions E and F have dark charcoal timber walls,
+// light grey roofs and black timber roof lanterns with white flat tops; G (2018) is brick with a flat roof.
 // All walls in the OSM outlines run at 42°, so the roofs are laid out as wings in that frame: u along 42°
 // (south-east), v across (south-west), from (700,450). Overlapping hipped wings meet in hips and valleys.
 const ANGLE=42*Math.PI/180,AX=Math.cos(ANGLE),AZ=Math.sin(ANGLE),O=[700,450];
 const uv=(u,v)=>[O[0]+u*AX-v*AZ,O[1]+u*AZ+v*AX],local=(x,z)=>{const dx=x-O[0],dz=z-O[1];return [dx*AX+dz*AZ,-dx*AZ+dz*AX];};
 const EAVE=4,OVERHANG=.7,SLOPE=.3,MAX_RISE=2.2;
+// Wing options: eave (height of the eaves over the floor), slope, maxRise, roof/seam colours, lantern [u0,u1,v0,v1] with
+// box:true (black timber box) or glass (pyramid), mono:true (one plane rising towards the north-east, low eave on the
+// south-west side), flat:true (parapet), ov (overhang).
 export const schoolWings={
  // A-bygget: wings round the courtyard, the south-west extension, the link to the southern wings, the hall.
  r1318241:[{u:[-55,-37.9],v:[-20.8,35.5]},{u:[-55,-23.6],v:[21.4,35.5]},{u:[-37.9,5],v:[4.4,21.4]},{u:[-55,5],v:[-20.8,-6.5]},
-  {u:[-11.6,5.1],v:[-24.1,21.4]},{u:[5,12.5],v:[-5,-1.3],eave:3.4,maxRise:.8},{u:[-26.8,-3.1],v:[-45.6,-20.7],eave:6.2,slope:.4,maxRise:3.6,roof:'#6d4c3e',seam:'#5b3f33'}],
- // B-bygget (OSM: one storey, 6 m, hipped metal roof 2 m) with its lantern over the inner rings, and the link to A.
- r20722521:[{u:[-18.1,11.3],v:[27,52.8],lantern:[-8.9,1.6,33.4,42.9]},{u:[-11.1,3.1],v:[21.4,28.8]}],
- // The southern wings: two square blocks with a lantern each, joined by lower links.
- r20516148:[{u:[12.5,19.8],v:[-12.5,-1],eave:3.6,maxRise:1},{u:[19.7,48.8],v:[-14,22.4],lantern:[30.3,38.3,.2,8.2]},{u:[48.9,60.8],v:[-15.7,-2.7],eave:3.6,maxRise:1},{u:[59.4,86.8],v:[-15.7,15.9],lantern:[69.1,77.1,-3.9,4.1]}]
+  {u:[-11.6,5.1],v:[-24.1,21.4]},{u:[5,12.5],v:[-5,-1.3],eave:3.4,maxRise:.8},{u:[-26.8,-3.1],v:[-45.6,-20.7],eave:4.2,slope:.21,mono:true,roof:'#7b5d55',seam:'#624943'}],
+ // B-bygget (OSM: one storey, 6 m, hipped metal roof 2 m) with its glazed roof light over the inner rings, and the link to A.
+ r20722521:[{u:[-18.1,11.3],v:[27,52.8],lantern:[-8.9,1.6,33.4,42.9],glass:true},{u:[-11.1,3.1],v:[21.4,28.8]}],
+ // The southern wings: two square blocks with a black lantern box each, joined by lower links.
+ r20516148:[{u:[12.5,19.8],v:[-12.5,-1],eave:3.6,maxRise:1},{u:[19.7,48.8],v:[-14,22.4],lantern:[30.3,38.3,.2,8.2],box:true},{u:[48.9,60.8],v:[-15.7,-2.7],eave:3.6,maxRise:1},{u:[59.4,86.8],v:[-15.7,15.9],lantern:[69.1,77.1,-3.9,4.1],box:true}]
 };
-const BRICK='#8b4935',BRICK_LINE='#6f3829',TIMBER='#3d2b22',ROOF='#b7bcbd',SEAM='#9aa0a1',GLASS='#4b5d63';
+// Buildings of the school that are not in the first three relations: E-bygget and F-bygget (pavilions), G-bygget (2018) and
+// the dormitory (stepped brick units with mono-pitch roofs, 191360470). Keyed by OSM way id.
+const dorm=(vref,list)=>list.map(([u0,u1,v0,v1])=>({u:[u0,u1],v:[v0,v1],eave:2.6,slope:.16,mono:true,ov:.25,vref,roof:'#cdd1d1',seam:'#aeb3b3'}));
+export const schoolExtras={
+ 89247055:{look:'dark',wings:[{u:[81.7,102.2],v:[-83.1,-57.4],eave:3.6,maxRise:1.8,lantern:[91.5,98.5,-68.5,-62.5],box:true},{u:[101.6,111.8],v:[-83.1,-58.5],eave:3.6,maxRise:1.8},{u:[92,101.9],v:[-58.8,-54.4],eave:3,flat:true,roof:'#b9bec0'}]},
+ 89247040:{look:'dark',wings:[{u:[91.1,119.3],v:[-49.2,-40],eave:3.2,flat:true,roof:'#585d5f'}]},
+ 709881957:{look:'gbrick',wings:[{u:[-21.3,9.9],v:[-84.9,-75.3],eave:3.5,flat:true,roof:'#52585a'}]},
+ 191360470:{look:'brick',wings:[
+  // Bands of the staircase outline; the units of a group share one plane (vref = the low eave line), so the north-east walls are 5.6 m and the south-west walls step up to 4.3 m.
+  ...dorm(-51,[[21.3,26.6,-69.8,-61.4],[26.6,29.1,-69.8,-54.65],[29.1,35.2,-69.8,-51],[35.2,36.6,-69.8,-64.1]]),
+  ...dorm(-56.2,[[36.6,42.1,-75.4,-64.1],[42.1,44.7,-75.4,-59.95],[44.7,50.8,-75.4,-56.2]]),
+  ...dorm(-61.4,[[50.8,52,-75.4,-69.4],[52,57.7,-80.7,-69.4],[57.7,60.1,-80.7,-65.2],[60.1,66.4,-80.7,-61.5]]),
+  ...dorm(-74.7,[[66.4,73.4,-80.7,-74.7]])]}
+};
+const LOOKS={
+ brick:{wall:'#9b5a40',line:'#7a4533',frame:'#3d2b22',glass:'#4b5d63',fascia:'#3d2b22',roof:'#b7bcbd',seam:'#9aa0a1',courses:true},
+ gbrick:{wall:'#a26144',line:'#7f4a35',frame:'#2e3234',glass:'#46606a',fascia:'#cdd0cd',roof:'#52585a',seam:'#464b4d',courses:true},
+ dark:{wall:'#383c3e',line:'#2f3335',frame:'#22262a',glass:'#46606a',fascia:'#d0d3d0',roof:'#c3c8c9',seam:'#a3a9ab',courses:false}
+};
+const LOOK_OF={r20516148:'dark'},ROOF_GREY='#b7bcbd',TIMBER='#3d2b22',BOX='#202325',BOX_TOP='#cdd1ce';
 // For tests: the wing frame (u,v) of a map point, and the eave overhang round every wing.
 export const schoolFrame={local,uv,overhang:OVERHANG};
 let schoolBase=null;
 
 export function addDalgardSchool({T,scene,data,building,height,bucket,tri,quad,box,groundPoly}){
- const id=String(building.id),wings=schoolWings[id];if(!wings)return null;
- const school=data.buildings.filter(b=>schoolWings[b.id]),outline=b=>b.p.slice(0,-1);
- // One floor level for the whole school: the middle of the ground heights round all three buildings.
- if(schoolBase===null){const hs=school.flatMap(b=>outline(b).map(v=>height(...v))).sort((a,b)=>a-b);schoolBase=hs[Math.floor(hs.length/2)];}
- const y=schoolBase,p=outline(building),holes=(building.holes||[]).map(h=>h.slice(0,-1));
+ const id=String(building.id),extra=schoolExtras[id],wings=schoolWings[id]||extra?.wings;if(!wings)return null;
+ const look=LOOKS[extra?.look||LOOK_OF[id]||'brick'],main=!extra;
+ const school=main?data.buildings.filter(b=>schoolWings[b.id]):[building],outline=b=>b.p.slice(0,-1);
+ // One floor level for the three main buildings: the middle of the ground heights round all of them. The pavilions stand
+ // lower and keep a floor level of their own.
+ const median=list=>{const hs=list.flatMap(b=>outline(b).map(v=>height(...v))).sort((a,b)=>a-b);return hs[Math.floor(hs.length/2)];};
+ if(main&&schoolBase===null)schoolBase=median(school);
+ const y=main?schoolBase:median([building]),p=outline(building),holes=(building.holes||[]).map(h=>h.slice(0,-1));
  const cx=p.reduce((s,v)=>s+v[0],0)/p.length,cz=p.reduce((s,v)=>s+v[1],0)/p.length,b=bucket(cx,cz);
  const within=(w,x,z,m=0)=>{const [u,v]=local(x,z);return u>w.u[0]-m&&u<w.u[1]+m&&v>w.v[0]-m&&v<w.v[1]+m;};
- const allWings=Object.values(schoolWings).flat(),eaveOf=w=>w.eave??EAVE;
- // A wall runs up to the underside of the highest roof above it.
- const wallTop=(x,z)=>{let top=0;for(const w of allWings)if(within(w,x,z,.2))top=Math.max(top,eaveOf(w)+OVERHANG*(w.slope??SLOPE));return y+(top||EAVE+OVERHANG*SLOPE);};
+ const allWings=[...Object.values(schoolWings).flat(),...Object.values(schoolExtras).flatMap(e=>e.wings)],eaveOf=w=>w.eave??EAVE;
+ // A wall runs up to the underside of the highest roof above it: the eave, the parapet, or on a mono-pitch roof the height of
+ // the plane over that spot (gables are trapezoids).
+ const roofTop=(w,x,z)=>{if(w.flat)return eaveOf(w)+.35;if(w.mono){const v=Math.max(w.v[0],Math.min(w.v[1],local(x,z)[1]));return eaveOf(w)+((w.vref??w.v[1])-v)*(w.slope??SLOPE);}return eaveOf(w)+OVERHANG*(w.slope??SLOPE);};
+ const wallTop=(x,z)=>{let top=0,mono=false;for(const w of allWings)if(within(w,x,z,.2)){top=Math.max(top,roofTop(w,x,z));mono=mono||!!w.mono;}return {h:top||EAVE+OVERHANG*SLOPE,mono};};
  const inRing=(ring,x,z)=>{let c=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const [ax,az]=ring[j],[bx,bz]=ring[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)c=!c;}return c;};
  const inside=(x,z)=>school.some(s=>inRing(outline(s),x,z)&&!(s.holes||[]).some(h=>inRing(h.slice(0,-1),x,z)));
  // Walls where two buildings meet are inside the school and left out.
  const key=(a,c)=>a.join()+'|'+c.join(),shared=new Set();
  for(const s of school)if(s!==building){const q=outline(s);for(let i=0;i<q.length;i++)shared.add(key(q[(i+1)%q.length],q[i]));}
- const rings=[p,...(id==='r1318241'?holes:[])]; // B-bygget's inner rings carry its lantern, not a courtyard
+ const rings=[p,...(id==='r1318241'?holes:[])]; // B-bygget's inner rings carry its roof light, not a courtyard
  for(const ring of rings)for(let i=0;i<ring.length;i++){
   const a=ring[i],c=ring[(i+1)%ring.length],len=Math.hypot(c[0]-a[0],c[1]-a[1]);if(len<.3||shared.has(key(a,c)))continue;
   const dx=(c[0]-a[0])/len,dz=(c[1]-a[1])/len;let nx=-dz,nz=dx;const mx=(a[0]+c[0])/2,mz=(a[1]+c[1])/2;if(inside(mx+nx*.3,mz+nz*.3)){nx=-nx;nz=-nz;}
-  const top=wallTop(mx-nx*.5,mz-nz*.5),at=(d,h,o=0)=>[a[0]+dx*d+nx*o,h,a[1]+dz*d+nz*o];
+  const probe=(d)=>wallTop(a[0]+dx*d-nx*.5,a[1]+dz*d-nz*.5),ta=probe(Math.min(.6,len/2)),tc=probe(Math.max(len-.6,len/2)),mid=wallTop(mx-nx*.5,mz-nz*.5);
+  const sloped=(ta.mono||tc.mono)&&Math.abs(ta.h-tc.h)>.05,topA=y+(sloped?ta.h:mid.h),topC=y+(sloped?tc.h:mid.h),at=(d,h,o=0)=>[a[0]+dx*d+nx*o,h,a[1]+dz*d+nz*o];
   quad(b,[a[0],height(...a)-.5,a[1]],[c[0],height(...c)-.5,c[1]],[c[0],y+.35,c[1]],[a[0],y+.35,a[1]],'#8f8c84');
-  quad(b,at(0,y+.35),at(len,y+.35),at(len,top),at(0,top),BRICK);
-  for(let h=y+.75;h<top-.2;h+=.5)quad(b,at(0,h,.03),at(len,h,.03),at(len,h+.04,.03),at(0,h+.04,.03),BRICK_LINE);
-  // Window bands with dark brown frames, as in the entrance photograph.
-  const n=Math.floor((len-1)/3.3);for(let k=0;k<n;k++){const d=len*(k+.5)/n;quad(b,at(d-.85,y+.95,.05),at(d+.85,y+.95,.05),at(d+.85,y+2.55,.05),at(d-.85,y+2.55,.05),TIMBER);quad(b,at(d-.72,y+1.05,.08),at(d+.72,y+1.05,.08),at(d+.72,y+2.45,.08),at(d-.72,y+2.45,.08),GLASS);quad(b,at(d-.04,y+1.05,.1),at(d+.04,y+1.05,.1),at(d+.04,y+2.45,.1),at(d-.04,y+2.45,.1),TIMBER);}
+  quad(b,at(0,y+.35),at(len,y+.35),at(len,topC),at(0,topA),look.wall);
+  const topAt=d=>topA+(topC-topA)*d/len;
+  if(look.courses)for(let h=y+.75;h<Math.max(topA,topC)-.2;h+=.5){ // brick courses, clipped to the sloping gable top
+   let d0=0,d1=len;if(topAt(0)<h+.2&&topAt(len)<h+.2)continue;if(topAt(0)<h+.2)d0=(h+.2-topA)/(topC-topA)*len;if(topAt(len)<h+.2)d1=(h+.2-topA)/(topC-topA)*len;
+   if(d1-d0>.3)quad(b,at(d0,h,.03),at(d1,h,.03),at(d1,h+.04,.03),at(d0,h+.04,.03),look.line);}
+  // Window bands with dark frames, as in the entrance photograph; gables get one narrow slit window instead.
+  if(sloped){if(len>6&&Math.min(topA,topC)-y>5){const d=len*.62;quad(b,at(d-1.3,y+4.4,.05),at(d+1.3,y+4.4,.05),at(d+1.3,y+4.95,.05),at(d-1.3,y+4.95,.05),look.frame);quad(b,at(d-1.2,y+4.5,.08),at(d+1.2,y+4.5,.08),at(d+1.2,y+4.85,.08),at(d-1.2,y+4.85,.08),look.glass);}continue;}
+  const n=Math.floor((len-1)/3.3);for(let k=0;k<n;k++){const d=len*(k+.5)/n;quad(b,at(d-.85,y+.95,.05),at(d+.85,y+.95,.05),at(d+.85,y+2.55,.05),at(d-.85,y+2.55,.05),look.frame);quad(b,at(d-.72,y+1.05,.08),at(d+.72,y+1.05,.08),at(d+.72,y+2.45,.08),at(d-.72,y+2.45,.08),look.glass);quad(b,at(d-.04,y+1.05,.1),at(d+.04,y+1.05,.1),at(d+.04,y+2.45,.1),at(d-.04,y+2.45,.1),look.frame);}
  }
  if(id==='r1318241')for(const h of holes)groundPoly(h,'#a8a093',.12); // paved courtyard
- // Hipped wing roofs: four planes rising from the eaves to a ridge, or to a flat top where the pitch is capped.
+ // Roofs: hipped (four planes rising from the eaves to a ridge, or to a flat top where the pitch is capped), mono-pitch
+ // (one plane, with brick gables under it) or flat (parapet).
  const P=(u,v,h)=>{const [x,z]=uv(u,v);return [x,h,z];};
  for(const w of wings){
-  const slope=w.slope??SLOPE,maxRise=w.maxRise??MAX_RISE,e=y+eaveOf(w),colour=w.roof||ROOF,seam=w.seam||SEAM;
-  const u0=w.u[0]-OVERHANG,u1=w.u[1]+OVERHANG,v0=w.v[0]-OVERHANG,v1=w.v[1]+OVERHANG,d=Math.min((u1-u0)/2,(v1-v0)/2,maxRise/slope),rise=d*slope;
-  const outer=[[u0,v0],[u1,v0],[u1,v1],[u0,v1]],inner=[[u0+d,v0+d],[u1-d,v0+d],[u1-d,v1-d],[u0+d,v1-d]];
-  for(let i=0;i<4;i++){const a=outer[i],c=outer[(i+1)%4],ia=inner[i],ic=inner[(i+1)%4];quad(b,P(...a,e),P(...c,e),P(...ic,e+rise),P(...ia,e+rise),colour);
-   // Standing seams straight up the slope, and the dark timber fascia along eaves not hidden under another wing.
-   const du=c[0]-a[0],dv=c[1]-a[1],len=Math.hypot(du,dv),tu=du/len,tv=dv/len,iu=-tv,iv=tu; // (iu,iv) points up the slope
-   for(let s=1.2;s<len-.6;s+=1.2){const m=Math.min(d,s,len-s),bu=a[0]+tu*s,bv=a[1]+tv*s;quad(b,P(bu,bv,e+.03),P(bu+tu*.07,bv+tv*.07,e+.03),P(bu+tu*.07+iu*m,bv+tv*.07+iv*m,e+rise*m/d+.03),P(bu+iu*m,bv+iv*m,e+rise*m/d+.03),seam);}
-   const mid=[(a[0]+c[0])/2,(a[1]+c[1])/2],[mx,mz]=uv(...mid);if(!allWings.some(o=>o!==w&&within(o,mx,mz,OVERHANG-.05)))quad(b,P(...a,e+.02),P(...c,e+.02),P(...c,e-.3),P(...a,e-.3),TIMBER);
+  const slope=w.slope??SLOPE,maxRise=w.maxRise??MAX_RISE,e=y+eaveOf(w),colour=w.roof||look.roof,seam=w.seam||look.seam,ov=w.ov??(w.flat?.15:OVERHANG);
+  const u0=w.u[0]-ov,u1=w.u[1]+ov,v0=w.v[0]-ov,v1=w.v[1]+ov;let top=e;
+  if(w.flat){ // deck inside a light coping
+   const f=e+.3;quad(b,P(u0,v0,f),P(u1,v0,f),P(u1,v1,f),P(u0,v1,f),colour);
+   const edges=[[[u0,v0],[u1,v0]],[[u1,v0],[u1,v1]],[[u1,v1],[u0,v1]],[[u0,v1],[u0,v0]]];
+   for(const [a,c] of edges){quad(b,P(...a,f+.07),P(...c,f+.07),P(...c,e-.15),P(...a,e-.15),look.fascia);}
+   top=f;
+  }else if(w.mono){ // one plane: low eave on the south-west side, high edge towards the north-east (units of a group share vref)
+   const vr=w.vref??w.v[1],hh=v=>e+(vr-v)*slope,lo=hh(v1),hi=hh(v0);quad(b,P(u0,v1,lo),P(u1,v1,lo),P(u1,v0,hi),P(u0,v0,hi),colour);
+   for(let s=1.2;s<u1-u0-.6;s+=1.2)quad(b,P(u0+s,v1,lo+.03),P(u0+s+.07,v1,lo+.03),P(u0+s+.07,v0,hi+.03),P(u0+s,v0,hi+.03),seam);
+   quad(b,P(u0,v1,lo+.02),P(u1,v1,lo+.02),P(u1,v1,lo-.3),P(u0,v1,lo-.3),look.fascia); // eave
+   quad(b,P(u0,v1,lo),P(u0,v0,hi),P(u0,v0,hi-.3),P(u0,v1,lo-.3),look.fascia);quad(b,P(u1,v1,lo),P(u1,v0,hi),P(u1,v0,hi-.3),P(u1,v1,lo-.3),look.fascia); // verges
+   quad(b,P(u0,v0,hi),P(u1,v0,hi),P(u1,v0,hi-.25),P(u0,v0,hi-.25),look.fascia);
+   top=hi;
+  }else{
+   const d=Math.min((u1-u0)/2,(v1-v0)/2,maxRise/slope),rise=d*slope;
+   const outer=[[u0,v0],[u1,v0],[u1,v1],[u0,v1]],inner=[[u0+d,v0+d],[u1-d,v0+d],[u1-d,v1-d],[u0+d,v1-d]];
+   for(let i=0;i<4;i++){const a=outer[i],c=outer[(i+1)%4],ia=inner[i],ic=inner[(i+1)%4];quad(b,P(...a,e),P(...c,e),P(...ic,e+rise),P(...ia,e+rise),colour);
+    // Standing seams straight up the slope, and the fascia along eaves not hidden under another wing.
+    const du=c[0]-a[0],dv=c[1]-a[1],len=Math.hypot(du,dv),tu=du/len,tv=dv/len,iu=-tv,iv=tu; // (iu,iv) points up the slope
+    for(let s=1.2;s<len-.6;s+=1.2){const m=Math.min(d,s,len-s),bu=a[0]+tu*s,bv=a[1]+tv*s;quad(b,P(bu,bv,e+.03),P(bu+tu*.07,bv+tv*.07,e+.03),P(bu+tu*.07+iu*m,bv+tv*.07+iv*m,e+rise*m/d+.03),P(bu+iu*m,bv+iv*m,e+rise*m/d+.03),seam);}
+    const mid=[(a[0]+c[0])/2,(a[1]+c[1])/2],[mx,mz]=uv(...mid);if(!allWings.some(o=>o!==w&&within(o,mx,mz,OVERHANG-.05)))quad(b,P(...a,e+.02),P(...c,e+.02),P(...c,e-.3),P(...a,e-.3),look.fascia);
+   }
+   if(d<Math.min((u1-u0)/2,(v1-v0)/2))quad(b,...inner.map(q=>P(...q,e+rise)),colour);
+   top=e+rise;
   }
-  if(d<Math.min((u1-u0)/2,(v1-v0)/2))quad(b,...inner.map(q=>P(...q,e+rise)),colour);
-  if(w.lantern){const [la,lb,va,vb]=w.lantern,t=e+rise,corners=[[la,va],[lb,va],[lb,vb],[la,vb]],apex=P((la+lb)/2,(va+vb)/2,t+2.1);
-   for(let i=0;i<4;i++){const a=corners[i],c=corners[(i+1)%4];quad(b,P(...a,t),P(...c,t),P(...c,t+1.1),P(...a,t+1.1),'#7d949b');quad(b,P(...a,t+1.1),P(...c,t+1.1),P(...c,t+1.25),P(...a,t+1.25),TIMBER);tri(b,P(...a,t+1.25),P(...c,t+1.25),apex,'#5a6a70');
-    const [x,,z]=P(...a,t);box(b,x,t+.62,z,.18,1.25,.18,TIMBER);}}
+  if(w.lantern){const [la,lb,va,vb]=w.lantern,t=top,corners=[[la,va],[lb,va],[lb,vb],[la,vb]];
+   if(w.box){ // black timber box with a white flat top and a vent, as on the southern wings in the 2021 photograph
+    const H=2.3,r=.18;for(let i=0;i<4;i++){const a=corners[i],c=corners[(i+1)%4];quad(b,P(...a,t),P(...c,t),P(...c,t+H),P(...a,t+H),BOX);}
+    quad(b,P(la-r,va-r,t+H),P(lb+r,va-r,t+H),P(lb+r,vb+r,t+H),P(la-r,vb+r,t+H),BOX_TOP);
+    for(let i=0;i<4;i++){const a=corners[i],c=corners[(i+1)%4];quad(b,P(...a,t+H-.12),P(...c,t+H-.12),P(...c,t+H),P(...a,t+H),'#8c9294');}
+    const [vx,,vz]=P((la+lb)/2,(va+vb)/2,t+H);box(b,vx,t+H+.3,vz,1.1,.6,1.1,BOX_TOP,-ANGLE);
+   }else{ // glazed roof light over B-bygget's inner rings: dark glass, low pyramid, light frame
+    const apex=P((la+lb)/2,(va+vb)/2,t+1.9);
+    for(let i=0;i<4;i++){const a=corners[i],c=corners[(i+1)%4];quad(b,P(...a,t),P(...c,t),P(...c,t+.8),P(...a,t+.8),'#6f787b');quad(b,P(...a,t+.8),P(...c,t+.8),P(...c,t+.95),P(...a,t+.95),'#b9bdbb');tri(b,P(...a,t+.95),P(...c,t+.95),apex,'#33444b');}
+   }}
  }
- // Main entrance on the north-west front, towards the car park by Anders Wigens veg: a gabled timber porch and the name.
+ // Main entrance: on the hall's north-west gable (photograph of 2009, "DALGÅRD SKOLE" over "Hovedinngang"; the 2025 sale
+ // photograph adds "OG RESSURSSENTER / UNIVERSITETSSKOLE"): a glazed double door under the letters and a low timber canopy.
  if(id==='r1318241'){
-  const n=[-AX,-AZ]; // outward normal of the north-west front
-  const door=(o,h,along=0)=>{const [x,z]=uv(-55-o,8+along);return [x,y+h,z];};
-  for(const k of [-2,2])for(const o of [.4,3.2]){const [x,yy,z]=door(o,1.55,k);box(b,x,yy,z,.22,3.1,.22,TIMBER);}
-  const ridge=[door(-.2,4.25,0),door(3.6,4.25,0)],left=[door(-.2,3.1,-2.6),door(3.6,3.1,-2.6)],right=[door(-.2,3.1,2.6),door(3.6,3.1,2.6)];
-  quad(b,left[0],left[1],ridge[1],ridge[0],ROOF);quad(b,right[0],right[1],ridge[1],ridge[0],ROOF);tri(b,left[1],right[1],ridge[1],TIMBER);
-  quad(b,door(.08,.1,-1.1),door(.08,.1,1.1),door(.08,2.5,1.1),door(.08,2.5,-1.1),'#5c7a80');
-  const [sx,sz]=uv(-55.12,-6);drawSign(T,scene,'DALGÅRD SKOLE',[sx,y+2.95,sz],n,5.2,.62,'#f1e9d6',TIMBER);
+  const n=[-AX,-AZ]; // outward normal of the gable (wall at u=-25)
+  const gate=(o,h,vv)=>{const [x,z]=uv(-25-o,vv);return [x,y+h,z];};
+  quad(b,gate(.06,.05,-42.4),gate(.06,.05,-39.6),gate(.06,2.45,-39.6),gate(.06,2.45,-42.4),'#2c2622');
+  quad(b,gate(.1,.1,-42.2),gate(.1,.1,-39.8),gate(.1,2.3,-39.8),gate(.1,2.3,-42.2),'#5c7a80');quad(b,gate(.14,.1,-41.03),gate(.14,.1,-40.97),gate(.14,2.3,-40.97),gate(.14,2.3,-41.03),'#2c2622');
+  quad(b,gate(0,3.15,-43.4),gate(3.4,3.15,-43.4),gate(3.4,3.15,-38.6),gate(0,3.15,-38.6),TIMBER);quad(b,gate(0,3.35,-43.4),gate(3.4,3.35,-43.4),gate(3.4,3.35,-38.6),gate(0,3.35,-38.6),'#b7bcbd');
+  for(const vv of [-43.2,-38.8]){const [x,yy,z]=gate(3.2,1.6,vv);box(b,x,yy,z,.2,3.2,.2,TIMBER);}
+  const [sx,sy,sz]=gate(.1,5.85,-41.3);drawSign(T,scene,[['DALGÅRD SKOLE','#eceff0',1.7],['OG RESSURSSENTER','#eceff0',.8],['UNIVERSITETSSKOLE','#eceff0',.8]],[sx,sy,sz],n,4.4,1.7,'#eceff0',null);
+  // Entrance A1 (OSM node 12631332162 at 677.5, 432.2) on the courtyard side: the bay that projects 2.5 m into the courtyard has a
+  // glazed double door in its north-east face (v = 1.9), between two brick piers under a small timber gable, as at the end of the
+  // covered passage from the north-west car park in the 2003 photograph (BC041).
+  const cd=(o,h,uu)=>{const [x,z]=uv(uu,1.9-o);return [x,y+h,z];};
+  quad(b,cd(.05,.05,-30.2),cd(.05,.05,-27),cd(.05,2.55,-27),cd(.05,2.55,-30.2),'#2c2622');quad(b,cd(.09,.1,-30),cd(.09,.1,-27.2),cd(.09,2.45,-27.2),cd(.09,2.45,-30),'#5c7a80');
+  for(const uu of [-28.9,-28.3])quad(b,cd(.12,.1,uu-.03),cd(.12,.1,uu+.03),cd(.12,2.45,uu+.03),cd(.12,2.45,uu-.03),'#2c2622');
+  for(const uu of [-31,-26.2]){const [px,py,pz]=cd(.35,1.7,uu);box(b,px,py,pz,.6,3.4,.7,'#8b4935',-ANGLE);}
+  const rg=[cd(-.1,4.1,-28.6),cd(1.8,4.1,-28.6)],lf=[cd(-.1,3.25,-31),cd(1.8,3.25,-31)],rt=[cd(-.1,3.25,-26.2),cd(1.8,3.25,-26.2)];
+  quad(b,lf[0],lf[1],rg[1],rg[0],ROOF_GREY);quad(b,rt[0],rt[1],rg[1],rg[0],ROOF_GREY);tri(b,lf[1],rt[1],rg[1],TIMBER);quad(b,cd(-.1,3.2,-31),cd(-.1,3.2,-26.2),cd(1.8,3.2,-26.2),cd(1.8,3.2,-31),'#a88a68');
  }
  const xs=p.map(v=>v[0]),zs=p.map(v=>v[1]);
  return {bounds:[Math.min(...xs)-3,Math.min(...zs)-3,Math.max(...xs)+3,Math.max(...zs)+3]};

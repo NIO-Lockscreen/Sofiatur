@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as T from './dist/vendor/three.js';
-import {addDalgardSchool,addSportsGrounds,addDalgardDetails,schoolWings,schoolFrame} from './dist/dalgard.js';
+import {addDalgardSchool,addSportsGrounds,addDalgardDetails,schoolWings,schoolExtras,schoolFrame} from './dist/dalgard.js';
 import {streetSegments,projectPoint} from './dist/transit-geometry.js';
 
 // Canvas-backed signs only need a 2D context that accepts drawing calls.
@@ -29,11 +29,47 @@ assert.ok(!schoolWings.r1318241.some(w=>within(w,...cc,0)),'Courtyard open to th
 const drawn=[];for(const b of school){points=[];const r=addDalgardSchool({T,scene,data,building:b,height,bucket,tri,quad,box,groundPoly});assert.ok(r&&points.length>800,`${b.id} modelled (${points.length} vertices)`);drawn.push(...points);}
 const base=Math.min(...drawn.map(p=>p[1]).filter(y=>y>100)),floor=[...school.flatMap(b=>b.p.map(v=>height(...v)))].sort((a,b)=>a-b);
 const top=Math.max(...drawn.map(p=>p[1])),mid=floor[Math.floor(floor.length/2)];
+// Entrance A1 (OSM node 12631332162 at 677.5, 432.2, reported by the schoolyard work): on the courtyard side, glazed doors under a small
+// timber gable (2003 photograph BC041), facing into the courtyard; the old porch and board on the north-west front are gone.
+const a1=[677.5,432.2],a1y=floor[Math.floor(floor.length/2)];
+assert.ok(drawn.some(p=>Math.hypot(p[0]-a1[0],p[2]-a1[1])<1.6&&p[1]-a1y>2.3&&p[1]-a1y<3),'Doors at the courtyard entrance');
+assert.ok(drawn.some(p=>Math.hypot(p[0]-a1[0],p[2]-a1[1])<2.8&&p[1]-a1y>3.9&&p[1]-a1y<4.6),'Gable canopy at the courtyard entrance');
+assert.ok(inRing(court,a1[0]+.669*1.5,a1[1]-.743*1.5)&&!insideAny(a1[0]+.669*1.5,a1[1]-.743*1.5),'The entrance faces the open courtyard');
+assert.ok(!drawn.some(p=>{const [u,v]=schoolFrame.local(p[0],p[2]);return u<-55.9&&u>-60&&p[1]-a1y>-1&&p[1]-a1y<6;}),'No porch on the north-west front');
+
 assert.ok(top<mid+6.2+3.7&&top>mid+6,'One-storey school; the hall to the north-east is the highest part');
-const [sign]=named('DALGÅRD SKOLE');assert.ok(sign,'School name at the entrance');
+const [sign]=named('DALGÅRD SKOLE OG RESSURSSENTER UNIVERSITETSSKOLE');assert.ok(sign,'School name on the hall gable (photographs of 2009 and 2025)');
 assert.ok(!insideAny(sign.position.x-Math.cos(42*Math.PI/180)*2,sign.position.z-Math.sin(42*Math.PI/180)*2),'The name faces the car park outside');
+{ // The letters are on the hall's north-west gable: within 0.3 m of an outline wall of A-bygget, below the top of the gable.
+ const ring=school[0].p,[ax,az]=[sign.position.x,sign.position.z];let best=1e9;
+ for(let i=0;i<ring.length-1;i++){const [px,pz]=ring[i],[qx,qz]=ring[i+1],dx=qx-px,dz=qz-pz,t=Math.max(0,Math.min(1,((ax-px)*dx+(az-pz)*dz)/(dx*dx+dz*dz||1)));best=Math.min(best,Math.hypot(ax-px-t*dx,az-pz-t*dz));}
+ assert.ok(best<.3,`Letters on the wall (${best.toFixed(2)} m)`);
+ const [u,v]=schoolFrame.local(ax,az);assert.ok(u<-24.9&&u>-25.4&&v<-30.6&&v>-45.6,`On the hall gable (u ${u.toFixed(1)}, v ${v.toFixed(1)})`);
+ assert.ok(sign.position.y-height(ax,az)>3&&sign.position.y-height(ax,az)<7.5,'Letters at reading height under the gable top');}
 assert.ok(addDalgardSchool({T,scene,data,building:building('1312240278'),height,bucket,tri,quad,box,groundPoly})===null,'Other buildings keep the generic builder');
-console.log(`Dalgård skole: A-bygget (courtyard), B-bygget and the southern wings, ${Object.values(schoolWings).flat().length} hipped wings covering every wall, ${Object.values(schoolWings).flat().filter(w=>w.lantern).length} roof lanterns: OK`);
+console.log(`Dalgård skole: A-bygget (courtyard), B-bygget and the southern wings, ${Object.values(schoolWings).flat().length} wings (hipped, one mono-pitch hall) covering every wall, ${Object.values(schoolWings).flat().filter(w=>w.lantern).length} roof lanterns: OK`);
+
+// The pavilions E and F, the 2018 building G and the dormitory (stepped brick units) belong to the school and are drawn here,
+// not by houses.js (addDalgardSchool returns bounds, so world.js skips the generic builder). Each one: every corner under a wing
+// of its own, everything drawn within 1.5 m of its footprint (roof overhangs), standing on the ground, one storey.
+const extraIds=Object.keys(schoolExtras);assert.deepEqual(extraIds.sort(),['191360470','709881957','89247040','89247055'],'E, F, G and the dormitory');
+const distToRing=(ring,x,z)=>{let best=1e9;for(let i=0;i<ring.length-1;i++){const [px,pz]=ring[i],[qx,qz]=ring[i+1],dx=qx-px,dz=qz-pz,t=Math.max(0,Math.min(1,((x-px)*dx+(z-pz)*dz)/(dx*dx+dz*dz||1)));best=Math.min(best,Math.hypot(x-px-t*dx,z-pz-t*dz));}return best;};
+let extraTriangles=0;
+for(const id of extraIds){const b=building(id),w=schoolExtras[id].wings;assert.ok(b,`${id} in the map`);
+ for(const [x,z] of b.p)assert.ok(w.some(q=>within(q,x,z,.35)),`${id} corner (${x},${z}) under a roof`);
+ points=[];const r=addDalgardSchool({T,scene,data,building:b,height,bucket,tri,quad,box,groundPoly});assert.ok(r&&points.length>150,`${id} modelled (${points.length} vertices)`);
+ extraTriangles+=points.length;
+ const gs=b.p.map(v=>height(...v)),spread=Math.max(...gs)-Math.min(...gs),low=Math.min(...points.map(p=>p[1])),topY=Math.max(...points.map(p=>p[1]));
+ assert.ok(spread<2.6,`${id} stands on gently sloping ground (${spread.toFixed(1)} m)`);
+ assert.ok(low<Math.min(...gs)+.1&&low>Math.min(...gs)-1,`${id} plinth reaches the ground (${(low-Math.min(...gs)).toFixed(2)} m)`);
+ assert.ok(topY-Math.max(...gs)<8.5&&topY-Math.min(...gs)>3,`${id} one storey with its roof (${(topY-Math.min(...gs)).toFixed(1)} m)`);
+ for(const p of points){const inRingNow=inRing(b.p,p[0],p[2]);assert.ok(inRingNow||distToRing(b.p,p[0],p[2])<1.5,`${id} vertex (${p[0].toFixed(1)},${p[2].toFixed(1)}) outside the footprint`);}
+ for(const p of points)assert.ok(!insideAny(p[0],p[2],b)||p[1]<height(p[0],p[2])-.2||distToRing(b.p,p[0],p[2])<.4,`${id} nothing inside another building (${p[0].toFixed(1)},${p[2].toFixed(1)})`);}
+const dormitory=schoolExtras['191360470'].wings;assert.ok(dormitory.every(w=>w.mono&&w.slope<.2&&w.eave<3),'Dormitory: low mono-pitch units');
+const hallWing=schoolWings.r1318241.find(w=>w.mono);assert.ok(hallWing&&hallWing.roof==='#7b5d55','The hall has one brown mono-pitch roof (photographs of 2021 and 2025)');
+const lanternBoxes=Object.values(schoolWings).flat().filter(w=>w.lantern&&w.box).length+extraIds.flatMap(i=>schoolExtras[i].wings).filter(w=>w.lantern&&w.box).length;assert.equal(lanternBoxes,3,'Black timber lantern boxes on the southern wings and on E');
+assert.ok(!schoolWings.r1318241.some(w=>w.u[0]<-60),'No stray wings');
+console.log(`School pavilions: E, F, G and the dormitory modelled here (${extraTriangles} vertices), mono-pitch hall, ${lanternBoxes} black lantern boxes: OK`);
 
 // Sports grounds: turf pitches with markings and goals, the tartan running track round Byåsen Arena, car parks.
 const areas=data.areas.filter(a=>a.osm&&['pitch','track','parking'].includes(a.type));
