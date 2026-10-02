@@ -14,12 +14,15 @@ import {seedOf,rng,pick,shade,mix,stripeTone,luminance,normHex,kindOf,lookFor,GA
 const LEAN=new Set(['1312240278','89233555','89233524','89233532','191198632']);
 const GLASS_DAY=['#b8cdd3','#a9c0c8','#c7d4d6','#8fb0ba'];
 
-export function createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly,junctionBuildings,buildingStyles}){
+export function createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly,junctionBuildings,buildingStyles,groundColour=null,onRoad=()=>false}){
  // ---- colour buffers: a triangle with a colour per corner (window glass fades from sky reflection to dark) ----
  const colours=new Map();const C=h=>{let c=colours.get(h);if(!c){c=new T.Color(h);colours.set(h,c);}return c;};
  function vtri(b,p,q,r,cp,cq,cr){let n=b.n;if(n+9>b.p.length){const a=new Float32Array(b.p.length*2),c=new Float32Array(b.p.length*2);a.set(b.p);c.set(b.c);b.p=a;b.c=c;}
   const P=b.p,K=b.c,x=C(cp),y=C(cq),z=C(cr);P[n]=p[0];P[n+1]=p[1];P[n+2]=p[2];P[n+3]=q[0];P[n+4]=q[1];P[n+5]=q[2];P[n+6]=r[0];P[n+7]=r[1];P[n+8]=r[2];
   K[n]=x.r;K[n+1]=x.g;K[n+2]=x.b;K[n+3]=y.r;K[n+4]=y.g;K[n+5]=y.b;K[n+6]=z.r;K[n+7]=z.g;K[n+8]=z.b;b.n=n+9;}
+ function ftri(b,p,q,r,cp,cq,cr){let n=b.n;if(n+9>b.p.length){const a=new Float32Array(b.p.length*2),c=new Float32Array(b.p.length*2);a.set(b.p);c.set(b.c);b.p=a;b.c=c;}
+  const P=b.p,K=b.c;P.set(p,n);P.set(q,n+3);P.set(r,n+6);K.set(cp,n);K.set(cq,n+3);K.set(cr,n+6);b.n=n+9;}
+ const LAWN=new T.Color('#6f8e57'),lawn=[LAWN.r,LAWN.g,LAWN.b],soil=(x,z,dark=1)=>{const c=groundColour?groundColour(x,z,[0,0,0]):lawn.slice();return [c[0]*dark,c[1]*dark,c[2]*dark];};
  // a, c at the bottom, e, d at the top (same order as quad): bottom colour low, top colour high
  const gquad=(b,a,c,d,e,low,high)=>{vtri(b,a,c,d,low,low,high);vtri(b,a,d,e,low,high,high);};
 
@@ -68,6 +71,13 @@ export function createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly
   const h=style.height||Math.min(26,parseFloat(t.height)||levels*2.65+(garage?.1:.5));
   const heights=p.map(v=>height(...v)).sort((a,b)=>a-b);
   const y=style.base==='low'?heights[Math.floor(heights.length*.25)]:Math.max(...heights),base=Math.min(...p.map(v=>height(...v)))-.4;
+  // Sokkel (2 October 2026). The floor lies at the ground on the uphill side, so on a slope the wall below it showed as one tall grey
+  // concrete face (median 1.6 m, a tenth over 4 m, up to 13 m: the terrain is exaggerated 1.45 times). As built on Byåsen's slopes: a
+  // concrete plinth only PLINTH high along the ground, above it a basement storey (sokkeletasje) clad like the house or in rendered
+  // concrete, with windows; at most one storey of it (two under a block), and below that the ground is filled up to a terrace round the
+  // house: a flat shelf by the wall, then a grass bank down to the natural ground, or a retaining wall where a road is in the way.
+  const SOKKEL=garage?1.25:kind==='block'?5.6:3,PLINTH=.45,SHELF=.7,BATTER=1.6,FILL_MAX=7,padY=y+.5-SOKKEL;
+  const visGround=(x,z,o)=>Math.max(height(x,z),padY-Math.max(0,o-SHELF)/BATTER); // the ground as drawn, o metres out from a wall
   wallBase.set(id,{y,h});
   const b=bucket(cx,cz);
   houseBounds.push([Math.min(...p.map(v=>v[0]))-2,Math.min(...p.map(v=>v[1]))-2,Math.max(...p.map(v=>v[0]))+2,Math.max(...p.map(v=>v[1]))+2]);
@@ -79,6 +89,8 @@ export function createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly
   const near=paths.nearest(cx,cz,100),bl=near<30?2:near<62?1:0;stats.lod[bl]++;
   const lean=LEAN.has(id);
   const wallCol=look.wall,trim=look.trim,frameCol=look.frame,plinthCol=look.plinth;
+  // the basement storey: clad like the house on most timber houses, otherwise rendered concrete a little lighter than the plinth
+  const rs=rng(seedOf(id)^0x51ed27),sokkelCol=(look.panel==='h'||look.panel==='v')&&rs()<.65?wallCol:mix(plinthCol,'#f2efe6',.3);
   const sgn=p.reduce((s,a,i)=>{const c=p[(i+1)%p.length];return s+a[0]*c[1]-c[0]*a[1];},0)>0?1:-1;
   const walls=[];
   for(let i=0;i<p.length;i++){const a=p[i],c=p[(i+1)%p.length],len=Math.hypot(c[0]-a[0],c[1]-a[1]);if(len<.3)continue;
@@ -96,12 +108,47 @@ export function createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly
   // terraces: a door for every flat (Matrikkelen counts them), otherwise one metre of wall per 5.8
   const unitCount=kind==='terrace'&&front?Math.max(2,Math.min(14,units>1?units:Math.round(front.len/5.8))):1;
 
+  // ---- plinth and basement storey, then the terrace fill outside it ----
+  // samples along the wall: its ends, split where the ground bends away from a straight line (by 12 cm, every 2 m at most)
+  const at=(w,u)=>{const o=F(w,u,0,.3);return {P:F(w,u,0,0),g:Math.max(height(o[0],o[2]),padY),u};};
+  function samples(w,A,C,depth){const M=at(w,(A.u+C.u)/2);if(depth>=3||C.u-A.u<2||Math.abs(M.g-(A.g+C.g)/2)<.12)return [A];return [...samples(w,A,M,depth+1),...samples(w,M,C,depth+1)];}
+  function sokkel(w){
+   const top=y+.5,end=at(w,w.len),pts=[...samples(w,at(w,0),end,bl===0?3:0),end],k=pts.length-1;
+   w.sokkel=pts;w.exposed=Math.max(...pts.map(q=>top-q.g));
+   if(w.exposed<PLINTH+.12){quad(b,[w.a[0],base,w.a[1]],[w.c[0],base,w.c[1]],[w.c[0],top,w.c[1]],[w.a[0],top,w.a[1]],plinthCol);return;}
+   for(let j=0;j<k;j++){const A=pts[j],C=pts[j+1],ca=Math.min(top,A.g+PLINTH),cc=Math.min(top,C.g+PLINTH);
+    quad(b,[A.P[0],base,A.P[2]],[C.P[0],base,C.P[2]],[C.P[0],cc,C.P[2]],[A.P[0],ca,A.P[2]],plinthCol);
+    if(ca<top-.02||cc<top-.02)quad(b,[A.P[0],ca,A.P[2]],[C.P[0],cc,C.P[2]],[C.P[0],top,C.P[2]],[A.P[0],top,A.P[2]],sokkelCol);}
+   // a trim board between the basement storey and the floor above, where the basement is clad like the house
+   if(sokkelCol===wallCol&&w.exposed>PLINTH+.8&&w.lod>=1)panel(w,w.len/2,top-.08,w.len,.16,trim,.03);
+  }
+  const fills=[]; // per wall: the outer edge of the fill at each sample (or null where the ground needs none)
+  function fill(w){
+   const pts=w.sokkel;if(!pts||!pts.some(q=>height(q.P[0],q.P[2])<padY-.05)){fills.push(null);return;}
+   const out=pts.map(q=>{const g0=height(q.P[0],q.P[2]);if(g0>=padY-.05)return null;
+    let o=SHELF,top=padY,ground=g0,wall=false;
+    for(;o<=FILL_MAX;o+=.5){const X=F(w,q.u,0,o),gn=height(X[0],X[2]),sY=padY-(o-SHELF)/BATTER;top=sY;ground=gn;
+     if(sY<=gn+.02){top=gn;break;}
+     const Y=F(w,q.u,0,o+1.2);if(onRoad(Y[0],Y[2])){wall=true;break;}}
+    if(o>FILL_MAX){o=FILL_MAX;wall=true;}
+    const X=F(w,q.u,0,o);return {inner:F(w,q.u,padY,.02),shelf:F(w,q.u,padY,SHELF),outer:[X[0],top,X[2]],foot:[X[0],ground-.05,X[2]],wall:wall&&top-ground>.1};});
+   fills.push(out);
+   for(let j=0;j<out.length-1;j++){const A=out[j],C=out[j+1];if(!A&&!C)continue;
+    const a=A||{inner:F(w,pts[j].u,padY,.02),shelf:F(w,pts[j].u,padY,SHELF),outer:F(w,pts[j].u,padY,SHELF),foot:null,wall:false},
+     c=C||{inner:F(w,pts[j+1].u,padY,.02),shelf:F(w,pts[j+1].u,padY,SHELF),outer:F(w,pts[j+1].u,padY,SHELF),foot:null,wall:false};
+    const col=v=>soil(v[0],v[2]),dim=v=>soil(v[0],v[2],.9);
+    ftri(b,a.inner,c.inner,c.shelf,col(a.inner),col(c.inner),col(c.shelf));ftri(b,a.inner,c.shelf,a.shelf,col(a.inner),col(c.shelf),col(a.shelf));
+    ftri(b,a.shelf,c.shelf,c.outer,col(a.shelf),col(c.shelf),dim(c.outer));ftri(b,a.shelf,c.outer,a.outer,col(a.shelf),dim(c.outer),dim(a.outer));
+    if(a.wall&&c.wall)quad(b,a.foot,c.foot,c.outer,a.outer,'#a8a79f');}
+   stats.fills=(stats.fills||0)+1;
+  }
+
   // ---- walls, plinth, cladding ----
   const horizontal=look.panel==='h',vertical=look.panel==='v',brick=look.panel==='brick',boards=horizontal||vertical;
   const tone=boards||brick?stripeTone(wallCol,style.siding||style.horizontalSiding?1:.8):wallCol;
   for(const w of walls){
    const {a,c}=w;
-   quad(b,[a[0],base,a[1]],[c[0],base,c[1]],[c[0],y+.5,c[1]],[a[0],y+.5,a[1]],plinthCol);
+   sokkel(w);
    quad(b,[a[0],y+.5,a[1]],[c[0],y+.5,c[1]],[c[0],top0,c[1]],[a[0],top0,a[1]],wallCol);
    if(style.sections&&w.len>25){for(let j=0;j<4;j++)panel(w,w.len*(j+.5)/4,y+.5,w.len/4,h-.5,style.sections[j],.04);}
    if(style.upperWall)panel(w,w.len/2,y+h*.65,w.len,h*.35,style.upperWall,.08);
@@ -124,6 +171,10 @@ export function createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly
    if(w.lod===2&&boards&&w.len>2)panel(w,w.len-.07,y+.5,.14,h-.5,trim,.04);
    mark('corners');
   }
+  for(const w of walls)fill(w);
+  for(let i=0;i<walls.length;i++){const A=fills[i],C=fills[(i+1)%walls.length];if(!A||!C)continue;const a=A.at(-1),c=C[0];if(!a||!c)continue;
+   const P=walls[i].sokkel.at(-1).P,corner=[P[0],padY,P[2]],col=v=>soil(v[0],v[2]);ftri(b,corner,a.outer,c.outer,col(corner),col(a.outer),col(c.outer));}
+  mark('sokkel fill');
 
   // ---- windows ----
   const big=kind==='public';
@@ -162,9 +213,9 @@ export function createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly
 
   mark('windows');
   // ---- door, steps, canopy; garage door ----
-  const doorDrop=(w,u)=>{const o=F(w,u,0,.9),g=height(o[0],o[2]);return Math.max(base+.25,Math.min(y+.5,g+.14));};
+  const doorDrop=(w,u)=>{const o=F(w,u,0,.9),g=visGround(o[0],o[2],.9);return Math.max(base+.25,Math.min(y+.5,g+.14));};
   function addStep(w,u,y0,wide){
-   const o=F(w,u,0,1),g=height(o[0],o[2]),drop=y0-g;if(drop<.12)return;
+   const o=F(w,u,0,1),g=visGround(o[0],o[2],1),drop=y0-g;if(drop<.12)return;
    const hw=wide/2,dep=.85;
    const n=drop>.35?Math.min(4,Math.ceil(drop/.19)):1,tread=.32;
    // landing at door level, then steps down to the ground
@@ -232,10 +283,13 @@ export function createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly
    for(const w of walls){if(w.lod<1||w.len<3.2)continue;const gh=roofTop([w.mx,w.mz])-top0,wh=Math.min(.9,gh-.75);if(gh<1.6||wh<.45)continue;
     const y0=top0+.3;panel(w,w.len/2,y0-.08,.92,wh+.16,frameCol,.05);gpanel(w,w.len/2,y0,.76,wh,glassBot,GLASS_DAY[0],.07);stats.windows++;}
   }
-  if(bl===2&&!garage){
-   for(const w of walls){if(w.lod<2||w.len<4)continue;
-    slotsOf(w).forEach((u,k)=>{if(w===front&&doorSlots.has(k))return;const o=F(w,u,0,.4),g=height(o[0],o[2]),drop=y+.5-g;if(drop<1.7)return;
-     const y0=g+.7,wh=Math.min(.7,drop-.7-.25);if(wh<.4)return;panel(w,u,y0-.07,.98,wh+.14,frameCol,.05);panel(w,u,y0,.84,wh,'#4a5f66',.07);stats.windows++;});}
+  if(bl>=1&&!garage){
+   for(const w of walls){if(w.lod<1||w.len<4||!(w.exposed>1.7))continue;
+    slotsOf(w).forEach((u,k)=>{if(w===front&&doorSlots.has(k))return;const o=F(w,u,0,.4),g=visGround(o[0],o[2],.4),drop=y+.5-g;if(drop<1.7)return;
+     if(drop<2.4){const y0=g+.7,wh=Math.min(.7,drop-.7-.25);if(wh<.4)return;panel(w,u,y0-.07,.98,wh+.14,frameCol,.05);panel(w,u,y0,.84,wh,'#4a5f66',.07);stats.windows++;return;}
+     // a full basement storey (two under a block on a steep slope): windows like the floor above, sill 0.9 m over the floor
+     for(let f=0;f<2;f++){const y0=g+.9+f*2.8,wh=Math.min(1.25,y+.5-.35-y0);if(wh<.6)break;
+      panel(w,u,y0-.08,1.06,wh+.16,frameCol,.05);gpanel(w,u,y0,.9,wh,glassBot,GLASS_DAY[0],.07);stats.windows++;}});}
   }
   mark('gable+plinth windows');
   // ---- ridge cap and chimneys ----

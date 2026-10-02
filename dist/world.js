@@ -99,7 +99,7 @@ export function createWorld(canvas, data) {
  const houseBounds=[[-22,-16,16,16],[1798,226,1861,268],[1790,270,1850,337],[1450,169,1648,285]];
  // Pitches, the running track and car parks at Dalgård: drawn on the ground and kept free of trees.
  houseBounds.push(...addSportsGrounds({T,data,height,bucket,tri,box,ribbon}));
- const houses=createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly,junctionBuildings,buildingStyles});
+ const houses=createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly,junctionBuildings,buildingStyles,groundColour:ground.sample,onRoad:(x,z)=>roadSurface.heightAt(x,z)!==null});
 const wallBase=new Map(); // Wall base and height per footprint, for details added after the loop.
  for(const building of data.buildings){let p=building.p.slice(0,-1);if(p.length<3)continue;let cx=p.reduce((a,b)=>a+b[0],0)/p.length,cz=p.reduce((a,b)=>a+b[1],0)/p.length;
  let area=0;for(let i=0;i<p.length;i++)area+=p[i][0]*p[(i+1)%p.length][1]-p[(i+1)%p.length][0]*p[i][1];area=Math.abs(area/2);if(area<4)continue;

@@ -7,7 +7,10 @@ import {createRoadGeometry,KERB,KERB_DROP} from './road-geometry.js';
 // Primitives are kept as plain numbers (class, road index, corner count, corners as x,y,z); paint() hands them to the renderer and
 // quads/extra/verges give them as objects {road,kerb,x,z,corners} for checks. Classes: 0 asphalt, 1 kerb band, 2 island grass, 3 verge, 4 steep patch triangle.
 const QS=[[.5,.6],[.5,1],[.2,1],[.8,1]],GRID=8,SLOPE=.6,CLEAR=.16; // ground grid, verge batter (rise per metre out), how far below the kerb top the ground must lie
-const WARP=4,STEEP=1,WEDGE=24,CUT_AT=[1.2,3.6]; // ribbon tilt length at a steep corner, its slope limit, wedge reach from the node, and the lateral offsets checked beside an arm
+const WARP=4,STEEP=1,WEDGE=24,CUT_AT=[1.2,3.6];
+const FILL_FLAT=4,FILL_SLOPE=.18,FILL_REACH=12,FILL_MAX=3.5,FILL_LAKE=20; // raising the ground beside a road: flat shoulder, then the fall per metre, its reach, the most it is raised, and how far it stays off a lake
+const inPoly=(p,x,z)=>{let c=false;for(let i=0,j=p.length-1;i<p.length;j=i++){const [ax,az]=p[j],[bx,bz]=p[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)c=!c;}return c;};
+const edgeDist=(p,x,z)=>{let m=Infinity;for(let i=0;i<p.length-1;i++){const [ax,az]=p[i],[bx,bz]=p[i+1],dx=bx-ax,dz=bz-az,t=Math.max(0,Math.min(1,((x-ax)*dx+(z-az)*dz)/(dx*dx+dz*dz||1)));m=Math.min(m,Math.hypot(x-ax-t*dx,z-az-t*dz));}return m;}; // ribbon tilt length at a steep corner, its slope limit, wedge reach from the node, and the lateral offsets checked beside an arm
 // Least-squares plane through the patches of one cluster (node levels and every arm's mouth level): the fans' heights follow it, so overlapping patches
 // (the lanes of a split road meeting a roundabout) lie in one plane and the surface shades smoothly.
 function fitPlane(list){
@@ -70,7 +73,21 @@ export function createRoadSurface(roads,height,data,tune={}){
  const ci=[],cw=[],cl=[]; // constraints: the ground under (x,z) must lie below a limit; three vertices and their weights
  function need(x,z,limit){if(!tr)return;const fx=(x-tr.x0)/GRID,fz=(z-tr.z0)/GRID,i=Math.floor(fx),j=Math.floor(fz);if(i<0||j<0||i>LX-2||j>LZ-2)return;
   const u=fx-i,v=fz-j,a=j*LX+i;let b,d,wa,wb,wc;if(u>=v){b=a+1;d=a+LX+1;wa=1-u;wb=u-v;wc=v;}else{b=a+LX+1;d=a+LX;wa=1-v;wb=u;wc=v-u;}
-  if(wa*vT(a)+wb*vT(b)+wc*vT(d)>limit+1e-4){ci.push(a,b,d);cw.push(wa,wb,wc);cl.push(limit);}}
+  if(wa*(vT(a)+delta[a])+wb*(vT(b)+delta[b])+wc*(vT(d)+delta[d])>limit+1e-4){ci.push(a,b,d);cw.push(wa,wb,wc);cl.push(limit);}}
+ // Ground beside a road (2 October 2026). The 40 m terrain is too coarse for the streets: the road's own smoothed profile ran more than a metre above
+ // the ground 5 m beyond the kerb along a quarter of all road metres, a bank and a ditch where the street really lies level with its gardens (the ditch
+ // under the noise screens at the KIWI roundabout). Each grid vertex near a road is raised towards that road's level: CLEAR below it up to FILL_FLAT
+ // beyond the kerb, then falling FILL_SLOPE per metre, so it meets the terrain again where a road really runs on a bank. Not by a bridge, nor at a lake.
+ // delta starts with the raise; the lowering below still keeps the ground under every road surface.
+ if(tr){const lakes=(data.areas||[]).filter(a=>a.type==='water'&&a.level!=null&&a.p?.length>2).map(a=>{const xs=a.p.map(v=>v[0]),zs=a.p.map(v=>v[1]);return {p:a.p,x0:Math.min(...xs)-FILL_LAKE,x1:Math.max(...xs)+FILL_LAKE,z0:Math.min(...zs)-FILL_LAKE,z1:Math.max(...zs)+FILL_LAKE};});
+  const nearLake=(x,z)=>lakes.some(l=>x>l.x0&&x<l.x1&&z>l.z0&&z<l.z1&&(inPoly(l.p,x,z)||edgeDist(l.p,x,z)<FILL_LAKE));
+  const raise=new Float32Array(LX*LZ),under=new Uint8Array(LX*LZ); // under: beneath or beside a bridge deck, where the valley stays as it is
+  for(const r of R){if(!r.bridge||!r.pts)continue;const reach=r.hw+8;for(const [x,z] of r.pts){const i0=Math.max(0,Math.ceil((x-reach-tr.x0)/GRID)),i1=Math.min(LX-1,Math.floor((x+reach-tr.x0)/GRID)),j0=Math.max(0,Math.ceil((z-reach-tr.z0)/GRID)),j1=Math.min(LZ-1,Math.floor((z+reach-tr.z0)/GRID));
+   for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++)if(Math.hypot(tr.x0+i*GRID-x,tr.z0+j*GRID-z)<=reach)under[j*LX+i]=1;}}
+  for(const r of R){if(r.bridge||!r.pts)continue;const reach=r.hw+FILL_FLAT+FILL_REACH;
+   for(let k=0;k<r.pts.length;k+=2){const [x,z]=r.pts[k],y=r.y[k],i0=Math.max(0,Math.ceil((x-reach-tr.x0)/GRID)),i1=Math.min(LX-1,Math.floor((x+reach-tr.x0)/GRID)),j0=Math.max(0,Math.ceil((z-reach-tr.z0)/GRID)),j1=Math.min(LZ-1,Math.floor((z+reach-tr.z0)/GRID));
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const d=Math.hypot(tr.x0+i*GRID-x,tr.z0+j*GRID-z);if(d>reach)continue;const a=j*LX+i,up=y-CLEAR-Math.max(0,d-r.hw-FILL_FLAT)*FILL_SLOPE-vT(a);if(up>raise[a])raise[a]=up;}}}
+  for(let a=0;a<LX*LZ;a++)if(raise[a]>0&&!under[a]&&!nearLake(tr.x0+(a%LX)*GRID,tr.z0+Math.floor(a/LX)*GRID))delta[a]=Math.min(raise[a],FILL_MAX);}
  // A carriageway quad between two sections is a little twisted on a steep bend; it is split along the diagonal that leaves the two halves closer to one plane (flip: the other diagonal).
  const nrm=new Float64Array(12);
  function tilt(k,ax,ay,az,bx,by,bz,cx,cy,cz){const ux=bx-ax,uy=by-ay,uz=bz-az,vx=cx-ax,vy=cy-ay,vz=cz-az,nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,l=Math.hypot(nx,ny,nz)||1;nrm[k]=nx/l;nrm[k+1]=ny/l;nrm[k+2]=nz/l;}
@@ -208,7 +225,9 @@ export function createRoadSurface(roads,height,data,tune={}){
   for(let i=0;i<m;i++){const A=arms[i],B=arms[(i+1)%m];let th=ang[(i+1)%m]-ang[i];if(th<=1e-6)th+=Math.PI*2;if(th<.14||th>1.75)continue;
    for(const [arm,other,side] of [[A,B,1],[B,A,-1]]){if(R[arm.ri].bridge)continue; // under a deck the valley stays
     const nx=-arm.d[1]*side,nz=arm.d[0]*side;
-    for(let s=0;s<=WEDGE;s+=4){const y=armLevel(pt,arm,s)-CLEAR;for(const e of CUT_AT){const o=arm.w+KERB+e,x=pt.x+arm.d[0]*s+nx*o,z=pt.z+arm.d[1]*s+nz*o,dx=x-pt.x,dz=z-pt.z;
+    // no further than the arm's road goes: past the end of a short stub the ground is no longer beside it (a 4 m stub of Anders Wigens veg dug a 3 m pit by the KIWI roundabout)
+    const reach=arm.chain?Math.min(WEDGE,(arm.sign>0?arm.chain.len-arm.chain.s[arm.ci]:arm.chain.s[arm.ci])+2):WEDGE;
+    for(let s=0;s<=reach;s+=4){const y=armLevel(pt,arm,s)-CLEAR;for(const e of CUT_AT){const o=arm.w+KERB+e,x=pt.x+arm.d[0]*s+nx*o,z=pt.z+arm.d[1]*s+nz*o,dx=x-pt.x,dz=z-pt.z;
      const vl=Math.hypot(dx,dz)*.02;if(A.d[0]*dz-A.d[1]*dx<vl||dx*B.d[1]-dz*B.d[0]<vl)continue; // not between the two arms
      const along=dx*other.d[0]+dz*other.d[1];if(along>-1&&Math.abs(dx*other.d[1]-dz*other.d[0])<other.w+KERB+.2)continue; // on the other arm's kerb band
      need(x,z,y);}}}}}
