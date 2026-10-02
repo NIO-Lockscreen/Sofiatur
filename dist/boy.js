@@ -1,9 +1,9 @@
-// A little boy who runs after the car (the reward for the third trip to the kindergarten, since 2 October 2026 in place of
-// the rainbow trail). He follows the car's own track a few metres behind it, so he takes the same bends and stays on the
+// Ludvig, a little boy who runs after the car (2 October 2026): unlocked by visiting him at Bøckmans veg 102, and on the start
+// screen an alternative to the rainbow trail. He follows the car's own track a few metres behind it, so he takes the same bends and stays on the
 // road; he runs with swinging arms and legs at the car's pace, catches up when the car stops, stands by its rear corner
 // and waves. About 1.15 m tall; forward is −z and the ground is y = 0, as for the car and the cat.
 export function createBoyModel(T){
- const group=new T.Group();group.name='Gutt';
+ const group=new T.Group();group.name='Ludvig';
  const skin=new T.MeshStandardMaterial({color:'#f1c3a0',roughness:.8}),hair=new T.MeshStandardMaterial({color:'#b98a4e',roughness:.9});
  const shirt=new T.MeshStandardMaterial({color:'#2f7fd6',roughness:.85}),stripe=new T.MeshStandardMaterial({color:'#f6d34a',roughness:.85});
  const shorts=new T.MeshStandardMaterial({color:'#2c3e57',roughness:.9}),shoe=new T.MeshStandardMaterial({color:'#e8453c',roughness:.7}),dark=new T.MeshBasicMaterial({color:'#1d2226'});
