@@ -246,6 +246,22 @@ def add_ishall_parking(data):
     data['edges'] += new
 
 
+def add_ludvig_parking(data):
+    """Bøckmans veg 102 (2 October 2026, the user: "a visit to Ludvig"). The four dwellings 102A-D (Kartverket's address
+    register: 102A (1824.6, 110.7), 102B (1813.2, 114.2), 102C (1798.6, 117.7), 102D (1791.0, 119.8)) stand just south of
+    Bøckmans veg on the main trip, and OSM maps no driveway to them. A short drawn driveway (asphalt, 3 m) leaves Bøckmans
+    veg at OSM node 8910717721 and ends in a parking place between the semi-detached 102A-B and the house 102C-D, where the
+    game says "Du besøker Ludvig"."""
+    if 'ludvig-parkering' in data['nodes'] or '8910717721' not in data['nodes']:
+        return
+    entrance = '8910717721'  # Bøckmans veg at (1804.7, 101.1)
+    x, z = data['nodes'][entrance]
+    points = [[round(x + .9, 2), round(z + 4.9, 2)], [round(x + 1.6, 2), round(z + 9.5, 2)]]
+    data['roads'].append({'id': 'ludvig-innkjorsel', 'name': '', 'type': 'service', 'surface': 'asphalt', 'mark': False,
+                          'width': 3.0, 'p': [[x, z], *points, [round(x + 1.95, 2), round(z + 11.8, 2)]]})
+    _add_place(data, entrance, points, 'Ludvig', 'Bøckmans veg', 'ludvig')
+
+
 def _add_place(data, entrance, points, name, back, prefix):
     """A road from the junction node entrance through points (local x, z) to a parking place at the last point, and
     back. entrance becomes a junction if it lies inside an edge."""

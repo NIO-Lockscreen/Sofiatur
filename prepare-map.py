@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET,json,math,heapq,collections
-from map_fixes import merge_close_junctions,add_school_parking_spur,add_kiwi_parking,in_added,SOUTH,LAKESIDE,apply_road_widths,fit_roundabouts
+from map_fixes import merge_close_junctions,add_school_parking_spur,add_kiwi_parking,add_ludvig_parking,in_added,SOUTH,LAKESIDE,apply_road_widths,fit_roundabouts
 from pathlib import Path
 r=ET.parse('byasen.osm').getroot(); lat0=63.39945456;lon0=10.32727325
 sx=111320*math.cos(math.radians(lat0)); sz=111320
@@ -122,6 +122,6 @@ if Path('dist/map.json').exists():
  old=json.loads(Path('dist/map.json').read_text())
  if 'terrain' in old:data['terrain']=old['terrain']
 apply_road_widths(data) # carriageway widths from road_widths.py (Junction audit, 29 September 2026)
-add_school_parking_spur(data);add_kiwi_parking(data) # extra arms: Palermo lights, KIWI parking (Dalgård ishall: add-dalgard.py)
+add_school_parking_spur(data);add_kiwi_parking(data);add_ludvig_parking(data) # extra arms: Palermo lights, KIWI parking, Ludvig at Bøckmans veg 102 (Dalgård ishall: add-dalgard.py)
 Path('dist/map.json').write_text(json.dumps(data,ensure_ascii=False,separators=(',',':')))
 print('counts',len(edges),len(buildings),len(roadout),len(pois));print('POIS',pois)

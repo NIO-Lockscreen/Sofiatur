@@ -6,7 +6,7 @@ import {createMusic} from './music.js';
 const $=id=>document.getElementById(id);
 let world,data,state='loading',sound=true,current,previous=null,active=null,distance=0,speed=0,travelled=0,turns=0,heading=new T.Vector3(0,0,1),position=new T.Vector3(),choices=[],best=null,totalInitial=0,maxKmh=200,camMode='follow',lastTime=performance.now(),time=0,mapClock=0,leavingHome=false,lastEdge=null,lines=null;
 let roundaboutUndo=null,freeMode=false,free=null,carHeight,showDeadEnds=true,choicesStale=false,musicOn=true,queue=[],preview=null,picked=null,pickedUntil=-9,aheadShown=false,planKey='';
-let arrivals=0,carColour='#14171c',trailOn=true,catOn=false,newReward=null;
+let arrivals=0,carColour='#14171c',boyOn=true,catOn=false,newReward=null,homeAt=0;
 const roundaboutKmh=45; // speed round the circle and into it
 // The car speeds up by ACCEL, brakes ahead of a slower stretch (a turn, a junction where it must stop) by DECEL, and by BRAKE at most when a new plan needs it at once.
 // Strong, like a toy car (30 September 2026; 7, 4.5 and 8 before), so it reaches 200 km/h on the longest stretches of the trip again; turns keep their gentle arcs (driving-line.js A_LAT).
@@ -36,7 +36,7 @@ function incomingEdge(){if(lastEdge&&lastEdge.to===current)return lastEdge;if(pr
 function endDirection(e,start=true){const p=e.path.map(n=>data.nodes[n]),i=start?e.stub||0:p.length-2;const a=p[i],b=p[i+1];return new T.Vector3(b[0]-a[0],0,b[1]-a[1]).normalize();}
 function routeFrom(n){const route=[];const visited=new Set();while(n!==data.goal&&!visited.has(n)){visited.add(n);const e=optimal.get(n);if(!e)break;route.push(e);n=e.to;}return route;}
 function computeRoutes(){const reverse=incoming;for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);if(!reverse.has(e.to))reverse.set(e.to,[]);reverse.get(e.to).push(e);}distances.set(data.goal,0);const todo=[data.goal];while(todo.length){todo.sort((a,b)=>distances.get(b)-distances.get(a));const n=todo.pop(),d=distances.get(n);for(const e of reverse.get(n)||[]){const nd=d+(e.cost||e.length);if(nd<(distances.get(e.from)??Infinity)){distances.set(e.from,nd);optimal.set(e.from,e);if(!todo.includes(e.from))todo.push(e.from);}}}}
-function reset(){clearInputs();$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;picked=null;$('undoRoundabout').hidden=true;maxKmh=200;current=data.start;previous=null;lastEdge=null;active=null;distance=0;speed=0;travelled=0;turns=0;state='intro';position.copy(point(current));heading.copy(endDirection(optimal.get(current)));totalInitial=routeFrom(current).reduce((n,e)=>n+e.length,0);ui.welcome.hidden=false;ui.drive.hidden=true;ui.decision.hidden=true;ui.finish.hidden=true;document.body.classList.remove('choosing');world.resetCamera();clearWorldChoices();world.setTurnArrow(null);$('remaining').textContent='Herlofsons veg → Skjermvegen';newReward=null;showRewards();}
+function reset(){clearInputs();homeAt=0;$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;picked=null;$('undoRoundabout').hidden=true;maxKmh=200;current=data.start;previous=null;lastEdge=null;active=null;distance=0;speed=0;travelled=0;turns=0;state='intro';position.copy(point(current));heading.copy(endDirection(optimal.get(current)));totalInitial=routeFrom(current).reduce((n,e)=>n+e.length,0);ui.welcome.hidden=false;ui.drive.hidden=true;ui.decision.hidden=true;ui.finish.hidden=true;document.body.classList.remove('choosing');world.resetCamera();clearWorldChoices();world.setTurnArrow(null);$('remaining').textContent='Herlofsons veg → Skjermvegen';newReward=null;showRewards();}
 function start(){if(state!=='intro')return;if(sound&&musicOn)music.play();if(freeMode){startFree();return;}ui.welcome.hidden=true;ui.drive.hidden=false;state='decision';say('Hei Sofia! Nå kjører vi til barnehagen. Ved hvert kryss velger du vei med en pil.');leavingHome=true;showDecision();}
 // A roundabout exit's arrow shows where its road goes, seen from the circle (roundaboutLabels); without that, where its
 // road leaves the circle, seen from the car as it comes in. An exit that leads back to the junction the car came from
@@ -179,7 +179,7 @@ function showDecision(){
  if(current===data.goal){finish();return;}
  choicesStale=false;({list:choices,top:best}=roadChoices(current,previous,heading));
  // Leaving the parking place there is only one road: the start button already said go, so no arrow is shown for it.
- const next=parkingPlaces.has(current)?null:autoRoad(choices,previous,heading)||(leavingHome&&choices.length===1?choices[0]:null);leavingHome=false;if(next){choose(next.id,false);return;}
+ const next=parkingPlaces.has(current)&&!leavingHome?null:autoRoad(choices,previous,heading)||(leavingHome&&choices.length===1?choices[0]:null);leavingHome=false;if(next){choose(next.id,false);return;}
  const planned=queue[0]?.node===current?choices.find(e=>e.id===queue[0].id):null;if(planned){queue.shift();choose(planned.id,true,true);return;}
  queue=[];preview=null;world.setTurnArrow(null);
  state='decision';speed=0;ui.decision.hidden=true;document.body.classList.add('choosing');
@@ -198,10 +198,10 @@ function undoRoundabout(){
  active=null;distance=0;speed=0;state='decision';world.resetCamera();$('street').textContent='Rundkjøring';showDecision();say('Prøv en annen avkjørsel!');
 }
 $('undoRoundabout').onclick=undoRoundabout;
-function arrive(){if(!active)return;previous=active.e.arrivalFrom??active.e.from;current=active.e.to;if(current===kiwiParking)parkAtKiwi();if(current===ishallParking)parkAtIshall();if(current===remaParking)parkAtRema();if(current===bunnprisParking)parkAtBunnpris();if(current===data.lakeside)parkAtLake();active.line.at(active.len,position);active.line.tangent(active.len,heading);lastEdge=active.e;if(active.hold)speed=0;active=null;state='decision';showDecision();}
+function arrive(){if(!active)return;previous=active.e.arrivalFrom??active.e.from;current=active.e.to;if(current===kiwiParking)parkAtKiwi();if(current===ishallParking)parkAtIshall();if(current===remaParking)parkAtRema();if(current===bunnprisParking)parkAtBunnpris();if(current===ludvigParking)parkAtLudvig();if(current===data.start)parkAtHome();if(current===data.lakeside)parkAtLake();active.line.at(active.len,position);active.line.tangent(active.len,heading);lastEdge=active.e;if(active.hold)speed=0;active=null;state='decision';showDecision();}
 function finish(){state='finished';roundaboutUndo=null;queue=[];preview=null;$('undoRoundabout').hidden=true;clearWorldChoices();world.setTurnArrow(null);speed=0;ui.decision.hidden=true;ui.finish.hidden=false;document.body.classList.remove('choosing');$('remaining').textContent='Fremme!';$('finishSummary').textContent=`${(travelled/1000).toLocaleString('nb-NO',{maximumFractionDigits:1})} km gjennom nabolaget · ${turns} veivalg`;
- arrivals++;newReward=['colour','cat','trail','rainbow'][arrivals-1]||null;if(newReward==='rainbow')carColour='rainbow';if(newReward==='cat')catOn=true;saveProgress();if(newReward&&newReward!=='colour')applyRewards();
- const reward={colour:['🎨 Ny overraskelse! Nå kan du velge farge på bilen. Fargene finner du på startskjermen.','Velg farge på bilen 🎨',' Nå kan du velge farge på bilen!'],trail:['🌈 Ny overraskelse! Bilen har fått et regnbuespor. Du kan slå det av og på på startskjermen.','Prøv regnbuesporet 🌈',' Og nå har bilen fått et regnbuespor!'],
+ arrivals++;newReward=['colour','cat','boy','rainbow'][arrivals-1]||null;if(newReward==='rainbow')carColour='rainbow';if(newReward==='cat')catOn=true;saveProgress();if(newReward&&newReward!=='colour')applyRewards();
+ const reward={colour:['🎨 Ny overraskelse! Nå kan du velge farge på bilen. Fargene finner du på startskjermen.','Velg farge på bilen 🎨',' Nå kan du velge farge på bilen!'],boy:['🧒 Ny overraskelse! En liten gutt løper etter bilen. Du kan slå ham av og på på startskjermen.','Se gutten som løper 🧒',' Og nå løper en liten gutt etter bilen!'],
   rainbow:['🌈 Ny overraskelse! Du har fått en regnbuebil som skifter farge. Du finner den blant fargene på startskjermen.','Se regnbuebilen 🌈',' Nå har du fått en regnbuebil som skifter farge!'],
   cat:['🐱 Ny overraskelse! Nå kan du kjøre som en katt som løper. Du kan bytte mellom bil og katt på startskjermen.','Møt katten 🐱',' Og nå kan du løpe som en katt!']}[newReward];
  $('unlock').hidden=!reward;if(reward)$('unlock').textContent=reward[0];$('again').textContent=reward?reward[1]:'Kjør en gang til ↗';
@@ -223,7 +223,7 @@ function saveSettings(){try{localStorage.setItem('sofiatur.innstillinger',JSON.s
 try{const saved=JSON.parse(localStorage.getItem('sofiatur.innstillinger'))||{};musicOn=saved.music!=='off';showDeadEnds=saved.v===2?saved.deadEnds==='on':true;chooseAhead=saved.ahead==='on';}catch{} // blindveier are on unless chosen off since 29 September 2026 (v:2); older saved values do not count
 $('music').value=musicOn?'on':'off';$('deadEnds').value=showDeadEnds?'on':'off';$('chooseAhead').value=chooseAhead?'on':'off';
 // Rewards: after the first trip to the kindergarten Sofia can pick the car's colour on the start screen, after the second
-// the car can be a running cat, after the third it gets a rainbow trail, after the fourth the rainbow colour. Trips and
+// the car can be a running cat, after the third a little boy runs after it (in place of the rainbow trail since 2 October 2026), after the fourth the rainbow colour. Trips and
 // choices are remembered on this device.
 const carColours=[['Svart','#14171c'],['Rød','#c62828'],['Rosa','#ec6aa8'],['Lilla','#7b4cc2'],['Blå','#1f63c6'],['Turkis','#17a2a0'],['Grønn','#3b9a43'],['Gul','#f3c531'],['Oransje','#f07b22'],['Hvit','#eef0ef']];
 // A secret: parking at KIWI Dalgård unlocks a KIWI-green car with the shop's logo on the doors (colour 'kiwi').
@@ -231,22 +231,22 @@ const kiwiParking='kiwi-parkering';let kiwiUnlocked=false;
 // Dalgårdvegen ends at Dalgård ishall and the sports grounds; the car park beside the hall is a place to drive to.
 const ishallParking='ishall-parkering';
 // Rema 1000 at Stavset senter, at the far end of the detour down Odd Husbys veg, and Bunnpris Ugla on the way there.
-const remaParking='rema-parkering',bunnprisParking='bunnpris-parkering';
+const remaParking='rema-parkering',bunnprisParking='bunnpris-parkering',ludvigParking='ludvig-parkering';
 // The car stops at a parking place and waits for a choice, even where a road leads on (Bunnpris has two ways in).
-const parkingPlaces=new Set([kiwiParking,ishallParking,remaParking,bunnprisParking]);
-// Rewards by trips to the kindergarten (the order since 30 September 2026): 1 the colour picker, 2 the running cat, 3 the rainbow trail, 4 the rainbow car
+const parkingPlaces=new Set([kiwiParking,ishallParking,remaParking,bunnprisParking,ludvigParking]);
+// Rewards by trips to the kindergarten (the order since 30 September 2026): 1 the colour picker, 2 the running cat, 3 the little boy who runs after the car, 4 the rainbow car
 // that changes colour (colour 'rainbow').
-function saveProgress(){try{localStorage.setItem('sofiatur.fremgang',JSON.stringify({arrivals,colour:carColour,trail:trailOn?'on':'off',kiwi:kiwiUnlocked?'on':'off',model:catOn?'cat':'car'}));}catch{}}
-try{const saved=JSON.parse(localStorage.getItem('sofiatur.fremgang'))||{};arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour)||saved.colour==='kiwi'&&kiwiUnlocked||saved.colour==='rainbow'&&arrivals>=4)carColour=saved.colour;trailOn=saved.trail!=='off';catOn=saved.model==='cat'&&arrivals>=2;}catch{}
+function saveProgress(){try{localStorage.setItem('sofiatur.fremgang',JSON.stringify({arrivals,colour:carColour,trail:boyOn?'on':'off',kiwi:kiwiUnlocked?'on':'off',model:catOn?'cat':'car'}));}catch{}}
+try{const saved=JSON.parse(localStorage.getItem('sofiatur.fremgang'))||{};arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour)||saved.colour==='kiwi'&&kiwiUnlocked||saved.colour==='rainbow'&&arrivals>=4)carColour=saved.colour;boyOn=saved.trail!=='off';catOn=saved.model==='cat'&&arrivals>=2;}catch{}
 const swatches=carColours.map(([name,hex])=>{const b=document.createElement('button');b.type='button';b.className='swatch';b.title=name;b.setAttribute('aria-label',name);b.style.background=hex;b.onclick=()=>pickColour(hex);return b;});
 const kiwiSwatch=document.createElement('button');kiwiSwatch.type='button';kiwiSwatch.className='swatch kiwi';kiwiSwatch.title='KIWI';kiwiSwatch.setAttribute('aria-label','Hemmelig KIWI-bil');kiwiSwatch.textContent='K';kiwiSwatch.onclick=()=>pickColour('kiwi');
 const rainbowSwatch=document.createElement('button');rainbowSwatch.type='button';rainbowSwatch.className='swatch rainbow';rainbowSwatch.title='Regnbue';rainbowSwatch.setAttribute('aria-label','Regnbuebil som skifter farge');rainbowSwatch.onclick=()=>pickColour('rainbow');
 // The colour wheel (a free colour) goes in the same row, after the ten colours and before the rainbow and KIWI (it stood a little below them).
 const customSwatch=$('customColour').parentElement;$('carColours').append(...swatches,...(customSwatch?[customSwatch]:[]),rainbowSwatch,kiwiSwatch);
 function pickColour(hex){carColour=hex.toLowerCase();saveProgress();applyRewards();showRewards();}
-function applyRewards(){if(!world)return;const kiwi=carColour==='kiwi'&&kiwiUnlocked;world.setCarColour?.(kiwi?'#5fae36':arrivals>=1&&carColour!=='kiwi'?carColour:'#14171c');world.setCarSkin?.(kiwi?'kiwi':null);world.setTrail?.(arrivals>=3&&trailOn);world.setCarModel?.(catOn&&arrivals>=2?'cat':'car');}
+function applyRewards(){if(!world)return;const kiwi=carColour==='kiwi'&&kiwiUnlocked;world.setCarColour?.(kiwi?'#5fae36':arrivals>=1&&carColour!=='kiwi'?carColour:'#14171c');world.setCarSkin?.(kiwi?'kiwi':null);world.setBoy?.(arrivals>=3&&boyOn);world.setCarModel?.(catOn&&arrivals>=2?'cat':'car');}
 // Before the first trip to the kindergarten, a KIWI unlock shows only black and the KIWI car.
-function showRewards(){$('rewards').hidden=arrivals<1&&!kiwiUnlocked;$('trailRow').hidden=arrivals<3;$('trail').checked=trailOn;$('catRow').hidden=arrivals<2;$('cat').checked=catOn;$('customColour').value=/^#/.test(carColour)?carColour:'#14171c';$('customColour').parentElement&&($('customColour').parentElement.hidden=arrivals<1);
+function showRewards(){$('rewards').hidden=arrivals<1&&!kiwiUnlocked;$('trailRow').hidden=arrivals<3;$('trail').checked=boyOn;$('catRow').hidden=arrivals<2;$('cat').checked=catOn;$('customColour').value=/^#/.test(carColour)?carColour:'#14171c';$('customColour').parentElement&&($('customColour').parentElement.hidden=arrivals<1);
  swatches.forEach((b,i)=>{const on=carColours[i][1]===carColour||i===0&&carColour!=='kiwi'&&arrivals<1;b.hidden=arrivals<1&&i>0;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');});
  rainbowSwatch.hidden=arrivals<4;rainbowSwatch.classList.toggle('on',carColour==='rainbow');rainbowSwatch.setAttribute('aria-pressed',carColour==='rainbow'?'true':'false');kiwiSwatch.hidden=!kiwiUnlocked;kiwiSwatch.classList.toggle('on',carColour==='kiwi');kiwiSwatch.setAttribute('aria-pressed',carColour==='kiwi'?'true':'false');
  $('rewardTeaser').hidden=arrivals>=4;$('rewardTeaser').textContent=arrivals<1?'🎁 Kom frem til barnehagen, så får du en overraskelse!':'🎁 Kjør til barnehagen én gang til for en ny overraskelse!';}
@@ -256,12 +256,17 @@ function showRewards(){$('rewards').hidden=arrivals<1&&!kiwiUnlocked;$('trailRow
 function debugArrivals(delta){const before=arrivals;arrivals=Math.max(0,arrivals+delta);if(arrivals===before)return;
  if(delta>0){if(arrivals===2)catOn=true;if(arrivals===4)carColour='rainbow';}else{if(arrivals<2)catOn=false;if(arrivals<4&&carColour==='rainbow')carColour='#14171c';}
  saveProgress();applyRewards();showRewards();
- const unlocked=['','farge på bilen','katt','regnbuespor','regnbuebil'][arrivals]??'alt låst opp';toast(`🛠 Turer til barnehagen: ${arrivals}${unlocked?' · '+unlocked:''}`);}
+ const unlocked=['','farge på bilen','katt','gutten som løper','regnbuebil'][arrivals]??'alt låst opp';toast(`🛠 Turer til barnehagen: ${arrivals}${unlocked?' · '+unlocked:''}`);}
+// Every visit to KIWI puts the KIWI paint on (since 2 October 2026); the first visit also unlocks it.
 function parkAtKiwi(){
- if(kiwiUnlocked){toast('🥝 Parkert ved KIWI');say('Vi har parkert ved KIWI!');return;}
- kiwiUnlocked=true;carColour='kiwi';saveProgress();applyRewards();showRewards();
- toast('🥝 Hemmelig KIWI-bil låst opp!');say('Du parkerte ved KIWI! Nå har du låst opp en hemmelig KIWI-bil!');
+ const first=!kiwiUnlocked;kiwiUnlocked=true;carColour='kiwi';saveProgress();applyRewards();showRewards();
+ if(first){toast('🥝 Hemmelig KIWI-bil låst opp!');say('Du parkerte ved KIWI! Nå har du låst opp en hemmelig KIWI-bil!');}
+ else{toast('🥝 Parkert ved KIWI · KIWI-bilen');say('Vi har parkert ved KIWI! Nå kjører vi KIWI-bilen.');}
 }
+// Home: the car can drive back and park where it started; after a moment the start screen comes back, with the car colours (once they are unlocked).
+function parkAtHome(){toast('🏠 Hjemme!');say(arrivals>=1||kiwiUnlocked?'Vi er hjemme igjen! Vil du velge en ny farge på bilen?':'Vi er hjemme igjen!');homeAt=time+2.5;}
+// Bøckmans veg 102: a visit to Ludvig.
+function parkAtLudvig(){toast('🏠 Du besøker Ludvig');say('Du besøker Ludvig!');}
 function parkAtIshall(){toast('🏒 Framme ved Dalgård ishall');say('Vi er framme ved Dalgård ishall og idrettsparken!');}
 function parkAtRema(){toast('🛒 Framme ved Rema 1000 Stavset');say('Vi er framme ved Rema 1000 på Stavset senter! Rundkjøringene tar oss videre til barnehagen.');}
 function parkAtBunnpris(){toast('🛒 Parkert ved Bunnpris');say('Vi har parkert ved Bunnpris på Ugla!');}
@@ -271,7 +276,7 @@ let duckSeen=false;
 function parkAtLake(){toast('🦆 Framme ved Lianvannet');say('Vi er framme ved Lianvannet. Hei, and!');}
 function watchDuck(){if(duckSeen||!world?.duck?.shown)return;duckSeen=true;toast('🦆 Se! En kjempeand i Lianvannet!');say('Se! En kjempestor and svømmer rundt i vannet!');}
 $('customColour').oninput=e=>pickColour(e.target.value);
-$('trail').onchange=e=>{trailOn=!!e.target.checked;saveProgress();applyRewards();};
+$('trail').onchange=e=>{boyOn=!!e.target.checked;saveProgress();applyRewards();};
 $('cat').onchange=e=>{catOn=!!e.target.checked;saveProgress();applyRewards();};
 $('music').onchange=e=>{musicOn=e.target.value==='on';saveSettings();if(musicOn&&sound)music.play();else music.stop();};
 $('cameraMode').onchange=e=>camMode=e.target.value;$('start').onclick=start;$('again').onclick=()=>{const toStart=!!newReward;reset();if(!toStart)start();};$('restart').onclick=()=>{$('menu').close();reset();if(freeMode)start();};
@@ -300,9 +305,10 @@ function animate(now){requestAnimationFrame(animate);const dt=Math.min(.045,Math
  cameraHeading.copy(heading);if(state==='free')cameraHeading.set(Math.sin(free.car.course),heading.y,-Math.cos(free.car.course)).normalize();
  // Stopped by Lianvannet, the camera turns from the road to the water and the big duck (the lake lies behind the car as it arrives).
  if(state==='decision'&&current===data.lakeside&&world.duck)cameraHeading.set(world.duck.centre[0]-position.x,0,world.duck.centre[1]-position.z).normalize();
+ if(homeAt&&time>=homeAt){homeAt=0;if(state==='decision'&&current===data.start)reset();}
  world.update(dt,position,cameraHeading,state==='driving'&&active&&active.line.reversing(distance)?-speed:speed,state==='intro'&&arrivals>=1?'introCar':(state==='intro'||travelled===0&&state==='decision')?'intro':camMode,state==='finished',time,heading);
  mapClock+=dt;if(mapClock>.16){mapClock=0;if(state!=='intro'&&state!=='finished')updateHud();watchDuck();}
 }
 function gameState(){return {state,mode:freeMode?'free':'route',speedKmh:Math.round(speed*3.6),drifting:state==='free'&&free.car.drifting,position:[position.x,position.z],street:$('street').textContent,currentNode:current,remainingMetres:Math.round(remaining()),travelledMetres:Math.round(travelled),choices:state==='decision'?choices.map(e=>({id:e.id,direction:directionInfo(e).label,street:e.name,exitNumber:e.exitNumber,roundabout:!!e.roundaboutPlan,recommended:e.id===best?.id})):[],upcomingMetres:state==='driving'&&aheadShown?Math.round(active.len-distance+preview.ahead):null,upcoming:state==='driving'&&aheadShown?preview.list.map(e=>({id:e.id,direction:directionInfo(e,preview.h).label,street:e.name,exitNumber:e.exitNumber,roundabout:!!e.roundaboutPlan,recommended:e.id===preview.top?.id})):[],queued:queue.map(q=>({id:q.id,direction:q.label,street:q.name}))};}
 function registerTools(){const m=document.modelContext;if(!m?.registerTool)return;const definitions=[{name:'read_drive_state',description:'Read the car state and currently offered road choices.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:()=>gameState()},{name:'start_drive',description:'Start Sofia’s drive from home.',inputSchema:{type:'object',properties:{},additionalProperties:false},execute:()=>{if(state!=='intro')throw new Error('The drive is already started');start();return gameState();}},{name:'choose_road',description:'Choose one of the offered roads at a junction, or while driving queue one of the upcoming roads (up to two junctions ahead).',inputSchema:{type:'object',properties:{edgeId:{type:'integer'}},required:['edgeId'],additionalProperties:false},execute:input=>{const ok=Number.isInteger(input?.edgeId)&&(state==='decision'?choose(input.edgeId,true):state==='driving'&&queueChoice({id:input.edgeId}));if(!ok)throw new Error('That road choice is not available');return gameState();}}];for(const def of definitions)try{Promise.resolve(m.registerTool(def)).catch(()=>{});}catch{}}
-try{const response=await fetch('./map.json');if(!response.ok)throw new Error('Kartet kunne ikke lastes');data=await response.json();if(!data.terrain)throw new Error('Terrengdata mangler');$('loading').textContent='Bygger husene og bakkene …';await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));world=createWorld($('world'),data);carHeight=world.carHeight||((x,z)=>world.height(x,z)+.47);free=createFreeDrive(data,carHeight);if(data.lakeside)parkingPlaces.add(data.lakeside);computeRoutes();computeOpenRoads();if(!optimal.has(data.start))throw new Error('Fant ikke en sammenhengende rute');applyRewards();reset();$('start').disabled=false;$('start').textContent='Kjør til barnehagen  ↗';$('loading').hidden=true;registerTools();requestAnimationFrame(animate);}catch(error){console.error(error);$('loading').hidden=false;$('loading').textContent='Spillet kunne ikke starte. Prøv å laste siden på nytt.';$('start').textContent='Last inn på nytt';$('start').disabled=false;$('start').onclick=()=>location.reload();}
+try{const response=await fetch('./map.json');if(!response.ok)throw new Error('Kartet kunne ikke lastes');data=await response.json();if(!data.terrain)throw new Error('Terrengdata mangler');$('loading').textContent='Bygger husene og bakkene …';await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));world=createWorld($('world'),data);carHeight=world.carHeight||((x,z)=>world.height(x,z)+.47);free=createFreeDrive(data,carHeight);if(data.lakeside)parkingPlaces.add(data.lakeside);parkingPlaces.add(data.start);computeRoutes();computeOpenRoads();if(!optimal.has(data.start))throw new Error('Fant ikke en sammenhengende rute');applyRewards();reset();$('start').disabled=false;$('start').textContent='Kjør til barnehagen  ↗';$('loading').hidden=true;registerTools();requestAnimationFrame(animate);}catch(error){console.error(error);$('loading').hidden=false;$('loading').textContent='Spillet kunne ikke starte. Prøv å laste siden på nytt.';$('start').textContent='Last inn på nytt';$('start').disabled=false;$('start').onclick=()=>location.reload();}

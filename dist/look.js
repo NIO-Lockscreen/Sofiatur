@@ -12,7 +12,9 @@ export const FOG={colour:SKY.horizon,near:110,far:560}; // the fog is the colour
 // and warm olive from the ground, so shadows come out cool and lit grass warm.
 export const SUN={azimuth:238,elevation:37,colour:'#ffd9a6',intensity:2.9,distance:230};
 export const HEMI={sky:'#b0c9ea',ground:'#869160',intensity:2.05};
-export const RENDER={exposure:1.12,shadowSize:2048,shadowHalf:54,shadowAhead:18,maxPixelRatio:1.6};
+// The shadow box (2 October 2026: 124 m, 30 m ahead of the car, was 108 m and 18 m) reaches about 90 m ahead, near where the fog begins, so shadows no longer
+// appear just in front of the car; a shadow-map texel is 6 cm.
+export const RENDER={exposure:1.12,shadowSize:2048,shadowHalf:62,shadowAhead:30,maxPixelRatio:1.6};
 // Ground, in sRGB hex. The ground is painted per vertex from these, by land cover, slope and a little noise.
 export const GROUND={lawn:['#80a857','#8fb05e','#77a052'],meadow:['#a2a95d','#b1b064','#97a259'],forest:['#476b44','#3e5e3c','#58703f'],rock:'#8d8b7b',earth:'#9b8d6c',sand:'#a9a684',reed:'#7a8f55'};
 // Roads, kerbs and paths. Asphalt a touch darker and bluer than before, the kerb band a clean light concrete grey.

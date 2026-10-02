@@ -8,13 +8,13 @@ import {createDuck} from './duck.js';
 import {createLakes,inRing} from './lakes.js';
 import {addMunkvoll,addTransit,addMunkvollDetails} from './munkvoll.js';
 import {createTrafficLights} from './traffic-lights.js';
-import {createRainbowTrail} from './rainbow-trail.js';
+import {createBoy} from './boy.js';
 import {addLandmark,addLandmarkGround} from './landmarks.js';
 import {buildingStyles,addKiwi} from './building-details.js';
 import {addDalgardSchool,addSportsGrounds,addDalgardDetails} from './dalgard.js';
 import {addStavset,addStavsetDetails,addBridges} from './stavset.js';
 import {addStreetDetails,indexStreetDetails} from './street-details.js';
-import {createLook,createGround,createRoadPainter,ROAD,WATER} from './look.js';
+import {createLook,createGround,createRoadPainter,ROAD,WATER,RENDER} from './look.js';
 import {addFootbridges} from './footbridges.js';
 import {addRoadside} from './roadside.js';
 import {createCameraControls} from './camera-controls.js';
@@ -134,7 +134,12 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  // pylons, and all the trees (trees.js: five instanced species from OSM, NVDB and AR5 forest types). It keeps the trees off everything it draws.
  const roadside=addRoadside({T,scene,data,height,ground:roadSurface.groundTop,roadTop,onSurface:(x,z)=>roadSurface.heightAt(x,z)!==null,bucket,tri,quad,box,segments:roadSegments,index,clear,lakeAt});
  const chunks=[];
- for(const b of buckets.values()){const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(b.p.slice(0,b.n),3));g.setAttribute('color',new T.BufferAttribute(b.c.slice(0,b.n),3));b.p=b.c=null;g.computeVertexNormals();g.computeBoundingSphere();const m=new T.Mesh(g,staticMaterial);m.receiveShadow=true;m.matrixAutoUpdate=false;m.updateMatrix();scene.add(m);chunks.push({mesh:m,x:b.x,z:b.z});}
+ // The chunks hold nearly all the world's geometry (2 October 2026: 225 MB as 32-bit floats). Colours go to the GPU as 8-bit and the flat face normals as
+ // 8-bit too (normalised integers), which halves the memory and the upload: about 105 MB. Positions stay 32-bit floats.
+ function packed(g){const n=g.attributes.normal.array,c=g.attributes.color.array,N=new Int8Array(n.length),C=new Uint8Array(c.length);
+  for(let i=0;i<n.length;i++)N[i]=Math.round(n[i]*127);for(let i=0;i<c.length;i++)C[i]=Math.round(Math.min(1,Math.max(0,c[i]))*255);
+  g.setAttribute('normal',new T.BufferAttribute(N,3,true));g.setAttribute('color',new T.BufferAttribute(C,3,true));return g;}
+ for(const b of buckets.values()){const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(b.p.slice(0,b.n),3));g.setAttribute('color',new T.BufferAttribute(b.c.slice(0,b.n),3));b.p=b.c=null;g.computeVertexNormals();packed(g);g.computeBoundingSphere();const m=new T.Mesh(g,staticMaterial);m.receiveShadow=true;m.matrixAutoUpdate=false;m.updateMatrix();scene.add(m);chunks.push({mesh:m,x:b.x,z:b.z});}
 
  chunks.push(...roadside.chunks);
  function label(text,x,z,colour='#164e48',scale=10){const c=document.createElement('canvas');c.width=512;c.height=128;const ctx=c.getContext('2d');ctx.fillStyle=colour;ctx.beginPath();ctx.roundRect(4,6,504,108,24);ctx.fill();ctx.strokeStyle='#fff5d9';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#fff9e8';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 32px sans-serif';ctx.fillText(text,256,61,465);const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;const mat=new T.SpriteMaterial({map:tex,depthTest:true});const s=new T.Sprite(mat);s.position.set(x,height(x,z)+7,z);s.scale.set(scale,scale/4,1);s.matrixAutoUpdate=false;s.updateMatrix();scene.add(s);return s;}
@@ -152,7 +157,7 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  // Paint colour (a reward). Black keeps the original deep metallic look; brighter colours are less metallic so they read as colour.
  // 'rainbow' (the reward for the fourth trip) runs through all the colours in a little over three seconds; update() turns it.
  function setCarColour(hex){rainbow=hex==='rainbow';car.userData.colour=hex;if(rainbow){paint.metalness=.3;paint.roughness=.28;return;}paint.color.set(hex);const c=paint.color,dark=Math.max(c.r,c.g,c.b)<.06;paint.metalness=dark?.72:.38;paint.roughness=dark?.24:.3;}
- const trail=createRainbowTrail({T,scene});
+ const boy=createBoy({T,scene}); // the little boy who runs after the car (boy.js), in place of the rainbow trail since 2 October 2026
  // Soft contact shadow remains visible with economical mobile shadows.
  const shc=document.createElement('canvas');shc.width=64;shc.height=64;const sc=shc.getContext('2d'),gr=sc.createRadialGradient(32,32,6,32,32,32);gr.addColorStop(0,'rgba(24,40,35,.48)');gr.addColorStop(1,'rgba(24,40,35,0)');sc.fillStyle=gr;sc.fillRect(0,0,64,64);const sm=new T.Mesh(new T.PlaneGeometry(3.4,6),new T.MeshBasicMaterial({map:new T.CanvasTexture(shc),transparent:true,depthWrite:false}));sm.rotation.x=-Math.PI/2;scene.add(sm);
  const confetti=[];const cg=new T.BoxGeometry(.12,.04,.24);for(let i=0;i<75;i++){const m=new T.Mesh(cg,new T.MeshBasicMaterial({color:['#ffd66c','#6ad2c9','#e99584','#fff5cf'][i%4]}));m.visible=false;scene.add(m);confetti.push(m);}
@@ -176,7 +181,7 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  }
  function update(dt,pos,tangent,velocity,mode,finished,time,carFacing=tangent){
  adaptResolution();
- trail.update(dt,pos,carFacing);trafficLights.update(dt,pos);updateDuck(dt,pos,time);
+ boy.update(dt,pos,carFacing,velocity,time);trafficLights.update(dt,pos);updateDuck(dt,pos,time);
  if(rainbow)paint.color.setHSL((time*.3)%1,.9,.42);if(model==='cat')cat.update(dt,Math.abs(velocity),time,paint.color);
  car.position.copy(pos);const yaw=Math.atan2(-carFacing.x,-carFacing.z);rot.setFromEuler(facing.set(Math.atan2(carFacing.y,Math.hypot(carFacing.x,carFacing.z)),yaw,0));car.quaternion.slerp(rot,1-Math.exp(-dt*9));wheels.forEach(w=>w.rotation.x-=velocity*dt/.39);
  sm.position.set(pos.x,height(pos.x,pos.z)+.25,pos.z);sm.rotation.z=-yaw;turnArrow.position.set(pos.x,pos.y+6.2+Math.sin(time*3)*.22,pos.z);turnArrow.scale.setScalar(4.5+Math.sin(time*3)*.16);if(finished)turnArrow.visible=false;
@@ -192,12 +197,22 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  if(mode==='introCar'&&!orbit.active){target.set(-27,height(-27,-15)+5,-15);camLook.set(2.8,height(-7,-3)+2.4,-11.3);}
  if(!initialized){camera.position.copy(target);look.copy(camLook);initialized=true;}else{camera.position.lerp(target,1-Math.exp(-dt*3));look.lerp(camLook,1-Math.exp(-dt*4));}camera.lookAt(look);
  mood.update(time,camera.position,pos,orbitDirection.x,orbitDirection.z); // the sun's shadow box follows the car, the sky follows the camera
- for(const c of chunks){const d=Math.hypot(c.x-pos.x,c.z-pos.z);c.mesh.visible=d<680;c.mesh.castShadow=d<110;}
+ // Shadow casters: every chunk whose square reaches into the sun's shadow box (look.js), widened by how far a tall building's shadow falls, so a shadow
+ // never appears suddenly inside the box (it did when chunks cast only with their centre within 110 m of the car). Chunks are 160 m, the trees' 320 m.
+ const st=mood.lights.sun.target.position,reach=RENDER.shadowHalf+30;
+ for(const c of chunks){const d=Math.hypot(c.x-pos.x,c.z-pos.z),h=c.trees?160:80;c.mesh.visible=d<680;c.mesh.castShadow=Math.abs(c.x-st.x)<h+reach&&Math.abs(c.z-st.z)<h+reach;}
  for(const l of labels)l.visible=l.position.distanceTo(pos)<165&&l.position.distanceTo(pos)>27;
  goalRing.visible=Math.hypot(pos.x-goalPos[0],pos.z-goalPos[1])<150;goalRing.scale.setScalar(1+.08*Math.sin(time*2));
  for(let i=0;i<confetti.length;i++){const c=confetti[i];c.visible=finished;if(finished){const phase=(time*.7+i*.037)%4;c.position.set(pos.x+Math.sin(i*5.3)*5+Math.sin(time+i),pos.y+9-phase*2,pos.z+Math.cos(i*2.3)*5);c.rotation.set(time+i,time*.8,i);}}
  renderer.render(scene,camera);
  }
  function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
- resize();window.addEventListener('resize',resize);return {houseStats:houses.stats,height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setTrail:trail.setOn,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();trail.clear();}};
+ // Warm-up (2 October 2026): every chunk's geometry goes to the GPU and every shader is compiled while the game loads, into a tiny target with the culling
+ // off and every chunk casting, instead of the first time a chunk comes into view or into the shadow box while driving. Each of those was a stall of
+ // tens of milliseconds on an iPad: the stutter and the pop-in after the graphics polish.
+ if(supported){const rt=new T.WebGLRenderTarget(8,8),keep=chunks.map(c=>[c.mesh.visible,c.mesh.frustumCulled,c.mesh.castShadow]);
+  for(const c of chunks){c.mesh.visible=true;c.mesh.frustumCulled=false;c.mesh.castShadow=true;}
+  renderer.compile(scene,camera);renderer.setRenderTarget(rt);renderer.render(scene,camera);renderer.setRenderTarget(null);rt.dispose();
+  chunks.forEach((c,i)=>{[c.mesh.visible,c.mesh.frustumCulled,c.mesh.castShadow]=keep[i];});}
+ resize();window.addEventListener('resize',resize);return {houseStats:houses.stats,height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setBoy:boy.setOn,boy,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();boy.clear();}};
 }
