@@ -154,3 +154,68 @@ extract. `map_fixes.add_ishall_parking` adds a junction on Dalgårdvegen and a 3
 parking place in the middle of the car park, 13 m from the hall. The game treats it as a place to go, like KIWI, so it
 is offered with blindveier hidden. The name board on the hall's west front is stylised: its position and colours were
 not checked against a photograph.
+
+## Schoolyard and the way there (`dist/schoolyard.js`, `add-schoolyard.py`, `nvdb-school.json`; 1 October 2026)
+
+Local coordinates as above. Pictures were only viewed; none is copied into the game or traced. "Measured" means open data (OpenStreetMap ODbL, NVDB NLOD),
+"seen" means read from a photograph, "estimated" means chosen here.
+
+**Measured (open data).**
+- The school grounds are OSM relation 6579902 (*Dalgård skole og ressurssenter*, nine boundary ways: the north edge by the car park, the chain-link fence on the
+  west side, the brown paling fence by the ball court, the south edge along Dalgårdvegen, the east edge). The kindergarten's grounds next to it are relation 6846714
+  (Læringsverkstedet Dalgårdtunet; its playground is the one at x 807-880, z 510-575).
+- 30 pieces of playground equipment are OSM nodes or areas tagged `playground=*` (swing 8, climbingframe 5, balancebeam 4, sandpit 4, playhouse 3, slide 2,
+  structure 2, seesaw 1, tunnel_tube 1) with 18 `leisure=playground` surfaces; lawns are `landuse=grass`; the ball court is way 1112589245 (`sport=soccer;handball`,
+  asphalt, 44.4 x 22.0 m, i.e. a 40 x 20 m handball court with a margin) and Trondsløkka way 1249412407 (grass, 21 x 13 m). Statue, boulder, campus board,
+  picnic tables in A-bygget's courtyard (the roadside leaves out what stands inside a footprint), the two amphitheatre/bleacher polygons, ten car parks and
+  drop-off pockets (`parking=street_side`, `maxstay=15 minutes`) are OSM too. `byasen.osm` was compared with a fresh Overpass answer for the area: no differences.
+- NVDB (nvdbapiles.atlas.vegvesen.no, fetched 2026-10-02, kept in `nvdb-school.json`): 73 sign plates of type 96 Skiltplate within the area (the earlier note that the
+  municipal streets have none was wrong), 15 speed humps and raised junction areas (type 103, the five *Opphøyd kryssområde* were built 2024 at Anders Wigens veg 2 /
+  Odd Husbys veg), the speed limits (type 105: 30 km/h in every street round the school, 40 on Odd Husbys veg). Signs are grouped on one pole per position and
+  turned to face the traffic they are for (the driver's right-hand side of the nearest road). Drawn: Barn (142) with Skole *Dalgård skole* (808.161) at Uglagjerdet
+  (586, 334), Parkering forbudt (372), Parkering with the 15-minute plate (552, 834), Innkjøring forbudt (302), 30 zone (366, 368), Gang- og sykkelveg (522),
+  Fartsgrense (362.xx), Blindveg (527.3). Gangfelt signs come with the crossings (`street-details.js`). Humps and raised areas are added to `data.street.tables`.
+- Statens vegvesen Vegbilder: no coverage (only Byåsveien and Selsbakkvegen, east of x 1400). KartaView returns nothing here, Mapillary needs a token.
+
+**Seen in photographs.**
+- Trondheim byarkiv (Byantikvaren, *Skoler i Trondheim 2003*, CC BY 2.0), Flickr: *Dalgård skole (2003)* BC041 <https://www.flickr.com/photos/trondheim_byarkiv/36780447445>
+  (the brick-paved covered passage with the main entrance, taken in the passage's north end at about (690, 418) looking south-west), BC042 `.../35945900244` (a brick gable with
+  outdoor stair and picnic benches on asphalt, a dark-brown rail; viewpoint not known), BC043 `.../36780447145` (a glazed link between brick blocks with a lamp on a pole and
+  dark timber railings; viewpoint not known), BC044 *Internatet* `.../35945899834` (brick pavilions on a lawn with tubular football goals). They show the asphalt yard with
+  timber picnic sets, concrete steps, a mushroom lamp on a pole, bicycles parked beside the passage (-> the rack, below). The caption also says that the bronze statue
+  *Nusse på gyngehest* by Astrid Dahlsveen stands outside the school (Bratberg, *Trondheim byleksikon*, 2008).
+- dlight / Interiørfoto, *Dalgård skole* archive photographs, 2015 (watermarked previews, rights with the photographer, viewed only):
+  <https://www.dlight.no/downloads/arkiv-bilder-interiorfoto-3-1145/> (arkiv-10059, *Dalgård skole og uteplass*: a wide grey asphalt yard with faint white lines and arcs, stone-set
+  kerb against lawn, a flagpole with a green flag in front of a row of birches with small football goals, slim lamp poles, a dark timber shed; taken in the yard, viewpoint not
+  known), arkiv-10060 (a dark-green steel climbing frame with yellow rungs and red end plates, rope-and-tyre hangers, a low plank seesaw and grey gravel in timber edging, the southern
+  wing behind: most likely the playground at (749, 528) looking north), arkiv-10061 (the campus board, blue frame, green plan with red buildings, legend A1 Administrasjon, A4 Barnehage,
+  C3 Helsestasjon, D3 Skolefritid, E Internat, at the west chain-link fence about 1.2-1.5 m high; behind it a green frame, a wooden tunnel, a plank bench with red legs, a seesaw on
+  springs, gravel: the west playground at (589-607, 482-491), taken at about (578, 468) looking south-east), arkiv-10058 (Dalgårdtunet barnehage: white timber building, a red nest swing in a
+  green steel frame on artificial turf in timber edging, a white flagpole, a ball lamp: the swing at (834, 573) and the flagpole at (828, 570)).
+- Wikimedia Commons *Dalgård skole 2021.jpg* (already above): a line of slim lamp poles along Dalgårdvegen, a red slide in the west playground, big trees on the lawns.
+- digitaltmuseum.no, Trondheim kommunes kunstsamling TKK.50002372, *Nusse på gyngehest* (Astrid Dahlsveen, 1979; the photograph is in the museum's API, id 019EGLhUuwRN5): a
+  bronze boy on a rocking horse on a rough concrete plinth, on a lawn beside a kerbed road, a timber fence behind.
+- Trondheim kommune, *Odd Husbys veg og Anders Wigens veg ... detaljregulering r20200008* (plan description, 2020): Dalgård barneskole is one storey; Anders Wigens veg by the school's main
+  entrance is busy in the rush hour (1500 to 2200 trips a day with the plan); Odd Husbys veg has speed humps, a cycle path on its north side and a pavement on its south side; a new
+  shortcut between Ugla skole and Dalgård skole; the nearest ballbinge is at the school.
+- *Skolemiljøet på Dalgård skole og ressurssenter* (Trondheim kommune): the yard has zones for ball games, nature, quiet activities and equipment; entry and exit are in a separate zone and
+  the yard is traffic free; pupils may cycle; the waste containers stand in their own place at the entrance (the six recycling containers at (688, 390) are the OSM ones).
+  A search summary of Trondheim kommune's pages says that since 15 August 2022 drop-off and pick-up is along Dalgårdvegen in turn pockets, not in Anders Wigens veg (not re-read on the
+  page): the five `maxstay=15 minutes` pockets along Dalgårdvegen are drawn with a car in some of them.
+- Esri World Imagery (viewed only, with a metre grid): the asphalt is grey between the lawns (the yard polygon agrees); the red rubber square at (778, 510) under the swings; the bowl of Trondsløkka.
+
+**Model.** The yard is the school grounds less buildings, lawns, playgrounds, the grass pitch and the roads (1.35 m off the centre line's kerb band), opened by 0.7 m so no sliver is
+narrower than 1.4 m (`shapely`, 15 200 m2 in eight parts, 11 000 m2 after the holes), draped on the ground 7 cm up in two greys. Footpath ribbons of the roadside inside it, and the roadside's generic
+playground equipment inside the grounds, are skipped (`owns()`). Fall surfaces: gravel in timber edging (school playgrounds), sand (sandpits), red rubber (relation 18774345, the swings), artificial
+turf (kindergarten swings). Equipment is built from boxes and planes in the colours of the photographs (dark-green steel, yellow rungs, red); the court has handball lines (40 x 20 m, 6 m and
+9 m lines, 7 m mark) and two 3 x 2 m goals, Trondsløkka two 3 m goals. Car parks get bay lines and cars on about 40 % of the bays; the pockets an outline and some cars. The OSM brown
+paling fence by the court is now drawn brown (`add-roadside.py` reads `colour=*`), and the west chain-link fence is 1.3 m instead of 1.8 m (`add-schoolyard.py`).
+
+**Estimated.** Equipment is set parallel to the school's 42° walls (no direction is mapped, except for the area-tagged ones) and its size and colours come from the photographs; the court's
+line set (standard handball, not photographed beyond faint arcs); the amphitheatre as three low steps and the bleachers by the court as two (OSM gives only the footprints); the bicycle rack
+with seven bikes in the courtyard at (681, 430.5) (the 2003 photograph shows bicycles beside the passage, not where exactly); the statue's pose and size; the two goals on Trondsløkka; the car
+park bays and cars; sign sizes (0.5-0.6 m); which of the unmapped, non-grass ground in the grounds is asphalt (all of it here).
+
+**Not found / not drawn.** The flagpole with the green flag of the school (seen in arkiv-10059, no position known); the lamp type (the OSM lamps are drawn by `street-details.js` as before);
+painted games on the asphalt; a "Hjertesone" sign (none in NVDB); school bus stops (the AtB stop *Dalgård* at (550, 392) is drawn by the transit code); the doors and entrance porch (the main
+entrance A1 is OSM node 12631332162 at (677.5, 432.2) on the courtyard side, reached by the covered passage from the north-west car park, not on the north-west front, see the school buildings).

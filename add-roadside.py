@@ -169,6 +169,7 @@ def osm_barrier(i,w):
   sub='stone' if mat in ('stone','dry_stone','granite','brick') or t.get('wall') in ('dry_stone',) else 'concrete'
   return ('retaining' if b=='retaining_wall' else 'wall',sub,h or (1.2 if b=='retaining_wall' else 1.0))
  return None
+OSM_COLOUR={'white':'#ece8dc','brown':'#7b5a44','black':'#2b2f33','red':'#b4482f','green':'#3f6f4f','grey':'#8a8d8b','gray':'#8a8d8b','yellow':'#d4b24a','blue':'#2f5f9f','beige':'#c9b99a'} # OSM colour=* on a fence (1 October 2026: the brown paling fence by the ball court at Dalgård skole was drawn in a random colour)
 FAMILY={'noise':'noise','guardrail':'guardrail','fence':'fence','hedge':'fence','wall':'wall','retaining':'wall'}
 osm_lines=collections.defaultdict(list);osm_entries=collections.defaultdict(list);explicit_h=set() # family -> polylines and the barrier drawn from each
 for i,w in WAYS.items():
@@ -176,7 +177,7 @@ for i,w in WAYS.items():
  if not c:continue
  p=pts_of(w)
  if not any(in_region(*q) for q in p):continue
- n=len(barriers);add_barrier(c[0],c[1],p,c[2],'w'+i)
+ n=len(barriers);add_barrier(c[0],c[1],p,c[2],'w'+i,OSM_COLOUR.get((w['t'].get('colour') or '').lower()))
  if len(barriers)==n:continue
  fam=FAMILY[c[0]];osm_lines[fam].append(p);osm_entries[fam].append(barriers[-1])
  if num(w['t'].get('height')) is not None:explicit_h.add(id(barriers[-1]))

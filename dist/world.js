@@ -17,6 +17,7 @@ import {addStreetDetails,indexStreetDetails} from './street-details.js';
 import {createLook,createGround,createRoadPainter,ROAD,WATER,RENDER} from './look.js';
 import {addFootbridges} from './footbridges.js';
 import {addRoadside} from './roadside.js';
+import {createSchoolyard} from './schoolyard.js';
 import {createCameraControls} from './camera-controls.js';
 import {SoftwareRenderer} from './software-renderer.js';
 import * as T from './vendor/three.js';
@@ -132,7 +133,9 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  const homeShrubs=[[-15,1],[-12,4],[-9,6],[-6,8],[-3,9],[0,12],[3,10],[6,9],[9,8],[11,7],[-8,10],[-11,7]];for(const [x,z] of homeShrubs){const b=bucket(x,z),y=height(x,z);const g=new T.IcosahedronGeometry(1,1);g.scale(1.65,.85,1.45);g.translate(x,y+.7,z);const p=g.attributes.position;for(let i=0;i<p.count;i+=3)tri(b,...[0,1,2].map(j=>[p.getX(i+j),p.getY(i+j),p.getZ(i+j)]),'#688845');g.dispose();}
  // Roadside (roadside.js, data.roadside): fences, hedges, walls, noise barriers, guard rails, driveways, paths, benches, playground equipment, parked cars,
  // pylons, and all the trees (trees.js: five instanced species from OSM, NVDB and AR5 forest types). It keeps the trees off everything it draws.
- const roadside=addRoadside({T,scene,data,height,ground:roadSurface.groundTop,roadTop,onSurface:(x,z)=>roadSurface.heightAt(x,z)!==null,bucket,tri,quad,box,segments:roadSegments,index,clear,lakeAt});
+ // The school grounds (schoolyard.js, data.schoolyard): asphalt yard, playgrounds, court, statue, road signs; roadside.js leaves out what it draws instead (skip).
+ const schoolyard=createSchoolyard({T,scene,data,ground:roadSurface.groundTop,bucket,tri,quad,box,ribbon,segments:roadSegments,onSurface:(x,z)=>roadSurface.heightAt(x,z)!==null});
+ const roadside=addRoadside({T,scene,data,height,ground:roadSurface.groundTop,roadTop,onSurface:(x,z)=>roadSurface.heightAt(x,z)!==null,bucket,tri,quad,box,segments:roadSegments,index,clear,lakeAt,skip:schoolyard.owns});
  const chunks=[];
  // The chunks hold nearly all the world's geometry (2 October 2026: 225 MB as 32-bit floats). Colours go to the GPU as 8-bit and the flat face normals as
  // 8-bit too (normalised integers), which halves the memory and the upload: about 105 MB. Positions stay 32-bit floats.

@@ -17,7 +17,7 @@ const SURFACE={paving_stones:'#b3afa4',cobblestone:'#a7a398',sett:'#a7a398',grav
 const WAY_LIFT={driveway:.1,aisle:.1,service:.1,track:.09,footway:.09,path:.08,steps:.1,pedestrian:.1};
 const THICK={fence:.12,hedge:.9,wall:.4,retaining:.4,noise:.14,guardrail:.16}; // what a line of this kind needs beside the road
 
-export function addRoadside({T,scene,data,height,ground=height,roadTop,onSurface=()=>false,bucket,tri,quad,box,segments,index=()=>{},clear=()=>true,lakeAt=()=>false,density=1}){
+export function addRoadside({T,scene,data,height,ground=height,roadTop,onSurface=()=>false,bucket,tri,quad,box,segments,index=()=>{},clear=()=>true,lakeAt=()=>false,density=1,skip=()=>false}){
  const S=data.roadside,out={barriers:[],ways:[],furniture:[],cars:[],trees:[],chunks:[],counts:{},power:[],kindTris:{},triangles:0};if(!S)return out;
  const segs=segments||streetSegments(data.roads),idx=segmentIndex(segs),count=k=>out.counts[k]=(out.counts[k]||0)+1;
  let nTri=0,lapAt=performance.now(),lapTri=0;out.timing={};const lap=k=>{const now=performance.now();out.timing[k]={ms:Math.round(now-lapAt),tris:nTri-lapTri};lapAt=now;lapTri=nTri;};
@@ -69,7 +69,7 @@ export function addRoadside({T,scene,data,height,ground=height,roadTop,onSurface
  for(const w of S.ways||[]){
   const width=w.w,hw=width/2,lift=WAY_LIFT[w.k]||.09,colour=SURFACE[w.s]||WAY_COLOUR[w.k]||'#9b9a92';
   // beyond the carriageway (the road surface's own heightAt) and not over a building
-  for(const line of clip(w.p,(x,z)=>!onSurface(x,z)&&edge(x,z,6)>-KERB_BAND+.02&&!inBuilding(x,z),1,3)){
+  for(const line of clip(w.p,(x,z)=>!onSurface(x,z)&&edge(x,z,6)>-KERB_BAND+.02&&!inBuilding(x,z)&&!skip(x,z,'way'),1,3)){
    const fitted=line.length>2?line:line;ribbon(fitted,width,colour,lift);count('ways');out.ways.push({k:w.k,p:fitted,w:width});
    if(w.k==='steps'){const len=lengthOf(fitted);walk(fitted,.85,(x,z,tx,tz)=>{const nx=-tz*hw,nz=tx*hw,y=ground(x,z)+lift+.012;Q(bucket(x,z),[x-nx,y,z-nz],[x+nx,y,z+nz],[x+nx+tx*.12,y,z+nz+tz*.12],[x-nx+tx*.12,y,z-nz+tz*.12],'#8e8a7e');});}
    for(let i=0;i<fitted.length-1;i++){obstacle(fitted[i],fitted[i+1],Math.max(width,1.4));leaveOpen(fitted[i],fitted[i+1],hw,treeWays);if(width>=1.5&&w.k!=='steps')leaveOpen(fitted[i],fitted[i+1],hw);}}}
@@ -177,6 +177,7 @@ export function addRoadside({T,scene,data,height,ground=height,roadTop,onSurface
  const placed=[];
  for(const f of S.furniture||[]){
   let [x,z]=f.p;
+  if(f.k==='play'&&skip(x,z,'play'))continue; // schoolyard.js draws the equipment of the school grounds
   if(f.k==='bench'&&stops.some(s=>Math.hypot(s[0]-x,s[1]-z)<6))continue; // the bus shelters draw their own seats
   if(['mast','pylon'].includes(f.k)){if(f.k==='pylon'){pylon(x,z,f.m);count('pylon');out.furniture.push({k:f.k,p:[x,z]});}else{mast(x,z,f.m,f.h);count('mast');out.furniture.push({k:f.k,p:[x,z]});}continue;}
   const np=place(x,z,f.k==='picnic'?1.3:.5);if(!np||inBuilding(...np))continue;[x,z]=np;
@@ -188,7 +189,7 @@ export function addRoadside({T,scene,data,height,ground=height,roadTop,onSurface
  }
  wires();
  for(const a of data.areas){if(a.type!=='playground')continue;const p=a.p.slice(0,-1);let cx=0,cz=0;for(const [x,z] of p){cx+=x;cz+=z;}cx/=p.length;cz/=p.length;let area=0;for(let i=0;i<p.length;i++)area+=p[i][0]*p[(i+1)%p.length][1]-p[(i+1)%p.length][0]*p[i][1];area=Math.abs(area/2);
-  if(area<80||!inRing(p,cx,cz)||inBuilding(cx,cz)||onSurface(cx,cz)||edge(cx,cz,10)<3)continue;
+  if(area<80||!inRing(p,cx,cz)||inBuilding(cx,cz)||onSurface(cx,cz)||edge(cx,cz,10)<3||skip(cx,cz,'play'))continue;
   playground(cx,cz,hash(cx,cz,12)*3.14,hash(cx,cz,13));count('play');out.furniture.push({k:'play',p:[cx,cz]});block([cx-5,cz-5,cx+5,cz+5]);}
 
  lap('furniture');
