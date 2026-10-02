@@ -75,7 +75,7 @@ export function lookFor({id,t,style,kind,area,neighbour=null,normalise=normHex})
  // Cladding: timber colours are nearly always boards, white and grey houses are boards about half the time, the rest render.
  const w=luminance(wall),[cr,cg,cb]=rgb(wall),timber=(Math.max(cr,cg,cb)-Math.min(cr,cg,cb))/Math.max(1,Math.max(cr,cg,cb))>.22||w<.36;
  let panel;
- if(style.horizontalSiding)panel='h';else if(style.siding)panel='v';else if(style.brick)panel='brick';
+ if(style.horizontalSiding)panel='h';else if(style.siding)panel='v';else if(style.brick)panel='brick';else if(style.plain)panel='none';
  else if(neighbour&&neighbour.panel&&!own)panel=neighbour.panel;
  else if(kind==='block')panel=panelRoll<.22?'h':'none';
  else if(kind==='public')panel='none';

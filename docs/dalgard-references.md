@@ -219,3 +219,16 @@ park bays and cars; sign sizes (0.5-0.6 m); which of the unmapped, non-grass gro
 **Not found / not drawn.** The flagpole with the green flag of the school (seen in arkiv-10059, no position known); the lamp type (the OSM lamps are drawn by `street-details.js` as before);
 painted games on the asphalt; a "Hjertesone" sign (none in NVDB); school bus stops (the AtB stop *Dalgård* at (550, 392) is drawn by the transit code); the doors and entrance porch (the main
 entrance A1 is OSM node 12631332162 at (677.5, 432.2) on the courtyard side, reached by the covered passage from the north-west car park, not on the north-west front, see the school buildings).
+
+## The neighbourhood (1 October 2026, agent H)
+
+Full table of buildings, pictures, matches and certainty: `docs/dalgard-neighbourhood.md`. Pictures were viewed, not copied or sampled. Sources used:
+- **FINN real estate ads** (https://www.finn.no/realestate/homes/ad.html?finnkode=NNN; broker text and photos belong to the brokers; only what they show is recorded here): 247003441 and 283657321 (EiendomsMegler 1 projects, Dalgårdstunet: drone photos of the corner of Anders Wigens veg with Extra and the building site of Odd Husbys veg 4, courtyard photos), 461130887 (Anders Wigens veg 4B, street photo at the zebra crossing, courtyard), 466013507 (Anders Wigens veg 4A), 464171086 and 473864059 (Odd Husbys veg 6B: street photo with bus shelter, courtyard), 462751345 (Odd Husbys veg 4C: street photo and balcony side), 459746591 (Anders Wigens veg 28C: drone photos, garden side; also a drone photo of the whole area looking north-east, photo 18), 465103210 (Odd Husbys veg 26), 451662725 (Uglagjerdet 7: houses, fence, street, the 2022 terraces in the background). Looked at and not used for a record: 432523496 (Odd Husbys veg 36C), 470697431, 406697433, 470707033 (apartments further away).
+- **DNB Eiendom** listings: Anders Wigens veg 28H (sold, photo 23 of the block from the garden side), Granlivegen 4A and 12A (viewed; the address does not tell which of several nearby footprints it is, so no record).
+- **Voll Arkitekter**, *Rekkehus på Dalgård*, https://vollark.no/portfolio_page/rekkehus-pa-dalgard/ (architect's illustrations of the terraces at Uglagjerdet 11-19 and 46-52: dark red, green, charcoal vertical timber, flat roofs).
+- **bolig.ai**: Anders Wigens veg 22A and 24D built 2006.
+- **Kartverket, Adresser** (https://ws.geonorge.no/adresser/v1/punktsok, CC BY 4.0, 1 October 2026): the registered addresses, `data/dalgard-addresses.json`.
+- **Esri World Imagery** (viewed only, imagery of 2023-24): six red-orange roofs.
+- Not available: Vegbilder (county roads only; nearest image 363 m away), Wikimedia Commons (nothing of these streets), Mapillary (token), KartaView (restricted).
+
+**Uncertain.** Wall colours (estimates by eye, different light), the storeys of blocks (counted on facades), which drone-photo building is which footprint (judged from layout), Anders Wigens veg 22 and 24 and Uglagjerdet 1-3 (by analogy only), the unit colours of the terraces, and the placing of the lamps and trees on Odd Husbys veg (a rule with offsets from the photos).

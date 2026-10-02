@@ -87,7 +87,13 @@ export function addRoadside({T,scene,data,height,ground=height,roadTop,onSurface
    else if(t==='board'){const c=colour||['#9a7a55','#7a5a42','#b09068'][Math.floor(key*3)],ps=samples(line,2.2);
     for(let i=0;i<ps.length-1;i++){const a=ps[i],d=ps[i+1],b=bucket(a.x,a.z),v=1+.05*(hash(a.x,a.z,3)-.5);Q(b,[a.x,a.y-.05,a.z],[d.x,d.y-.05,d.z],[d.x,d.y+h,d.z],[a.x,a.y+h,a.z],'#'+new T.Color(c).multiplyScalar(v).getHexString());}
     for(const p of ps)post2(bucket(p.x,p.z),p.x,p.y-.05,p.z,.08,h+.08,'#5a4334');}
-   else if(t==='mesh'||t==='glass'){const c=colour||(t==='glass'?'#bcd6dc':'#9aa4a1'),ps=samples(line,3);
+   else if(t==='mesh'){ // chain link is see-through: posts, a top and a bottom rail and a thin wire pair every 1.5 m (an opaque panel hid the houses behind it)
+    const c=colour||'#9aa4a1',ps=samples(line,3);
+    for(let i=0;i<ps.length-1;i++){const a=ps[i],d=ps[i+1],b=bucket(a.x,a.z),l=Math.hypot(d.x-a.x,d.z-a.z)||1,tx=(d.x-a.x)/l*.02,tz=(d.z-a.z)/l*.02,m={x:(a.x+d.x)/2,y:(a.y+d.y)/2,z:(a.z+d.z)/2};
+     for(const [f,e] of [[1,.03],[.04,.025]])Q(b,[a.x,a.y+h*f-e,a.z],[d.x,d.y+h*f-e,d.z],[d.x,d.y+h*f+e,d.z],[a.x,a.y+h*f+e,a.z],'#6d7574');
+     Q(b,[m.x-tx,m.y+.05,m.z-tz],[m.x+tx,m.y+.05,m.z+tz],[m.x+tx,m.y+h,m.z+tz],[m.x-tx,m.y+h,m.z-tz],c);}
+    for(const p of ps)post2(bucket(p.x,p.z),p.x,p.y-.05,p.z,.06,h+.06,'#6d7574');}
+   else if(t==='glass'){const c=colour||'#bcd6dc',ps=samples(line,3);
     for(let i=0;i<ps.length-1;i++){const a=ps[i],d=ps[i+1],b=bucket(a.x,a.z);Q(b,[a.x,a.y+.05,a.z],[d.x,d.y+.05,d.z],[d.x,d.y+h,d.z],[a.x,a.y+h,a.z],c);Q(b,[a.x,a.y+h-.05,a.z],[d.x,d.y+h-.05,d.z],[d.x,d.y+h+.03,d.z],[a.x,a.y+h+.03,a.z],'#6d7574');}
     for(const p of ps)post2(bucket(p.x,p.z),p.x,p.y-.05,p.z,.06,h+.06,'#6d7574');}
    else{ // rail, wire

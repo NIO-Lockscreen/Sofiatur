@@ -59,7 +59,7 @@ mapped only where an OSM contributor has drawn them: most houses have none in th
   (the same `fitPath` as the sidewalks) and cut where it runs over a road; what is left over at junctions is cut where the road surface's own
   `heightAt` (with a 0.1 m probe, since the surface has a skirt 0.25 m beyond the kerb band) says it is on the road. Fences and hedges
   leave a gap where a driveway or path comes through.
-- **Barriers** are merged into the world's chunks: picket fences 0.5 m boards on posts, mesh and rail fences on posts with a panel or rails,
+- **Barriers** are merged into the world's chunks: picket fences 0.5 m boards on posts, glass fences on posts with a panel, mesh (chain-link) fences and rail fences on posts with rails (a mesh fence is posts, a top and a bottom rail and a thin wire pair every 1.5 m, see-through, since 1 October 2026), 
   hedges a trapezoid with an uneven top, noise barriers solid timber (colour from NVDB: red, brown, untreated) with a dark cap, retaining walls stone or
   concrete with a cap, guard rails a steel beam or two pipes on timber or steel posts every 2 m. Height is the OSM or NVDB value, else a
   default by kind.
