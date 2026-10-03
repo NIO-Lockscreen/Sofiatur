@@ -282,11 +282,13 @@ function parkAtKiwi(){
 // Home: the car can drive back and park where it started; after a moment the start screen comes back, with the car colours (once they are unlocked).
 function parkAtHome(){toast('🏠 Hjemme!');say(arrivals>=1||kiwiUnlocked?'Vi er hjemme igjen! Vil du velge en ny farge på bilen?':'Vi er hjemme igjen!');homeAt=time+2.5;}
 // Bøckmans veg 102: a visit to Ludvig.
-// The first visit unlocks Ludvig, who then runs after the car (boy.js), an alternative to the rainbow trail on the start screen.
+// The first visit unlocks Ludvig, who then runs after the car (boy.js), an alternative to the rainbow trail on the start screen. Every visit
+// puts him back behind the car (as every visit to KIWI puts the KIWI paint on), also when the trail, the bubbles or nothing was chosen at home.
 function parkAtLudvig(){
- if(ludvigUnlocked){toast('🏠 Du besøker Ludvig');say('Du besøker Ludvig!');return;}
- ludvigUnlocked=true;behind='ludvig';saveProgress();applyRewards();showRewards();
- toast('🧒 Du besøker Ludvig · Nå løper Ludvig etter bilen!');say('Du besøker Ludvig! Nå løper Ludvig etter bilen. Du kan slå ham av og på hjemme.');
+ const first=!ludvigUnlocked,again=!first&&behind!=='ludvig';ludvigUnlocked=true;behind='ludvig';saveProgress();applyRewards();showRewards();
+ if(first){toast('🧒 Du besøker Ludvig · Nå løper Ludvig etter bilen!');say('Du besøker Ludvig! Nå løper Ludvig etter bilen. Du kan slå ham av og på hjemme.');}
+ else if(again){toast('🧒 Du besøker Ludvig · Nå løper han etter bilen igjen!');say('Du besøker Ludvig! Nå løper Ludvig etter bilen igjen.');}
+ else{toast('🏠 Du besøker Ludvig');say('Du besøker Ludvig!');}
 }
 function parkAtIshall(){toast('🏒 Framme ved Dalgård ishall');say('Vi er framme ved Dalgård ishall og idrettsparken!');}
 function parkAtRema(){toast('🛒 Framme ved Rema 1000 Stavset');say('Vi er framme ved Rema 1000 på Stavset senter! Rundkjøringene tar oss videre til barnehagen.');}

@@ -9,7 +9,7 @@ export function createBubbles({T,scene,max=56,rate=9}){
  const bubbles=[],m=new T.Matrix4(),q=new T.Quaternion(),s=new T.Vector3(),p=new T.Vector3();let on=false,carry=0,seed=1;
  const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
  function clear(){bubbles.length=0;mesh.count=0;carry=0;}
- function setOn(value){on=!!value;mesh.visible=on;clear();}
+ function setOn(value){if(!!value===on)return;on=!!value;mesh.visible=on;clear();} // already on: kept as it is (a visit to KIWI applies the rewards again)
  function update(dt,pos,facing){
   if(!on)return;const h=Math.hypot(facing.x,facing.z)||1,fx=facing.x/h,fz=facing.z/h;
   carry+=dt*rate;while(carry>=1&&bubbles.length<max){carry--;const side=(rnd()-.5)*1.4;

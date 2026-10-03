@@ -22,7 +22,7 @@ async function launch(localStorage){
   createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on,setBoy:on=>world.boy=on,setBubbles:on=>world.bubbles=on,honk:()=>world.honks++})};
  if(localStorage)Object.defineProperty(env,'localStorage',{get:localStorage});
  const ctx=vm.createContext(env);
- const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},home(){start();current=data.start;state='decision';parkAtHome();},ludvig(){parkAtLudvig();},start(){start();},honkKey(){honk();},state:()=>state,progress:()=>({arrivals,carColour,trailOn:behind==='trail',catOn:model==='cat'}),model:()=>model,behind:()=>behind};})()`,ctx);
+ const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},home(){start();current=data.start;state='decision';parkAtHome();},ludvig(){parkAtLudvig();},visit(n){start();active={e:{from:data.start,to:{kiwi:kiwiParking,ludvig:ludvigParking}[n]},line:{at(){},tangent(){}},len:0};arrive();},start(){start();},honkKey(){honk();},state:()=>state,progress:()=>({arrivals,carColour,trailOn:behind==='trail',catOn:model==='cat'}),model:()=>model,behind:()=>behind};})()`,ctx);
  for(let i=0;i<12;i++){await Promise.resolve();const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}await init;
  const key=(k,target={tagName:'BODY'})=>listeners.get('keydown')({key:k,repeat:false,target,preventDefault(){}});
  const tick=n=>{for(let i=0;i<n;i++){const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}};
@@ -126,6 +126,12 @@ game.element('trail').onchange({target:{checked:true}});assert.equal(game.world.
 game.element('ludvig').onchange({target:{checked:true}});assert.equal(game.world.boy,true);assert.equal(game.world.trail,false,'Ludvig switches the trail off');
 game.element('ludvig').onchange({target:{checked:false}});assert.equal(game.world.boy,false);assert.equal(game.world.trail,false,'Both off');
 game=await launch(()=>storage);assert.equal(game.test.behind(),'none','Both off is remembered');
+// Every visit to Ludvig puts him back behind the car, and every visit to KIWI the KIWI paint, Ludvig still running after it (driven there, through arrive()).
+game.element('trail').onchange({target:{checked:true}});game.test.visit('ludvig');assert.equal(game.test.behind(),'ludvig');assert.equal(game.world.boy,true,'A visit puts Ludvig back behind the car');assert.equal(game.world.trail,false);assert.match(game.element('toast').textContent,/igjen/);
+game.test.visit('kiwi');assert.equal(game.world.skin,'kiwi','The KIWI paint at KIWI');assert.equal(game.world.boy,true,'and Ludvig still runs after it');
+game.element('carColours').children[0].onclick();game.element('ludvig').onchange({target:{checked:false}});assert.equal(game.world.skin,null);assert.equal(game.world.boy,false);
+for(let k=0;k<3;k++){game.test.visit('ludvig');assert.equal(game.world.boy,true,'Ludvig after visit '+(k+2));game.test.visit('kiwi');assert.equal(game.world.skin,'kiwi','KIWI after visit '+(k+2));assert.equal(game.world.boy,true);game.element('carColours').children[0].onclick();game.element('trail').onchange({target:{checked:true}});}
+game.test.visit('kiwi');game.test.visit('ludvig');game=await launch(()=>storage);assert.equal(game.world.skin,'kiwi');assert.equal(game.world.boy,true,'both remembered');
 store.set('sofiatur.fremgang',JSON.stringify({arrivals:3,behind:'ludvig'}));game=await launch(()=>storage);assert.equal(game.world.boy,false,'Ludvig cannot be forced through storage');assert.equal(game.world.trail,true);
 console.log('Visiting Ludvig unlocks him; he and the rainbow trail are alternatives on the start screen: OK');
 
@@ -137,6 +143,7 @@ const p=g.attributes.position.array,newest=(drawn-1)*14;assert.ok(p[newest*3+2]>
 const across=[0,13].map(k=>p[(newest+k)*3]);assert.ok(Math.abs(across[1]-across[0]-1.5)<1e-6,'Band is 1.5 m wide');
 const alpha=k=>g.attributes.color.array[k*4+3];assert.ok(alpha(newest-14*5)>alpha(14*2),'Brighter near the car than at the tail');
 for(let i=0;i<80;i++)trail.update(.045,pos,facing);assert.equal(g.drawRange.count,0,'Trail fades away when the car stands still');
+for(let i=0;i<10;i++){pos.z-=20*.045;trail.update(.045,pos,facing);}const laid=trail.points.length;trail.setOn(true);assert.equal(trail.points.length,laid,'Switching it on again keeps the trail');
 pos.z-=40;trail.update(.045,pos,facing);assert.equal(trail.points.length,1,'A jump (restart) starts a new trail');trail.setOn(false);assert.equal(trail.mesh.visible,false);
 console.log('Rainbow trail follows, fades and resets: OK');}
 // Ludvig: runs along the car's own track six metres behind it, on the road, facing the car; when the car stops he catches up to
@@ -150,6 +157,7 @@ console.log('Rainbow trail follows, fades and resets: OK');}
  const back=Math.hypot(b.x-pos.x,b.z-pos.z),off=Math.abs((b.x-pos.x)*.8+(b.z-pos.z)*.6);assert.ok(back>5.5&&back<6.5&&off<.1,'Round the bend on the track');
  for(let i=0;i<160;i++)boy.update(.045,pos,facing,0,18+i*.045);
  const d=Math.hypot(b.x-pos.x,b.z-pos.z);assert.ok(d>2.8&&d<4,`Caught up with the parked car (${d.toFixed(2)} m)`);const side=(b.x-pos.x)*.8+(b.z-pos.z)*.6;assert.ok(side>.9,'Standing by its right rear corner');
+ const was=b.clone();boy.setOn(true);boy.update(.045,pos,facing,0,25.3);assert.ok(b.distanceTo(was)<.1,'Switching him on again (a visit to KIWI) keeps him where he is');
  pos.x+=300;boy.update(.045,pos,facing,0,30);assert.ok(Math.hypot(b.x-pos.x,b.z-pos.z)<7,'A jump starts him again right behind the car');
  boy.setOn(false);assert.equal(boy.group.visible,false);}
 console.log('Ludvig runs after the car, round bends, catches up when it stops and waves: OK');

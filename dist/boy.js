@@ -40,7 +40,7 @@ export function createBoy({T,scene}){
  const model=createBoyModel(T),group=model.group;group.visible=false;scene.add(group);
  const track=[],MAX=160,yaw=new T.Euler(0,0,0,'YXZ');let on=false,behind=6,wave=0,run=0,lastX=null,lastZ=null;
  function clear(){track.length=0;behind=6;wave=0;lastX=lastZ=null;}
- function setOn(value){on=!!value;group.visible=on;clear();}
+ function setOn(value){if(!!value===on)return;on=!!value;group.visible=on;clear();} // already on: he keeps his place (a visit to KIWI applies the rewards again)
  // The point `d` metres back along the track from the car, and the direction there (towards the car).
  function along(d){let rest=d;for(let i=track.length-1;i>0;i--){const a=track[i-1],b=track[i],l=Math.hypot(b.x-a.x,b.z-a.z);if(l>=rest){const f=l>0?rest/l:0;return {x:b.x+(a.x-b.x)*f,y:b.y+(a.y-b.y)*f,z:b.z+(a.z-b.z)*f,dx:(b.x-a.x)/(l||1),dz:(b.z-a.z)/(l||1)};}rest-=l;}
   const a=track[0],b=track[1]||track[0],l=Math.hypot(b.x-a.x,b.z-a.z)||1;return {x:a.x,y:a.y,z:a.z,dx:(b.x-a.x)/l,dz:(b.z-a.z)/l};}

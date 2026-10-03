@@ -9,7 +9,7 @@ export function createRainbowTrail({T,scene,max=180,life=2.8,length=55,width=1.5
  const mesh=new T.Mesh(geometry,new T.MeshBasicMaterial({vertexColors:true,transparent:true,depthWrite:false,side:T.DoubleSide}));mesh.name='Rainbow trail';mesh.frustumCulled=false;mesh.visible=false;mesh.renderOrder=2;scene.add(mesh);
  let on=false;const points=[];
  function clear(){points.length=0;geometry.setDrawRange(0,0);}
- function setOn(value){on=!!value;mesh.visible=on;clear();}
+ function setOn(value){if(!!value===on)return;on=!!value;mesh.visible=on;clear();} // already on: kept as it is (a visit to KIWI applies the rewards again)
  function update(dt,pos,facing){
   if(!on)return;const h=Math.hypot(facing.x,facing.z)||1,fx=facing.x/h,fz=facing.z/h,rear=[pos.x-fx*2.35,pos.y,pos.z-fz*2.35];
   for(const p of points)p.age+=dt;while(points.length&&points[0].age>life)points.shift();
