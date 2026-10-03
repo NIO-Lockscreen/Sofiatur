@@ -178,14 +178,16 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  for(const r of Object.values(rides)){r.group.visible=false;car.add(r.group);}
  let model='car',skin=null,rainbow=false;
  function showModel(){for(const o of bodywork)if(!skinParts.has(o))o.visible=model==='car';for(const [k,list] of Object.entries(skins))for(const m of list)m.visible=model==='car'&&k===skin;for(const [name,r] of Object.entries(rides)){for(const [k,list] of Object.entries(r.skins))for(const m of list)m.visible=k===skin;r.group.visible=model===name;}}
- function setCarSkin(name){skin=name||null;car.userData.skin=skin;showModel();}
+ function setCarSkin(name){skin=name||null;car.userData.skin=skin;showModel();paintBeacons();}
+ // The fire engine's beacons follow the colour chosen (rides.js BEACONS): KIWI green and white, the rainbow round the rainbow.
+ function paintBeacons(){rides.firetruck.beacons(skin==='kiwi'?'kiwi':rainbow?'rainbow':car.userData.colour);}
  function setCarModel(name){model=rides[name]?name:'car';car.userData.body=model;showModel();}
  // The horn (the reward for the eleventh trip): a little hop, and the ride's own reaction (the T. rex opens its jaws).
  const holdAt=new T.Vector3(),holdQ=new T.Quaternion();
  let hopT=0;function honk(){hopT=.55;rides[model]?.honk?.();}
  // Paint colour (a reward). Black keeps the original deep metallic look; brighter colours are less metallic so they read as colour.
  // 'rainbow' (the reward for the fourth trip) runs through all the colours in a little over three seconds; update() turns it.
- function setCarColour(hex){rainbow=hex==='rainbow';car.userData.colour=hex;if(rainbow){paint.metalness=.3;paint.roughness=.28;return;}paint.color.set(hex);const c=paint.color,dark=Math.max(c.r,c.g,c.b)<.06;paint.metalness=dark?.72:.38;paint.roughness=dark?.24:.3;}
+ function setCarColour(hex){rainbow=hex==='rainbow';car.userData.colour=hex;paintBeacons();if(rainbow){paint.metalness=.3;paint.roughness=.28;return;}paint.color.set(hex);const c=paint.color,dark=Math.max(c.r,c.g,c.b)<.06;paint.metalness=dark?.72:.38;paint.roughness=dark?.24:.3;}
  const trail=createRainbowTrail({T,scene}),boy=createBoy({T,scene}),bubbles=createBubbles({T,scene}); // behind the car: the rainbow trail, Ludvig running after it (boy.js) or soap bubbles (bubbles.js), one at a time
  // Soft contact shadow remains visible with economical mobile shadows.
  const shc=document.createElement('canvas');shc.width=64;shc.height=64;const sc=shc.getContext('2d'),gr=sc.createRadialGradient(32,32,6,32,32,32);gr.addColorStop(0,'rgba(24,40,35,.48)');gr.addColorStop(1,'rgba(24,40,35,0)');sc.fillStyle=gr;sc.fillRect(0,0,64,64);const sm=new T.Mesh(new T.PlaneGeometry(3.4,6),new T.MeshBasicMaterial({map:new T.CanvasTexture(shc),transparent:true,depthWrite:false}));sm.rotation.x=-Math.PI/2;scene.add(sm);

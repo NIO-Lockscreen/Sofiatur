@@ -7,7 +7,7 @@ import {createDrivingLines} from './dist/driving-line.js';
 import {createFreeDrive} from './dist/free-drive.js';
 import {createMusic} from './dist/music.js';
 import {createBoy} from './dist/boy.js';
-import {createDog,createRideDuck,createRocket,createUnicorn,createFireTruck,createBalloon,createTRex} from './dist/rides.js';
+import {createDog,createRideDuck,createRocket,createUnicorn,createFireTruck,createBalloon,createTRex,BEACONS} from './dist/rides.js';
 import {createBubbles} from './dist/bubbles.js';
 import {createRainbowTrail} from './dist/rainbow-trail.js';
 import {createCat} from './dist/cat-model.js';
@@ -40,9 +40,12 @@ game.test.arrive();assert.equal(game.test.progress().arrivals,1);assert.equal(ga
 game.element('again').onclick();assert.equal(game.element('welcome').hidden,false);assert.equal(game.element('rewards').hidden,false);assert.equal(game.element('trailRow').hidden,true);
 const swatches=game.element('carColours').children;assert.equal(swatches.length,12);assert.equal(swatches[10].hidden,true,'The rainbow colour waits for the fourth trip');assert.equal(swatches[11].hidden,true,'The KIWI car is a secret until parked at KIWI');assert.ok(swatches[0].classes.has('on'),'Black is picked to begin with');
 swatches[3].onclick();assert.equal(game.world.colour,'#7b4cc2');assert.ok(swatches[3].classes.has('on')&&!swatches[0].classes.has('on'));assert.equal(game.world.trail,false,'No trail yet');
-game.element('customColour').oninput({target:{value:'#12AB34'}});assert.equal(game.world.colour,'#12ab34');
 swatches[3].onclick();
+assert.ok(!fs.readFileSync('dist/index.html','utf8').includes('type="color"'),'No free colour wheel, only the ten colours (and the rainbow and KIWI)');
 console.log('First arrival unlocks the colour picker on the start screen: OK');
+// A colour saved from the old colour wheel becomes the nearest of the ten.
+{const keep=store.get('sofiatur.fremgang');store.set('sofiatur.fremgang',JSON.stringify({arrivals:1,colour:'#12AB34'}));const g=await launch(()=>storage);assert.equal(g.world.colour,'#3b9a43','a green from the wheel is green');
+ assert.ok(g.element('carColours').children[6].classes.has('on'),'and shows as picked');store.set('sofiatur.fremgang',keep);}
 
 // The order since 30 September 2026: 1 colour picker, 2 running cat, 3 rainbow trail, 4 rainbow colour.
 // After a reload the colour is kept; the second arrival turns the car into a running cat, with a switch back to the car on
@@ -77,7 +80,7 @@ game.element('model-dog').onclick();assert.equal(game.world.model,'dog');game=aw
 game.test.arrive();assert.equal(game.test.progress().arrivals,8);assert.equal(game.world.model,'unicorn');assert.match(game.element('unlock').textContent,/enhjørning/);game.element('again').onclick();assert.equal(game.element('model-unicorn').hidden,false);assert.equal(game.element('bubblesRow').hidden,true);
 game.test.arrive();assert.match(game.element('unlock').textContent,/såpebobler/);assert.equal(game.world.bubbles,true,'Bubbles on at once');assert.equal(game.world.trail,false,'instead of the trail');game.element('again').onclick();assert.equal(game.element('bubblesRow').hidden,false);assert.equal(game.element('bubbles').checked,true);
 game.element('trail').onchange({target:{checked:true}});assert.equal(game.world.trail,true);assert.equal(game.world.bubbles,false,'The trail switches the bubbles off');game.element('bubbles').onchange({target:{checked:true}});assert.equal(game.world.bubbles,true);assert.equal(game.world.trail,false);
-game.test.arrive();assert.equal(game.world.model,'firetruck');assert.match(game.element('unlock').textContent,/brannbil/);assert.equal(game.element('horn').hidden,true,'The horn waits for the eleventh trip');
+game.test.arrive();assert.equal(game.world.model,'firetruck');assert.equal(game.world.colour,'#c62828','The fire engine comes red, the standard one');assert.match(game.element('unlock').textContent,/brannbil/);assert.equal(game.element('horn').hidden,true,'The horn waits for the eleventh trip');
 game.test.arrive();assert.match(game.element('unlock').textContent,/tute/);assert.equal(game.element('horn').hidden,false,'The horn button');game.element('again').onclick();game.test.start();game.element('horn').onclick();assert.equal(game.world.honks,1,'Honking makes the ride react');
 game.test.honkKey();assert.equal(game.world.honks,2,'H honks too');
 game.test.arrive();assert.equal(game.world.model,'balloon');assert.match(game.element('unlock').textContent,/luftballong/);game.element('again').onclick();assert.equal(game.element('rewardTeaser').hidden,false);
@@ -219,9 +222,9 @@ for(const [name,make] of [['dog',createDog],['duck',createRideDuck],['rocket',cr
  const idle=flame();rocket.update(.05,50,1);assert.ok(flame()>idle*3,'The rocket\'s flame grows with the speed');}
 console.log('The dog, the duck and the rocket: car-sized, painted, KIWI logos on both flanks, moving: OK');
 
-// Trips 8 to 13: the unicorn, the fire engine (always fire-engine red), the hot-air balloon (floating) and the T. rex: their sizes, the KIWI logos,
+// Trips 8 to 13: the unicorn, the fire engine, the hot-air balloon (floating) and the T. rex: their sizes, the KIWI logos,
 // the paint, movement, and honk (the T. rex opens its jaws).
-for(const [name,make,{x,y,z,minY,paints}] of [['unicorn',createUnicorn,{x:[1,2.5],y:[3,4.2],z:[3.5,5.5],minY:[-.05,.2],paints:true}],['firetruck',createFireTruck,{x:[2,2.6],y:[2.4,3],z:[5,6.5],minY:[-.1,.1],paints:false}],
+for(const [name,make,{x,y,z,minY,paints}] of [['unicorn',createUnicorn,{x:[1,2.5],y:[3,4.2],z:[3.5,5.5],minY:[-.05,.2],paints:true}],['firetruck',createFireTruck,{x:[2,2.6],y:[2.4,3],z:[5,6.5],minY:[-.1,.1],paints:true}],
   ['balloon',createBalloon,{x:[3,4],y:[4.5,6.2],z:[3,4],minY:[.5,1.3],paints:true}],['trex',createTRex,{x:[1.5,2.5],y:[3,4],z:[6,8.5],minY:[-.05,.4],paints:true}]]){
  const logo=new T.MeshBasicMaterial(),ride=make(T,{logos:{kiwi:logo}});ride.group.updateMatrixWorld(true);
  const box=new T.Box3().setFromObject(ride.group),size=box.getSize(new T.Vector3()),within=(v,[a,b])=>v>=a&&v<=b;
@@ -237,6 +240,16 @@ for(const [name,make,{x,y,z,minY,paints}] of [['unicorn',createUnicorn,{x:[1,2.5
  for(let i=0;i<60;i++){pos.z-=10*.05;b.update(.05,pos,facing);}assert.ok(b.mesh.count>15,'Soap bubbles are blown ('+b.mesh.count+')');assert.ok(b.bubbles.every(q=>q.y>pos.y),'and rise above the car');
  assert.ok(b.bubbles.reduce((a,q)=>a+q.z,0)/b.bubbles.length>pos.z+1,'behind it');for(let i=0;i<120;i++)b.update(.05,pos,facing);assert.ok(b.bubbles.every(q=>q.age<=q.life),'and pop');b.setOn(false);assert.equal(b.mesh.visible,false);}
 console.log('Unicorn, fire engine, hot-air balloon and T. rex: sizes, logos, paint, movement, honk; soap bubbles blown, rising and popping: OK');
+// The fire engine takes the colour chosen, and its beacons a pair of colours for each: red is the standard fire engine with blue lights, KIWI green
+// and white, every colour of the picker its own pair; on the white paint the stripe turns red; the rainbow sends the beacons round the rainbow.
+{const truck=createFireTruck(T),colours=fs.readFileSync('dist/game.js','utf8').match(/const carColours=(\[.*?\]\]);/)[1],palette=JSON.parse(colours.replace(/'/g,'"'));
+ assert.deepEqual(truck.beaconColours(),['#2a6bff','#2a6bff'],'Red, the standard: blue lights');truck.beacons('kiwi');assert.deepEqual(truck.beaconColours(),['#39d353','#ffffff'],'KIWI: green and white');
+ const pairs=new Set();for(const [name,hex] of palette){assert.ok(BEACONS[hex],name+' has its own lights');truck.beacons(hex);pairs.add(truck.beaconColours().join());}
+ assert.equal(pairs.size,palette.length,'a different pair for each of the '+palette.length+' colours');
+ truck.update(.05,0,1,new T.Color('#eef0ef'));assert.equal('#'+truck.stripe.color.getHexString(),'#c62828','On the white paint the stripe turns red');truck.update(.05,0,1,new T.Color('#1f63c6'));assert.equal('#'+truck.stripe.color.getHexString(),'#f2f1ec','and white again on blue');
+ truck.beacons('rainbow');truck.update(.05,0,1);const a=truck.beaconColours().join();truck.update(.05,0,2);assert.notEqual(truck.beaconColours().join(),a,'The rainbow beacons change colour');
+ const w=fs.readFileSync('dist/world.js','utf8');assert.ok(w.includes("car.userData.colour=hex;paintBeacons();")&&w.includes("showModel();paintBeacons();}"),'world.js sets the beacons with the colour and the skin');}
+console.log('The fire engine takes the colour; its beacons follow it (red: blue, KIWI: green and white, one pair a colour, the rainbow): OK');
 
 // The easter egg: driving as the T. rex with Ludvig running after it, the T. rex carries him in its mouth (by the back of his shirt, beside
 // its face, his legs still running), its jaws a little open; his track is still kept, so he runs on behind the car when it is something else again; and the game says so.

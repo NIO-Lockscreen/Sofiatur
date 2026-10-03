@@ -159,11 +159,15 @@ export function createUnicorn(T,{logos={}}={}){
 }
 
 // The fire engine: red, with a white stripe, lockers along the sides, a ladder on the roof, blue lights that flash and wheels that turn.
+// The fire engine's beacons, two colours for each colour of game.js's picker (3 October 2026, the user: red is the standard fire engine, with blue
+// lights; KIWI has green and white lights). 'rainbow' sends them round the rainbow; any other colour gets blue.
+export const BEACONS={'#14171c':['#2a6bff','#ff2b2b'],'#c62828':['#2a6bff','#2a6bff'],'#ec6aa8':['#b04cff','#ffffff'],'#7b4cc2':['#ff5fb8','#ffd23a'],'#1f63c6':['#ff2b2b','#ffffff'],
+ '#17a2a0':['#ffd23a','#ff5fb8'],'#3b9a43':['#ffd23a','#ffffff'],'#f3c531':['#ff8a00','#ff8a00'],'#f07b22':['#ffd23a','#2a6bff'],'#eef0ef':['#ff2b2b','#2a6bff'],kiwi:['#39d353','#ffffff']};
 export function createFireTruck(T,{logos={}}={}){
  const group=new T.Group();group.name='Brannbil';
- const red=new T.MeshStandardMaterial({color:'#c8211c',roughness:.45,metalness:.2}),white=new T.MeshStandardMaterial({color:'#f2f1ec',roughness:.5});
+ const red=new T.MeshStandardMaterial({color:'#c62828',roughness:.45,metalness:.2}),white=new T.MeshStandardMaterial({color:'#f2f1ec',roughness:.5});
  const grey=new T.MeshStandardMaterial({color:'#9aa1a6',roughness:.4,metalness:.6}),tyre=new T.MeshStandardMaterial({color:'#1d1f22',roughness:.9}),glass=new T.MeshStandardMaterial({color:'#2d4654',roughness:.15,metalness:.5});
- const blue=[0,1].map(()=>new T.MeshStandardMaterial({color:'#2a6bff',emissive:'#1e5bff',emissiveIntensity:1,roughness:.3})),lamp=new T.MeshStandardMaterial({color:'#fff6d8',emissive:'#fff1b0',emissiveIntensity:.8});
+ const blue=[0,1].map(()=>new T.MeshStandardMaterial({color:'#2a6bff',emissive:'#2a6bff',emissiveIntensity:1,roughness:.3})),lamp=new T.MeshStandardMaterial({color:'#fff6d8',emissive:'#fff1b0',emissiveIntensity:.8});
  const box=new T.BoxGeometry(1,1,1),body=new T.Group();group.add(body);
  const part=(m,[x,y,z],[sx,sy,sz],parent=body,g=box)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;parent.add(o);return o;};
  part(red,[0,1.35,-1.75],[2.2,1.9,1.6]);part(glass,[0,1.75,-2.56],[2,.8,.04]);for(const s of [-1,1])part(glass,[s*1.11,1.8,-1.8],[.03,.65,1.1]);
@@ -175,14 +179,18 @@ export function createFireTruck(T,{logos={}}={}){
  const wheels=[[-1,-1.8],[1,-1.8],[-1,.6],[1,.6],[-1,1.7],[1,1.7]].map(([s,z])=>{const w=new T.Group();w.position.set(s*1.0,.48,z);body.add(w);
   part(tyre,[0,0,0],[.5,.3,.5],w,new T.CylinderGeometry(1,1,1,16)).rotation.z=Math.PI/2;part(grey,[s*.16,0,0],[.25,.04,.25],w,new T.CylinderGeometry(1,1,1,12)).rotation.z=Math.PI/2;return w;});
  const skins=flankLogos(T,body,logos,{cy:1.45,cz:.75,rx:1.1,ry:20,rz:20,w:1.4,h:.45,y:2.15,z:.75});
- let flash=0,hop=0;
- function update(dt,speed,time){
+ let flash=0,hop=0,rainbowLights=false;const hsl={h:0,s:0,l:0};
+ // The paint is the car's colour (red by default, the standard fire engine); on a pale paint the stripe turns red. The beacons follow the colour chosen.
+ function beacons(key){rainbowLights=key==='rainbow';const pair=BEACONS[key]||BEACONS[String(key).toLowerCase()]||['#2a6bff','#2a6bff'];pair.forEach((c,i)=>{blue[i].color.set(c);blue[i].emissive.set(c);});}
+ function update(dt,speed,time,colour){
+  if(colour){red.color.copy(colour);white.color.set(colour.getHSL(hsl).l>.75?'#c62828':'#f2f1ec');}
+  if(rainbowLights)blue.forEach((m,i)=>{m.color.setHSL((time*.4+i*.5)%1,1,.55);m.emissive.copy(m.color);});
   for(const w of wheels)w.rotation.x-=speed*dt/.5;
   flash+=dt*(hop>0?14:6);const on=Math.sin(flash*Math.PI)>0;blue[0].emissiveIntensity=on?1.4:.1;blue[1].emissiveIntensity=on?.1:1.4;
   hop=Math.max(0,hop-dt/2);body.position.y=Math.sin(time*9)*.01*Math.min(1,speed/5);
  }
  update(0,0,0);
- return {group,update,skins,honk(){hop=1;}};
+ return {group,update,skins,beacons,beaconColours:()=>blue.map(m=>'#'+m.emissive.getHexString()),paint:red,stripe:white,honk(){hop=1;}};
 }
 
 // The hot-air balloon: an envelope of gores in the car's colour and yellow, a basket on ropes, floating over the road; the burner puffs.
