@@ -211,9 +211,14 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  camLook.copy(pos).addScaledVector(orbitDirection,orbit.active?0:follow.ahead);camLook.y+=1;
  // Face the home's photographed west-facing gables before setting off.
  if(mode==='intro'&&!orbit.active){target.set(-27,height(-27,-15)+5,-15);camLook.set(0,height(-7,-3)+2.4,0);}
- // With the colour picker on the start screen, turn a little left so the parked car shows beside the card, house still in view.
- if(mode==='introCar'&&!orbit.active){target.set(-27,height(-27,-15)+5,-15);camLook.set(2.8,height(-7,-3)+2.4,-11.3);}
- if(!initialized){camera.position.copy(target);look.copy(camLook);initialized=true;}else{camera.position.lerp(target,1-Math.exp(-dt*3));look.lerp(camLook,1-Math.exp(-dt*4));}camera.lookAt(look);
+ // With the colour picker on the start screen, look at the parked car: the view shift below puts it in the middle of the screen beside the card.
+ if(mode==='introCar'&&!orbit.active){target.set(-27,height(-27,-15)+5,-15);camLook.set(pos.x,pos.y+2,pos.z);}
+ if(!initialized){camera.position.copy(target);look.copy(camLook);initialized=true;shiftX=wantShiftX;shiftY=wantShiftY;}else{camera.position.lerp(target,1-Math.exp(-dt*3));look.lerp(camLook,1-Math.exp(-dt*4));}camera.lookAt(look);
+ // The view shift (3 October 2026): the start card covers the left of the screen (the bottom on a phone), so the picture's middle, where the camera looks,
+ // is moved into the free part (a view offset, in CSS pixels; setViewShift). It eases there and back (and jumps with the camera), so the car is never behind
+ // the card, also after a swipe has turned the camera round it.
+ const ease=1-Math.exp(-dt*4);shiftX+=(wantShiftX-shiftX)*ease;shiftY+=(wantShiftY-shiftY)*ease;
+ if(Math.abs(shiftX)+Math.abs(shiftY)>.5){const w=canvas.clientWidth||1,h=canvas.clientHeight||1;camera.setViewOffset(w,h,-shiftX,shiftY,w,h);shifted=true;}else if(shifted){camera.clearViewOffset();shifted=false;}
  mood.update(time,camera.position,pos,orbitDirection.x,orbitDirection.z); // the sun's shadow box follows the car, the sky follows the camera
  // Shadow casters: every chunk whose square reaches into the sun's shadow box (look.js), widened by how far a tall building's shadow falls, so a shadow
  // never appears suddenly inside the box (it did when chunks cast only with their centre within 110 m of the car). Chunks are 160 m, the trees' 320 m.
@@ -224,7 +229,8 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  for(let i=0;i<confetti.length;i++){const c=confetti[i];c.visible=finished;if(finished){const phase=(time*.7+i*.037)%4;c.position.set(pos.x+Math.sin(i*5.3)*5+Math.sin(time+i),pos.y+9-phase*2,pos.z+Math.cos(i*2.3)*5);c.rotation.set(time+i,time*.8,i);}}
  renderer.render(scene,camera);
  }
- function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+ function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;if(shifted)camera.setViewOffset(w,h,-shiftX,shiftY,w,h);camera.updateProjectionMatrix();}
+ let shiftX=0,shiftY=0,wantShiftX=0,wantShiftY=0,shifted=false;function setViewShift(x=0,y=0){wantShiftX=x;wantShiftY=y;}
  // Warm-up (2 October 2026): every chunk's geometry goes to the GPU and every shader is compiled while the game loads, into a tiny target with the culling
  // off and every chunk casting, instead of the first time a chunk comes into view or into the shadow box while driving. Each of those was a stall of
  // tens of milliseconds on an iPad: the stutter and the pop-in after the graphics polish.
@@ -232,5 +238,5 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
   for(const c of chunks){c.mesh.visible=true;c.mesh.frustumCulled=false;c.mesh.castShadow=true;}
   renderer.compile(scene,camera);renderer.setRenderTarget(rt);renderer.render(scene,camera);renderer.setRenderTarget(null);rt.dispose();
   chunks.forEach((c,i)=>{[c.mesh.visible,c.mesh.frustumCulled,c.mesh.castShadow]=keep[i];});}
- resize();window.addEventListener('resize',resize);return {houseStats:houses.stats,height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setTrail:trail.setOn,setBoy:boy.setOn,setBubbles:bubbles.setOn,boy,honk,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();trail.clear();boy.clear();bubbles.clear();}};
+ resize();window.addEventListener('resize',resize);return {houseStats:houses.stats,height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setViewShift,cameraYaw:()=>orbit.yaw,setTrail:trail.setOn,setBoy:boy.setOn,setBubbles:bubbles.setOn,boy,honk,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();trail.clear();boy.clear();bubbles.clear();}};
 }

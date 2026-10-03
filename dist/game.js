@@ -45,25 +45,30 @@ function start(){if(state!=='intro')return;if(sound&&musicOn)music.play();if(fre
 function roundaboutDirection(e,h){const d=endDirection(e.segments.find(s=>!s.roundabout)),angle=e.turn??Math.atan2(h.x*d.z-h.z*d.x,T.MathUtils.clamp(h.x*d.x+h.z*d.z,-1,1)),deg=Math.abs(angle)*180/Math.PI;
  const label=e.label||(deg>150||e.uTurn?'Snu':deg<55?'Rett frem':angle>0?'Høyre':'Venstre');return {label,symbol:{Høyre:'↱','Rett frem':'↑',Venstre:'↰',Snu:'↶'}[label],angle};}
 function directionInfo(e,h=heading){if(e.roundaboutPlan)return roundaboutDirection(e,h);const dir=endDirection(e);const dot=T.MathUtils.clamp(h.x*dir.x+h.z*dir.z,-1,1);const cross=h.x*dir.z-h.z*dir.x;const angle=Math.atan2(cross,dot);if(e.label)return {label:e.label,symbol:e.label==='Høyre'?'↱':'↰',angle};if(Math.abs(angle)>2.5)return {label:'Snu',symbol:'↶',angle};if(angle>.42)return {label:'Høyre',symbol:'↱',angle};if(angle<-.42)return {label:'Venstre',symbol:'↰',angle};return {label:'Rett frem',symbol:'↑',angle};}
-function clearWorldChoices(){planKey='';aheadShown=false;const wrap=$('worldArrows');wrap.replaceChildren();wrap.hidden=true;$('turnHint').hidden=true;}
+function clearWorldChoices(){planKey='';aheadShown=false;worldLayout=null;const wrap=$('worldArrows');wrap.replaceChildren();wrap.hidden=true;$('turnHint').hidden=true;}
 function renderWorldChoices(list=choices,h=heading,pick=e=>choose(e.id,true),ahead=false){
  const wrap=$('worldArrows');wrap.replaceChildren();const groups=new Map();
  for(const e of list){const info=directionInfo(e,h),key=info.label==='Rett frem'?'straight':info.label==='Venstre'?'left':info.label==='Høyre'?'right':'reverse';if(!groups.has(key))groups.set(key,[]);groups.get(key).push({e,info});}
  // Arrows ahead sit higher while the car drives on.
+ const centre=ahead?52:66,ry=ahead?14:18;
  const positions=ahead?{straight:[50,38],left:[27,52],right:[73,52],reverse:[50,62]}:{straight:[50,48],left:[27,66],right:[73,66],reverse:[50,76]};
  // On each side the gentlest turn sits highest, as its road runs furthest ahead, and the sharpest lowest.
- for(const [key,items] of groups){if(key==='left'||key==='right')items.sort((a,b)=>Math.abs(a.info.angle)-Math.abs(b.info.angle));items.forEach(({e,info},i)=>{
+ const layout=[];for(const [key,items] of groups){if(key==='left'||key==='right')items.sort((a,b)=>Math.abs(a.info.angle)-Math.abs(b.info.angle));items.forEach(({e,info},i)=>{
   const b=document.createElement('button');b.type='button';b.className=`world-choice ${key}${e.roundaboutPlan?' roundabout-choice':''}${ahead?' ahead':''}`;
-  b.style.left=(positions[key][0]+(key==='straight'||key==='reverse'?(i-(items.length-1)/2)*19:0))+'%';
-  b.style.top=(positions[key][1]+(key==='left'||key==='right'?(i-(items.length-1)/2)*17:0))+'%';
+  const x=positions[key][0]+(key==='straight'||key==='reverse'?(i-(items.length-1)/2)*19:0),y=positions[key][1]+(key==='left'||key==='right'?(i-(items.length-1)/2)*17:0);
   b.setAttribute('aria-label',`${e.roundaboutPlan?e.exitNumber+'. avkjørsel, ':''}${info.label}: ${e.name}`);
   const g=document.createElement('span');g.className='choice-glyph';g.textContent=key==='straight'?'↑':key==='left'?'←':key==='right'?'→':'↶';
   const n=document.createElement('span');n.className='choice-name';n.textContent=e.name==='Lokalvei'?'Innkjøring':e.name;b.append(g,n);
   if(e.roundaboutPlan){const badge=document.createElement('span');badge.className='exit-number';badge.textContent=e.exitNumber;b.append(badge);}
-  b.onclick=()=>pick(e);wrap.append(b);
+  b.onclick=()=>pick(e);wrap.append(b);layout.push({b,g,r:Math.hypot((x-50)/23,(y-centre)/ry),a:Math.atan2((x-50)/23,(centre-y)/ry)});
  });}
- wrap.hidden=false;$('turnHint').textContent=list.some(e=>e.roundaboutPlan)?'Rundkjøring · velg avkjørsel':'Trykk på en pil for å velge vei';$('turnHint').hidden=false;
+ worldLayout={centre,ry,items:layout};layoutWorldChoices();wrap.hidden=false;$('turnHint').textContent=list.some(e=>e.roundaboutPlan)?'Rundkjøring · velg avkjørsel':'Trykk på en pil for å velge vei';$('turnHint').hidden=false;
 }
+// The arrows turn with the camera (3 October 2026): with the camera turned round the car (a swipe), each arrow moves round the middle by as much
+// and its glyph turns with it, so it points where its road is on the screen; with the camera behind the car they sit as before.
+let worldLayout=null,layoutYaw=0;
+function layoutWorldChoices(){if(!worldLayout)return;const yaw=world?.cameraYaw?.()||0;layoutYaw=yaw;const {centre,ry,items}=worldLayout;
+ for(const {b,g,r,a} of items){b.style.left=(50+r*Math.sin(a+yaw)*23)+'%';b.style.top=(centre-r*Math.cos(a+yaw)*ry)+'%';g.style.transform=Math.abs(yaw)>.02?`rotate(${yaw.toFixed(3)}rad)`:'';}}
 function ringNodes(n){const ring=new Set();while(n!==undefined&&!ring.has(n)){ring.add(n);n=(adjacency.get(n)||[]).find(e=>e.roundabout)?.to;}return ring;}
 // Blindvei: a road from which neither the kindergarten nor home can be reached without driving back through the junction or turning around.
 function computeOpenRoads(){
@@ -338,6 +343,10 @@ window.addEventListener('keydown',e=>{if($('menu').open)return;
 window.addEventListener('keyup',e=>keys.delete(e.code||({' ':'Space',a:'KeyA',d:'KeyD',s:'KeyS'}[e.key]||e.key)));
 window.addEventListener('blur',clearInputs);
 document.addEventListener('visibilitychange',()=>{lastTime=performance.now();});
+// On the start screen the card covers the left of the screen (on a phone, the bottom): the camera's picture is shifted so the car shows in the middle
+// of the free part (world.js setViewShift).
+function introShift(){if(state!=='intro'||ui.welcome.hidden)return [0,0];const r=ui.welcome.getBoundingClientRect?.(),w=window.innerWidth,h=window.innerHeight;if(!r||!w||!h)return [0,0];
+ if(r.right<w*.7)return [r.right/2,0];const top=80;return r.top-top>200?[0,h/2-(top+r.top)/2]:[0,0];}
 function animate(now){requestAnimationFrame(animate);const dt=Math.min(.045,Math.max(0,(now-lastTime)/1000));lastTime=now;time+=dt;if(!world)return;
  if(state==='free'){if(!homeAt)travelled+=free.step(dt,freeInput());const c=free.car;speed=c.speed;position.set(c.x,free.altitude,c.z);const hx=Math.sin(c.yaw),hz=-Math.cos(c.yaw),slope=(carHeight(c.x+hx,c.z+hz)-carHeight(c.x-hx,c.z-hz))/2;heading.set(hx,slope,hz).normalize();$('freeDrift').classList.toggle('held',c.drifting);if(!homeAt)freeVisits();}
  if(state==='driving'&&active){const remaining=active.len-distance;
@@ -350,6 +359,7 @@ function animate(now){requestAnimationFrame(animate);const dt=Math.min(.045,Math
  // Stopped by Lianvannet, the camera turns from the road to the water and the big duck (the lake lies behind the car as it arrives).
  if(state==='decision'&&current===data.lakeside&&world.duck)cameraHeading.set(world.duck.centre[0]-position.x,0,world.duck.centre[1]-position.z).normalize();
  if(homeAt&&time>=homeAt){homeAt=0;if(state==='decision'&&current===data.start||state==='free')reset();}
+ if(worldLayout&&Math.abs((world.cameraYaw?.()||0)-layoutYaw)>.02)layoutWorldChoices();world.setViewShift?.(...introShift());
  world.update(dt,position,cameraHeading,state==='driving'&&active&&active.line.reversing(distance)?-speed:speed,state==='intro'&&arrivals>=1?'introCar':(state==='intro'||travelled===0&&state==='decision')?'intro':camMode,state==='finished',time,heading);
  mapClock+=dt;if(mapClock>.16){mapClock=0;if(state!=='intro'&&state!=='finished')updateHud();watchDuck();}
 }
