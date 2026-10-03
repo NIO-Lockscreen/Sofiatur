@@ -1,8 +1,12 @@
 // Soothing background music, generated with Web Audio: soft pad chords, a low bass and a
-// music-box melody in F major pentatonic. No audio files; silent where Web Audio is missing.
-export function createMusic(){
+// music-box melody in F major pentatonic. No audio files for the music; silent where Web Audio is missing.
+// The horn's sound effects (3 October 2026): real recordings, one per ride, instead of the voice saying "Tut tut!" (CC0, from Freesound; sources
+// and what was done to them in docs/sounds.md).
+export const HORNS={car:'sounds/horn-car.mp3',cat:'sounds/horn-cat.mp3',dog:'sounds/horn-dog.mp3',duck:'sounds/horn-duck.mp3',rocket:'sounds/horn-rocket.mp3',
+ unicorn:'sounds/horn-unicorn.mp3',firetruck:'sounds/horn-firetruck.mp3',balloon:'sounds/horn-balloon.mp3',trex:'sounds/horn-trex.mp3'};
+export function createMusic({fetch=globalThis.fetch,horns:files=HORNS}={}){
  const Context=globalThis.AudioContext||globalThis.webkitAudioContext;
- if(!Context)return {play(){},stop(){},duck(){}};
+ if(!Context)return {play(){},stop(){},duck(){},preloadHorns(){},horn(){return false;}};
  const beat=60/66,level=.75;
  // Fmaj7 Dm7 Bbmaj7 C | Fmaj7 Am7 Bbmaj7 Csus4, one chord per bar.
  const chords=[[53,57,60,64],[50,53,57,60],[46,50,53,57],[48,52,55,60],[53,57,60,64],[45,48,52,55],[46,50,53,57],[48,53,55,60]];
@@ -44,7 +48,15 @@ export function createMusic(){
  }
  function tick(){while(nextBar<ctx.currentTime+1.2){scheduleBar(nextBar);nextBar+=beat*4;}}
  function fade(to,seconds){const now=ctx.currentTime;master.gain.cancelScheduledValues(now);master.gain.setValueAtTime(master.gain.value,now);master.gain.linearRampToValueAtTime(to,now+seconds);}
+ // The horns: loaded (fetched and decoded) when first wanted, from a tap (iOS only starts audio after a gesture); played straight to the speakers, past
+ // the music's filter, one at a time. horn(name) is false while that clip is not loaded (yet), or failed to load: the game then says the word.
+ const horns=new Map();let hornOut=null,hornSource=null;
+ function hornContext(){if(!ctx)setup();if(ctx.state!=='running')ctx.resume();if(!hornOut){hornOut=ctx.createGain();hornOut.gain.value=.9;hornOut.connect(ctx.destination);}return ctx;}
+ function loadHorn(name){if(horns.has(name)||!files[name])return;horns.set(name,null);
+  fetch(files[name]).then(r=>{if(!r.ok)throw new Error(r.status);return r.arrayBuffer();}).then(data=>new Promise((ok,no)=>ctx.decodeAudioData(data,ok,no))).then(b=>horns.set(name,b),()=>horns.set(name,false));}
  return {
+  preloadHorns(){hornContext();for(const name in files)loadHorn(name);},
+  horn(name){hornContext();const b=horns.get(name);if(!b){loadHorn(name);return false;}try{hornSource?.stop();}catch{}const s=ctx.createBufferSource();s.buffer=b;s.connect(hornOut);s.start();hornSource=s;return true;},
   // Call from a tap or click: browsers only start audio after a user gesture.
   play(){wanted=true;if(!ctx)setup();ctx.resume();fade(level,2.5);if(!timer){nextBar=Math.max(nextBar,ctx.currentTime+.1);tick();timer=setInterval(tick,300);}},
   stop(){if(!ctx||!wanted)return;wanted=false;fade(0,1);clearInterval(timer);timer=null;setTimeout(()=>{if(!wanted)ctx.suspend();},1200);},
