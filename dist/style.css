@@ -28,7 +28,7 @@
 .swatch.rainbow{background:linear-gradient(135deg,#ff4b4b 0 18%,#ffa53a 18% 34%,#ffd94a 34% 50%,#5ccf66 50% 66%,#41a7f4 66% 82%,#a65fe6 82%)}
 .swatch.kiwi{background:#5fae36;color:#1f2424;font-weight:900;font-size:14px;line-height:24px;text-align:center}
 .model-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:11px;font-size:13px;font-weight:750}.model-choice{border:2px solid #d5e0db;background:#fff;border-radius:999px;padding:5px 10px;font-size:13px;font-weight:750}.model-choice.on{border-color:#174e48;background:#e2efe9}
-.horn{position:absolute;right:30px;bottom:46px;z-index:4;width:72px;height:72px;border-radius:50%;background:#ffe398;border:4px solid #fff8df;font-size:36px;box-shadow:0 5px 0 #c99a2a,0 8px 24px #193e3530}.horn:active{transform:translateY(4px);box-shadow:0 1px 0 #c99a2a}body.choosing .horn{visibility:hidden}body:has(#freeControls:not([hidden])) .horn{display:none!important}@media(max-width:700px){.horn{right:14px;bottom:30px;width:60px;height:60px;font-size:30px}}
+.horn{position:absolute;right:30px;bottom:46px;z-index:4;width:72px;height:72px;border-radius:50%;background:#ffe398;border:4px solid #fff8df;font-size:36px;box-shadow:0 5px 0 #c99a2a,0 8px 24px #193e3530}.horn:active{transform:translateY(4px);box-shadow:0 1px 0 #c99a2a}body.choosing .horn{visibility:hidden}body:has(#freeControls:not([hidden])) .horn{display:none!important}@media(max-width:700px){.horn{right:14px;bottom:30px;width:60px;height:60px}}
 /* With many rewards the start card grows taller than an iPad screen in landscape (3 October 2026): once rewards show, drop the intro text and the
    hints and tighten the rows; if it still does not fit (Safari's toolbars, a phone on its side) the card scrolls and the start button stays at its foot. */
 .welcome{max-height:calc(100dvh - 130px);overflow-y:auto;overscroll-behavior:contain}.welcome #start{position:sticky;bottom:0;z-index:1;box-shadow:0 5px 0 #0b3833,0 -10px 14px 4px #fffcf1}
@@ -39,3 +39,5 @@
 /* No zooming (3 October 2026): on the iPad a quick double tap on the start card or the speed box, or a pinch, zoomed the page in so far that the
    menus were off the screen. Taps stay taps (no double-tap zoom); the start card and the menu still scroll up and down; the map keeps its own drags. */
 html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}.welcome,dialog{touch-action:pan-y}
+/* The horn button (3 October 2026): a drawn icon (SVG, not the 📯 emoji, which iPadOS draws off the middle), centred in the circle with a grid. */
+.horn{display:grid;place-items:center;padding:0;line-height:0}.horn svg{width:54%;height:54%;display:block;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}.horn svg .fill{fill:currentColor}

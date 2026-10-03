@@ -37,7 +37,10 @@ console.log('The arrows turn with the camera: OK');
  element('settings').onclick();tap({clientX:500,clientY:760},{clientX:500,clientY:760});assert.equal(menu.open,false,'below it too');
  // The three round buttons top right draw their icons (SVG), no text glyphs (iPadOS drew the gear as an emoji off the middle).
  const nav=html.match(/<nav>(.*?)<\/nav>/)[1];assert.ok(!/[♫♪⚙]/.test(nav)&&(nav.match(/<svg /g)||[]).length===4,'drawn icons in the round buttons');
- element('sound').onclick();assert.ok(!element('sound').textContent,'the sound button keeps its icon');element('sound').onclick();}
+ element('sound').onclick();assert.ok(!element('sound').textContent,'the sound button keeps its icon');element('sound').onclick();
+ // The horn button on the drive screen too (the 📯 emoji sat off the middle on the iPad): a drawn icon, centred with a grid.
+ const css=fs.readFileSync('dist/style.css','utf8'),horn=html.match(/<button id="horn"[^>]*>(.*?)<\/button>/)[1];
+ assert.ok(/^<svg /.test(horn)&&!/[\u{1F300}-\u{1FAFF}]/u.test(horn),'the horn button draws its icon');assert.ok(/\.horn\{display:grid;place-items:center;padding:0/.test(css),'centred with a grid');}
 console.log('The settings menu opens only from its button and closes with a tap outside; drawn, centred icons: OK');
 // No zooming on the iPad: the viewport cannot be zoomed by focusing a field, taps never double-tap zoom (the card and the menu still scroll), Safari's
 // pinch is cancelled, and a page zoomed in all the same gets its viewport set again.
