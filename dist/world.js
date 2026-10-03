@@ -20,6 +20,7 @@ import {addStreetDetails,indexStreetDetails} from './street-details.js';
 import {createLook,createGround,createRoadPainter,ROAD,WATER,RENDER} from './look.js';
 import {addFootbridges} from './footbridges.js';
 import {addLudvig} from './ludvig.js';
+import {createSeeThrough} from './see-through.js';
 import {addRoadside} from './roadside.js';
 import {createSchoolyard} from './schoolyard.js';
 import {createCameraControls} from './camera-controls.js';
@@ -47,13 +48,19 @@ export function createWorld(canvas, data) {
  const buckets=new Map();const colorCache=new Map();
  function col(c){if(!colorCache.has(c))colorCache.set(c,new T.Color(c));return colorCache.get(c);}
  function bucket(x,z){const i=Math.floor(x/160),j=Math.floor(z/160),k=i*4096+j;let b=buckets.get(k);if(!b){b={x:i*160+80,z:j*160+80,p:new Float32Array(2304),c:new Float32Array(2304),n:0};buckets.set(k,b);}return b;}
+ // See-through buildings (see-through.js): while a building is drawn (drawing: its id), the triangles that stand up off the ground go to the chunk's
+ // building twin, with the id per triangle (d), so the building can fade out when it is in the camera's way.
+ const seeThrough=supported?createSeeThrough({T,base:staticMaterial}):null;let drawing=0;
+ function twin(b){return b.twin||(b.twin={x:b.x,z:b.z,p:new Float32Array(2304),c:new Float32Array(2304),d:new Uint16Array(256),n:0,ids:new Set()});}
+ function into(b,a,c,d){if(!drawing||!seeThrough.claim(drawing,a,c,d,height((a[0]+c[0]+d[0])/3,(a[2]+c[2]+d[2])/3)))return b;const t=twin(b);t.ids.add(drawing);return t;}
+ function grow(b){const p=new Float32Array(b.p.length*2),q=new Float32Array(b.p.length*2);p.set(b.p);q.set(b.c);b.p=p;b.c=q;if(b.d){const d=new Uint16Array(b.d.length*2);d.set(b.d);b.d=d;}}
  // Chunks collect straight into growing Float32Arrays: about half the memory of plain arrays and no conversion afterwards.
- function tri(b,a,c,d,colour){let n=b.n;if(n+9>b.p.length){const p=new Float32Array(b.p.length*2),q=new Float32Array(b.p.length*2);p.set(b.p);q.set(b.c);b.p=p;b.c=q;}const p=b.p,cc=b.c,q=col(colour);
+ function tri(b,a,c,d,colour){b=into(b,a,c,d);let n=b.n;if(n+9>b.p.length)grow(b);if(b.d)b.d[n/9]=drawing;const p=b.p,cc=b.c,q=col(colour);
   p[n]=a[0];p[n+1]=a[1];p[n+2]=a[2];p[n+3]=c[0];p[n+4]=c[1];p[n+5]=c[2];p[n+6]=d[0];p[n+7]=d[1];p[n+8]=d[2];
   for(let i=n;i<n+9;i+=3){cc[i]=q.r;cc[i+1]=q.g;cc[i+2]=q.b;}b.n=n+9;}
  function quad(b,a,c,d,e,colour){tri(b,a,c,d,colour);tri(b,a,d,e,colour);}
  // A triangle with a colour per corner: k holds linear r,g,b triples, i/j/l pick the corners' colours (the ground and the road surface are painted this way).
- function triV(b,a,c,d,k,i,j,l){let n=b.n;if(n+9>b.p.length){const p=new Float32Array(b.p.length*2),q=new Float32Array(b.p.length*2);p.set(b.p);q.set(b.c);b.p=p;b.c=q;}const p=b.p,cc=b.c;
+ function triV(b,a,c,d,k,i,j,l){b=into(b,a,c,d);let n=b.n;if(n+9>b.p.length)grow(b);if(b.d)b.d[n/9]=drawing;const p=b.p,cc=b.c;
   p[n]=a[0];p[n+1]=a[1];p[n+2]=a[2];p[n+3]=c[0];p[n+4]=c[1];p[n+5]=c[2];p[n+6]=d[0];p[n+7]=d[1];p[n+8]=d[2];
   cc[n]=k[3*i];cc[n+1]=k[3*i+1];cc[n+2]=k[3*i+2];cc[n+3]=k[3*j];cc[n+4]=k[3*j+1];cc[n+5]=k[3*j+2];cc[n+6]=k[3*l];cc[n+7]=k[3*l+1];cc[n+8]=k[3*l+2];b.n=n+9;}
  function box(b,cx,cy,cz,wx,wy,wz,colour,angle=0){let pts=[];for(let y of [-.5,.5])for(let z of [-.5,.5])for(let x of [-.5,.5])pts.push([cx+x*wx*Math.cos(angle)+z*wz*Math.sin(angle),cy+y*wy,cz-x*wx*Math.sin(angle)+z*wz*Math.cos(angle)]);for(let f of [[0,1,3,2],[4,6,7,5],[0,4,5,1],[2,3,7,6],[0,2,6,4],[1,5,7,3]])quad(b,...f.map(i=>pts[i]),colour);}
@@ -109,6 +116,7 @@ export function createWorld(canvas, data) {
 const wallBase=new Map(); // Wall base and height per footprint, for details added after the loop.
  for(const building of data.buildings){let p=building.p.slice(0,-1);if(p.length<3)continue;let cx=p.reduce((a,b)=>a+b[0],0)/p.length,cz=p.reduce((a,b)=>a+b[1],0)/p.length;
  let area=0;for(let i=0;i<p.length;i++)area+=p[i][0]*p[(i+1)%p.length][1]-p[(i+1)%p.length][0]*p[i][1];area=Math.abs(area/2);if(area<4)continue;
+ drawing=seeThrough?seeThrough.add(p):0; // what this building draws can fade out (see-through.js)
  const landmark=addMunkvoll({T,scene,building,height,bucket,tri,quad,box})||addLandmark({T,scene,building,height,bucket,tri,quad,box})||addDalgardSchool({T,scene,data,building,height,bucket,tri,quad,box,groundPoly})||addStavset({T,scene,building,height,bucket,tri,quad,box});if(landmark){houseBounds.push(landmark.bounds);continue;}
  if(String(building.id)==='526443228'){const result=addKiwi({T,scene,building,height,bucket,tri,quad,box,groundPoly,ribbon});houseBounds.push(result.bounds);continue;}
  // Roofs without walls (building=roof: fuel canopies, bicycle and bus shelters) stand on posts at their corners.
@@ -119,6 +127,7 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  // Ordinary buildings (houses.js): walls, plinth, cladding, windows, doors, roof with eaves, chimney, balcony or veranda.
  houses.add({building,p,cx,cz,area,wallBase,houseBounds});
  }
+ drawing=0;
  function insideFootprint(poly,x,z){let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const [ax,az]=poly[j],[bx,bz]=poly[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)inside=!inside;}return inside;}
  function distanceSegment(x,z,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz||1)));return Math.hypot(x-a[0]-t*dx,z-a[1]-t*dz);}
  // A spatial index keeps decorative trees away from real roads and buildings.
@@ -143,13 +152,17 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  // The school grounds (schoolyard.js, data.schoolyard): asphalt yard, playgrounds, court, statue, road signs; roadside.js leaves out what it draws instead (skip).
  const schoolyard=createSchoolyard({T,scene,data,ground:roadSurface.groundTop,bucket,tri,quad,box,ribbon,segments:roadSegments,onSurface:(x,z)=>roadSurface.heightAt(x,z)!==null});
  const roadside=addRoadside({T,scene,data,height,ground:roadSurface.groundTop,roadTop,onSurface:(x,z)=>roadSurface.heightAt(x,z)!==null,bucket,tri,quad,box,segments:roadSegments,index,clear,lakeAt,skip:schoolyard.owns});
- const chunks=[];
+ const chunks=[],buildingMeshes=[];
  // The chunks hold nearly all the world's geometry (2 October 2026: 225 MB as 32-bit floats). Colours go to the GPU as 8-bit and the flat face normals as
  // 8-bit too (normalised integers), which halves the memory and the upload: about 105 MB. Positions stay 32-bit floats.
  function packed(g){const n=g.attributes.normal.array,c=g.attributes.color.array,N=new Int8Array(n.length),C=new Uint8Array(c.length);
   for(let i=0;i<n.length;i++)N[i]=Math.round(n[i]*127);for(let i=0;i<c.length;i++)C[i]=Math.round(Math.min(1,Math.max(0,c[i]))*255);
   g.setAttribute('normal',new T.BufferAttribute(N,3,true));g.setAttribute('color',new T.BufferAttribute(C,3,true));return g;}
- for(const b of buckets.values()){const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(b.p.slice(0,b.n),3));g.setAttribute('color',new T.BufferAttribute(b.c.slice(0,b.n),3));b.p=b.c=null;g.computeVertexNormals();packed(g);g.computeBoundingSphere();const m=new T.Mesh(g,staticMaterial);m.receiveShadow=true;m.matrixAutoUpdate=false;m.updateMatrix();scene.add(m);chunks.push({mesh:m,x:b.x,z:b.z});}
+ for(const b of buckets.values()){const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(b.p.slice(0,b.n),3));g.setAttribute('color',new T.BufferAttribute(b.c.slice(0,b.n),3));b.p=b.c=null;g.computeVertexNormals();packed(g);g.computeBoundingSphere();const m=new T.Mesh(g,staticMaterial);m.receiveShadow=true;m.matrixAutoUpdate=false;m.updateMatrix();scene.add(m);chunks.push({mesh:m,x:b.x,z:b.z});
+  const t=b.twin;if(!t)continue;const tg=new T.BufferGeometry(),ids=new Uint16Array(t.n/3);for(let i=0;i<ids.length;i++)ids[i]=t.d[Math.floor(i/3)];
+  tg.setAttribute('position',new T.BufferAttribute(t.p.slice(0,t.n),3));tg.setAttribute('color',new T.BufferAttribute(t.c.slice(0,t.n),3));tg.setAttribute('buildingId',new T.BufferAttribute(ids,1));t.p=t.c=t.d=null;tg.computeVertexNormals();packed(tg);tg.computeBoundingSphere();
+  const tm=new T.Mesh(tg,staticMaterial);tm.name='Bygninger';tm.receiveShadow=true;tm.matrixAutoUpdate=false;tm.updateMatrix();scene.add(tm);chunks.push({mesh:tm,x:t.x,z:t.z});buildingMeshes.push(tm);for(const id of t.ids)seeThrough.attach(id,tm);}
+ seeThrough?.index();
 
  chunks.push(...roadside.chunks);
  function label(text,x,z,colour='#164e48',scale=10){const c=document.createElement('canvas');c.width=512;c.height=128;const ctx=c.getContext('2d');ctx.fillStyle=colour;ctx.beginPath();ctx.roundRect(4,6,504,108,24);ctx.fill();ctx.strokeStyle='#fff5d9';ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#fff9e8';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 32px sans-serif';ctx.fillText(text,256,61,465);const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;const mat=new T.SpriteMaterial({map:tex,depthTest:true});const s=new T.Sprite(mat);s.position.set(x,height(x,z)+7,z);s.scale.set(scale,scale/4,1);s.matrixAutoUpdate=false;s.updateMatrix();scene.add(s);return s;}
@@ -219,6 +232,9 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  // the card, also after a swipe has turned the camera round it.
  const ease=1-Math.exp(-dt*4);shiftX+=(wantShiftX-shiftX)*ease;shiftY+=(wantShiftY-shiftY)*ease;
  if(Math.abs(shiftX)+Math.abs(shiftY)>.5){const w=canvas.clientWidth||1,h=canvas.clientHeight||1;camera.setViewOffset(w,h,-shiftX,shiftY,w,h);shifted=true;}else if(shifted){camera.clearViewOffset();shifted=false;}
+ // See-through buildings: those in the line from the camera to the car fade out; only their chunks draw with the see-through material meanwhile.
+ if(seeThrough){const now=seeThrough.update(dt,camera.position,seeAt.set(pos.x,pos.y+1.2,pos.z));
+  for(const m of cutMeshes)if(!now.has(m)){m.material=staticMaterial;cutMeshes.delete(m);}for(const m of now)if(!cutMeshes.has(m)){m.material=seeThrough.material;cutMeshes.add(m);}}
  mood.update(time,camera.position,pos,orbitDirection.x,orbitDirection.z); // the sun's shadow box follows the car, the sky follows the camera
  // Shadow casters: every chunk whose square reaches into the sun's shadow box (look.js), widened by how far a tall building's shadow falls, so a shadow
  // never appears suddenly inside the box (it did when chunks cast only with their centre within 110 m of the car). Chunks are 160 m, the trees' 320 m.
@@ -230,13 +246,15 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  renderer.render(scene,camera);
  }
  function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;if(shifted)camera.setViewOffset(w,h,-shiftX,shiftY,w,h);camera.updateProjectionMatrix();}
- let shiftX=0,shiftY=0,wantShiftX=0,wantShiftY=0,shifted=false;function setViewShift(x=0,y=0){wantShiftX=x;wantShiftY=y;}
+ const seeAt=new T.Vector3(),cutMeshes=new Set();let shiftX=0,shiftY=0,wantShiftX=0,wantShiftY=0,shifted=false;function setViewShift(x=0,y=0){wantShiftX=x;wantShiftY=y;}
  // Warm-up (2 October 2026): every chunk's geometry goes to the GPU and every shader is compiled while the game loads, into a tiny target with the culling
  // off and every chunk casting, instead of the first time a chunk comes into view or into the shadow box while driving. Each of those was a stall of
  // tens of milliseconds on an iPad: the stutter and the pop-in after the graphics polish.
  if(supported){const rt=new T.WebGLRenderTarget(8,8),keep=chunks.map(c=>[c.mesh.visible,c.mesh.frustumCulled,c.mesh.castShadow]);
   for(const c of chunks){c.mesh.visible=true;c.mesh.frustumCulled=false;c.mesh.castShadow=true;}
-  renderer.compile(scene,camera);renderer.setRenderTarget(rt);renderer.render(scene,camera);renderer.setRenderTarget(null);rt.dispose();
+  renderer.compile(scene,camera);renderer.setRenderTarget(rt);renderer.render(scene,camera);
+  for(const m of buildingMeshes)m.material=seeThrough.material;renderer.compile(scene,camera);renderer.render(scene,camera);for(const m of buildingMeshes)m.material=staticMaterial; // the see-through shader, compiled now
+  renderer.setRenderTarget(null);rt.dispose();
   chunks.forEach((c,i)=>{[c.mesh.visible,c.mesh.frustumCulled,c.mesh.castShadow]=keep[i];});}
  resize();window.addEventListener('resize',resize);return {houseStats:houses.stats,height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setViewShift,cameraYaw:()=>orbit.yaw,setTrail:trail.setOn,setBoy:boy.setOn,setBubbles:bubbles.setOn,boy,honk,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();trail.clear();boy.clear();bubbles.clear();}};
 }
