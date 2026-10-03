@@ -228,6 +228,12 @@ function updateHud(){const rem=remaining();$('remaining').textContent=freeMode?'
 // The game never pauses. The settings menu is a modal box over the running game; changes to the road choices apply when it closes.
 function openMenu(){$('menu').showModal();}
 $('closeMenu').onclick=()=>$('menu').close();
+// No zooming on the iPad (3 October 2026): Safari's pinch is cancelled (its gesture events), and if the page is zoomed in all the same (double tap, an
+// accessibility zoom), the viewport is set again, which brings it back to its full size with the menus on the screen.
+for(const t of ['gesturestart','gesturechange'])document.addEventListener(t,e=>e.preventDefault(),{passive:false});
+{const vv=window.visualViewport,meta=document.querySelector?.('meta[name="viewport"]');let flip=false;
+ if(vv&&meta)vv.addEventListener('resize',()=>{if(vv.scale>1.01){flip=!flip;meta.setAttribute('content',`width=device-width, initial-scale=1, maximum-scale=${flip?'1.0':'1'}, viewport-fit=cover`);}});}
+
 // A tap outside the menu (on its backdrop) closes it (3 October 2026): the press and the release both outside the dialog's box, so dragging out of a
 // list in it does not.
 {const menu=$('menu'),outside=e=>{const r=menu.getBoundingClientRect?.();return e.target===menu&&!!r&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom);};let downOutside=false;

@@ -36,3 +36,6 @@
 @media(max-width:700px){.welcome{max-height:calc(100dvh - 110px)}}
 /* The three round buttons top right (3 October 2026): drawn icons (SVG, not text glyphs, which iPadOS draws as emoji off the middle), centred in the circle. */
 .round{display:grid;place-items:center;padding:0;line-height:0}.round svg .fill{fill:currentColor}.round .gear{stroke-width:2.1}#sound .mute{display:none}#sound.active .mute{display:inline}
+/* No zooming (3 October 2026): on the iPad a quick double tap on the start card or the speed box, or a pinch, zoomed the page in so far that the
+   menus were off the screen. Taps stay taps (no double-tap zoom); the start card and the menu still scroll up and down; the map keeps its own drags. */
+html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}.welcome,dialog{touch-action:pan-y}

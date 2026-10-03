@@ -39,6 +39,13 @@ console.log('The arrows turn with the camera: OK');
  const nav=html.match(/<nav>(.*?)<\/nav>/)[1];assert.ok(!/[♫♪⚙]/.test(nav)&&(nav.match(/<svg /g)||[]).length===4,'drawn icons in the round buttons');
  element('sound').onclick();assert.ok(!element('sound').textContent,'the sound button keeps its icon');element('sound').onclick();}
 console.log('The settings menu opens only from its button and closes with a tap outside; drawn, centred icons: OK');
+// No zooming on the iPad: the viewport cannot be zoomed by focusing a field, taps never double-tap zoom (the card and the menu still scroll), Safari's
+// pinch is cancelled, and a page zoomed in all the same gets its viewport set again.
+{const html=fs.readFileSync('dist/index.html','utf8'),css=fs.readFileSync('dist/style.css','utf8'),src=fs.readFileSync('dist/game.js','utf8');
+ assert.ok(html.includes('content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"'),'the viewport');
+ assert.ok(css.includes('html,body{touch-action:manipulation;')&&css.includes('.welcome,dialog{touch-action:pan-y}')&&/#world\{[^}]*touch-action:none/.test(css),'no double-tap zoom; the card and the menu scroll; the map keeps its drags');
+ assert.ok(src.includes("for(const t of ['gesturestart','gesturechange'])document.addEventListener(t,e=>e.preventDefault(),{passive:false});")&&src.includes('if(vv.scale>1.01)'),'pinch cancelled, zoom put back');}
+console.log('No zooming on the iPad (viewport, double tap, pinch, zoom put back): OK');
 let choices=0,peak=0;while(read().state!=='finished'&&choices<180){let s=read();if(s.state==='decision'){const e=s.choices.find(c=>c.recommended);assert.ok(e,'Every junction has route home');act('choose_road',{edgeId:e.id});choices++;if(choices===2){listeners.get('blur')();const old=read().travelledMetres;for(let i=0;i<20;i++)step();assert.ok(read().travelledMetres>old,'Losing focus does not stop the game');console.log('The game keeps running without focus: OK');}}
  for(let i=0;i<600&&read().state==='driving';i++){step();peak=Math.max(peak,read().speedKmh);assert.ok(read().speedKmh<=200);}}
 assert.equal(read().state,'finished');assert.ok(read().travelledMetres>2900&&read().travelledMetres<3400);assert.equal(element('finish').hidden,false);console.log('Full route arrival: OK',read(),{choices});
