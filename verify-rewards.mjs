@@ -235,6 +235,24 @@ console.log('Unicorn, fire engine, hot-air balloon and T. rex: sizes, logos, pai
  const chest=new T.Vector3(0,.7,0).applyQuaternion(boy.group.quaternion).add(boy.group.position);assert.ok(chest.x-car.position.x>.5,'beside its face on its right, where the camera behind sees him ('+(chest.x-car.position.x).toFixed(2)+' m)');
  const box=new T.Box3().setFromObject(boy.group);assert.ok(box.min.y>pos.y+1.2,'his feet well off the ground ('+(box.min.y-pos.y).toFixed(2)+' m)');
  assert.ok(Math.max(...legs)-Math.min(...legs)>.5,'his legs still running in the air');assert.ok(boy.track.length>10,'his track kept');}
+// The ragdoll: he hangs from the scruff like a weight on a string. He trails when the T. rex sets off, swings on when it stops, swings out in a
+// bend and settles; the same at 30 and 60 frames a second; his arms, legs and head flop after the swing; and it is cheap.
+{const swing=fps=>{const scene=new T.Scene(),boy=createBoy({T,scene});boy.setOn(true);const dt=1/fps,q=new T.Quaternion(),a=new T.Vector3(0,103,0),pos=new T.Vector3(0,100.08,0),facing=new T.Vector3(0,0,-1);
+  const com=()=>new T.Vector3(0,.48,0).applyQuaternion(boy.group.quaternion).add(boy.group.position).sub(a);let t=0,v=0,back=0,ahead=0,out=0;const arm=[];
+  const step=()=>{t+=dt;a.z-=v*dt;pos.z-=v*dt;boy.update(dt,pos,facing,v,t,{held:true});boy.hold(a,q,dt,t);arm.push(boy.model.arms[0].rotation.z);};
+  for(;t<1.5;){v=Math.min(12,v+8*dt);step();back=Math.max(back,com().z);}for(;t<4;)step();
+  for(;t<6;){v=Math.max(0,v-12*dt);step();ahead=Math.max(ahead,-com().z);}const flop=Math.max(...arm)-Math.min(...arm);for(;t<12;)step();const settled=com().setY(0).length();
+  let turn=0;for(let i=0;i<fps*4;i++){t+=dt;turn+=8/15*dt;a.set(15*Math.sin(turn),103,15-15*Math.cos(turn));q.setFromAxisAngle(new T.Vector3(0,1,0),-turn);boy.hold(a,q,dt,t);
+   out=Math.max(out,-com().dot(new T.Vector3(0,0,15).sub(a).setY(0).normalize()));}
+  return {back,ahead,settled,out,flop,head:Math.abs(boy.model.head.rotation.x)+Math.abs(boy.model.head.rotation.z)};};
+ const r=swing(60),slow=swing(30);
+ assert.ok(r.back>.15,'He trails when the T. rex sets off ('+r.back.toFixed(2)+' m)');assert.ok(r.ahead>.25,'and swings on when it stops ('+r.ahead.toFixed(2)+' m)');
+ assert.ok(r.settled<.02,'then settles under its mouth');assert.ok(r.out>.12,'He swings out in a bend ('+r.out.toFixed(2)+' m)');
+ for(const k of ['back','ahead','out'])assert.ok(Math.abs(r[k]-slow[k])<.04,k+': the same at 30 frames a second ('+r[k].toFixed(2)+' / '+slow[k].toFixed(2)+')');
+ assert.ok(r.flop>.15,'His arms flop with the swing ('+r.flop.toFixed(2)+' rad)');assert.ok(r.head>.01,'and his head lolls');
+ const scene=new T.Scene(),boy=createBoy({T,scene}),q=new T.Quaternion(),a=new T.Vector3(0,103,0);boy.setOn(true);const t0=performance.now();for(let i=0;i<20000;i++){a.z-=.2;boy.hold(a,q,1/60,i/60);}
+ const us=(performance.now()-t0)/20000*1000;assert.ok(us<50,'Cheap: '+us.toFixed(1)+' µs a frame');}
+console.log('Ludvig\'s ragdoll: trails, swings on, swings out in bends, settles, limbs flop, cheap: OK');
 {store.set('sofiatur.fremgang',JSON.stringify({arrivals:13,model:'trex',ludvig:'on',behind:'ludvig'}));const game=await launch(()=>storage);game.test.start();assert.match(game.element('toast').textContent,/T-rexen har tatt Ludvig i munnen/);
  store.set('sofiatur.fremgang',JSON.stringify({arrivals:13,model:'trex',ludvig:'on',behind:'trail'}));const other=await launch(()=>storage);other.test.start();assert.doesNotMatch(other.element('toast').textContent||'',/T-rexen/,'only with Ludvig on');}
 console.log('Easter egg: the T. rex carries Ludvig in its mouth, his legs still running: OK');

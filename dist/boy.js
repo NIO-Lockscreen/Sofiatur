@@ -21,25 +21,36 @@ export function createBoyModel(T){
   part(limb,skin,[0,-.2,0],[.05,.4,.05],hip);part(box,shoe,[0,-.42,-.03],[.09,.07,.17],hip);return hip;});
  const arms=[-1,1].map(s=>{const sh=new T.Group();sh.position.set(s*.2,.88,0);body.add(sh);
   part(limb,shirt,[0,-.06,0],[.045,.12,.045],sh);part(limb,skin,[0,-.2,0],[.038,.18,.038],sh);part(sphere,skin,[0,-.31,0],[.04,.04,.04],sh);return sh;});
- let phase=0;
+ let phase=0,dangling=false;
  // speed in m/s; wave 0..1 lifts the right arm and waves it (standing by the parked car).
  function update(dt,speed,time,wave=0){
-  const run=Math.min(1,speed/2.5);phase+=dt*Math.min(16,4+speed*.9);
+  const run=Math.min(1,speed/2.5);phase+=dt*Math.min(16,4+speed*.9);dangling=false;
   const s=Math.sin(phase)*.9*run;legs[0].rotation.x=s;legs[1].rotation.x=-s;arms[0].rotation.x=-s*.9;arms[1].rotation.x=s*.9;
-  arms[0].rotation.z=-.08;arms[1].rotation.z=.08;
+  arms[0].rotation.z=-.08;arms[1].rotation.z=.08;legs[0].rotation.z=legs[1].rotation.z=head.rotation.x=head.rotation.z=0;
   body.position.y=Math.abs(Math.cos(phase))*.06*run;body.rotation.x=-.18*run;torso.scale.y=.34+Math.sin(time*2.2)*.006*(1-run);
   head.rotation.y=Math.sin(time*.9)*.25*(1-run);
   if(wave>0){arms[1].rotation.x=-.2*wave;arms[1].rotation.z=2.6*wave+Math.sin(time*9)*.35*wave;}
  }
+ // A simple ragdoll, for hanging in the T. rex's mouth (3 October 2026): each leg, arm and the head is a damped spring that tries to hang straight
+ // down (dx, dz: the tilt of "down" in the body's frame), so they lag and flop when he swings. The legs still kick, the arms flail a little.
+ const joints=[...legs,...arms,head].map(o=>({o,x:0,z:0,vx:0,vz:0}));
+ function dangle(dt,time,dx,dz,kick=1){
+  if(!dangling){dangling=true;for(const j of joints){j.x=j.o.rotation.x;j.z=j.o.rotation.z;j.vx=j.vz=0;}}
+  phase+=dt*11;const s=Math.sin(phase)*.55*kick;body.position.y=0;body.rotation.x=0;head.rotation.y=0;torso.scale.y=.34;
+  joints.forEach((j,i)=>{const leg=i<2,arm=i===2||i===3,side=i%2?1:-1,f=leg||arm?1:.6,lim=leg||arm?1.6:.6;
+   const tx=dx*f+(leg?(i?-s:s):arm?Math.sin(time*6.1+i)*.25*kick:0),tz=dz*f+(arm?side*.35:0),k=leg?55:arm?40:90,c=leg?4.5:arm?3.2:9;
+   j.vx+=(k*(tx-j.x)-c*j.vx)*dt;j.vz+=(k*(tz-j.z)-c*j.vz)*dt;j.x=Math.max(-lim,Math.min(lim,j.x+j.vx*dt));j.z=Math.max(-lim,Math.min(lim,j.z+j.vz*dt));
+   j.o.rotation.x=j.x;j.o.rotation.z=j.z;});
+ }
  update(0,0,0);
- return {group,update};
+ return {group,update,dangle,legs,arms,head};
 }
 
 // The follower: a track of the car's path (a point every 0.4 m) and the boy that runs along it.
 export function createBoy({T,scene}){
  const model=createBoyModel(T),group=model.group;group.visible=false;scene.add(group);
- const track=[],MAX=160,yaw=new T.Euler(0,0,0,'YXZ');let on=false,behind=6,wave=0,run=0,lastX=null,lastZ=null;
- function clear(){track.length=0;behind=6;wave=0;lastX=lastZ=null;}
+ const track=[],MAX=160,yaw=new T.Euler(0,0,0,'YXZ');let on=false,behind=6,wave=0,run=0,lastX=null,lastZ=null,hanging=false;
+ function clear(){track.length=0;behind=6;wave=0;lastX=lastZ=null;hanging=false;}
  function setOn(value){if(!!value===on)return;on=!!value;group.visible=on;clear();} // already on: he keeps his place (a visit to KIWI applies the rewards again)
  // The point `d` metres back along the track from the car, and the direction there (towards the car).
  function along(d){let rest=d;for(let i=track.length-1;i>0;i--){const a=track[i-1],b=track[i],l=Math.hypot(b.x-a.x,b.z-a.z);if(l>=rest){const f=l>0?rest/l:0;return {x:b.x+(a.x-b.x)*f,y:b.y+(a.y-b.y)*f,z:b.z+(a.z-b.z)*f,dx:(b.x-a.x)/(l||1),dz:(b.z-a.z)/(l||1)};}rest-=l;}
@@ -51,6 +62,7 @@ export function createBoy({T,scene}){
   if(!track.length){const h=Math.hypot(facing.x,facing.z)||1;for(let k=12;k>=0;k--)track.push({x:pos.x-facing.x/h*k*.5,y:pos.y-.08,z:pos.z-facing.z/h*k*.5});}
   if(gap>.4||lastX===null){track.push({x:pos.x,y:pos.y-.08,z:pos.z});lastX=pos.x;lastZ=pos.z;if(track.length>MAX)track.shift();}
   if(held){behind=3.1;wave=0;return;} // in the T. rex's mouth (hold() places him); afterwards he runs on from right behind the car
+  hanging=false;
   // Six metres behind while the car drives, three by its rear when it stops; he never falls further back than the track reaches.
   const want=v>.8?6:3.1;behind+=(want-behind)*Math.min(1,dt*(v>.8?.8:1.6));
   const p=along(Math.min(behind,Math.max(0,track.length*.4-.5)));
@@ -62,14 +74,28 @@ export function createBoy({T,scene}){
   run+=((v>.8?v:Math.abs(want-behind)>.3?2.2:0)-run)*Math.min(1,dt*4);model.update(dt,run,time,wave);
  }
  // An easter egg (3 October 2026): driving as the T. rex with Ludvig running after it, the T. rex carries him by the back of his shirt in the
- // right corner of its mouth, its head turned a little to the right, so he dangles beside its face where the chase camera sees him: facing out,
- // swinging, still running with his legs in the air. anchor and quat: the T. rex's grip (its world position and rotation).
- const fwd=new T.Vector3(),scruff=new T.Vector3();
+ // right corner of its mouth, its head turned a little to the right, so he dangles beside its face where the chase camera sees him, facing out,
+ // his legs still running in the air. anchor and quat: the T. rex's grip (its world position and rotation).
+ // A simple ragdoll: his body is a weight on a string from the scruff to his centre of mass (position-based: gravity, damping relative to the
+ // mouth, then the string's length, in steps of at most 1/60 s), so he swings on when the T. rex stops, trails when it sets off and swings out
+ // in bends; he cannot swing into its face or over the top. His limbs and head flop after the swing (createBoyModel's dangle).
+ const SCRUFF=new T.Vector3(0,.86,.12),COM=new T.Vector3(0,.48,0),L=SCRUFF.distanceTo(COM),UP=new T.Vector3(0,1,0);
+ const lean=new T.Quaternion().setFromUnitVectors(SCRUFF.clone().sub(COM).normalize(),UP); // he leans so the scruff is right over his centre of mass
+ const fwd=new T.Vector3(),out=new T.Vector3(),mass=new T.Vector3(),vel=new T.Vector3(),prev=new T.Vector3(),pivot=new T.Vector3(),pivotVel=new T.Vector3(),at=new T.Vector3(),rel=new T.Vector3();
+ const X=new T.Vector3(),Y=new T.Vector3(),Z=new T.Vector3(),basis=new T.Matrix4(),inverse=new T.Quaternion(),down=new T.Vector3();
  function hold(anchor,quat,dt,time){
-  if(!on)return;fwd.set(0,0,-1).applyQuaternion(quat);
-  yaw.set(Math.sin(time*5.3)*.1,Math.atan2(-fwd.x,-fwd.z)-Math.PI/2,Math.sin(time*3.1)*.12);group.quaternion.setFromEuler(yaw);
-  scruff.set(0,.86,.12).applyQuaternion(group.quaternion);group.position.copy(anchor).sub(scruff);
-  run+=(9-run)*Math.min(1,dt*4);model.update(dt,run,time,0);
+  if(!on||dt<=0)return;fwd.set(0,0,-1).applyQuaternion(quat);out.set(-fwd.z,0,fwd.x).normalize(); // out: to the T. rex's right, away from its face
+  if(!hanging||mass.distanceTo(anchor)>3){hanging=true;mass.copy(anchor);mass.y-=L;vel.set(0,0,0);pivot.copy(anchor);}
+  pivotVel.subVectors(anchor,pivot).divideScalar(dt);
+  const n=Math.min(6,Math.ceil(dt*60-1e-6)),h=dt/n; // the mouth moves on evenly through the steps
+  for(let i=0;i<n;i++){at.copy(pivot).addScaledVector(pivotVel,h*(i+1));prev.copy(mass);vel.y-=9.81*h;vel.sub(pivotVel).multiplyScalar(1-1.5*h).add(pivotVel);mass.addScaledVector(vel,h);
+   rel.subVectors(mass,at);const into=-rel.dot(out);if(into>.08)rel.addScaledVector(out,into-.08);if(rel.y>-.2*L)rel.y=-.2*L;
+   rel.setLength(L);mass.addVectors(at,rel);vel.subVectors(mass,prev).divideScalar(h);}
+  pivot.copy(anchor);
+  Y.subVectors(anchor,mass).normalize();Z.copy(out).addScaledVector(Y,-Y.dot(out)).normalize().negate();X.crossVectors(Y,Z);
+  group.quaternion.setFromRotationMatrix(basis.makeBasis(X,Y,Z)).multiply(lean);group.position.copy(anchor).sub(rel.copy(SCRUFF).applyQuaternion(group.quaternion));
+  down.set(0,-1,0).applyQuaternion(inverse.copy(group.quaternion).invert());const dx=Math.atan2(-down.z,-down.y),dz=Math.atan2(down.x,-down.y);
+  for(let i=0;i<n;i++)model.dangle(h,time,dx,dz);run=2.2;
  }
- return {setOn,update,clear,hold,group,track,isOn:()=>on};
+ return {setOn,update,clear,hold,group,track,model,isOn:()=>on};
 }
