@@ -3,7 +3,9 @@
 export function createFreeDrive(data,carHeight){
  const grid=new Map(),cell=32,car={x:0,z:0,yaw:0,course:0,speed:0,drifting:false};
  for(const b of data.buildings){const p=b.p,minX=Math.min(...p.map(v=>v[0]))-2,maxX=Math.max(...p.map(v=>v[0]))+2,minZ=Math.min(...p.map(v=>v[1]))-2,maxZ=Math.max(...p.map(v=>v[1]))+2;for(let x=Math.floor(minX/cell);x<=Math.floor(maxX/cell);x++)for(let z=Math.floor(minZ/cell);z<=Math.floor(maxZ/cell);z++){const k=x+','+z;if(!grid.has(k))grid.set(k,[]);grid.get(k).push(p);}}
- function blocked(x,z){const [a,b,c,d]=data.bounds;if(x<a+5||x>c-5||z<b+5||z>d-5)return true;for(const p of grid.get(Math.floor(x/cell)+','+Math.floor(z/cell))||[]){let inside=false;for(let i=0,j=p.length-1;i<p.length;j=i++){const [ax,az]=p[j],[bx,bz]=p[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)inside=!inside;const dx=bx-ax,dz=bz-az,t=Math.max(0,Math.min(1,((x-ax)*dx+(z-az)*dz)/(dx*dx+dz*dz||1)));if(Math.hypot(x-ax-t*dx,z-az-t*dz)<1.15)return true;}if(inside)return true;}return false;}
+ // The drivable area: the map's bounds, widened to take in every road node and 15 m round it (the road to Lianvannet ends west of the bounds).
+ const nodes=Object.values(data.nodes||{}),area=nodes.reduce((r,[x,z])=>[Math.min(r[0],x-15),Math.min(r[1],z-15),Math.max(r[2],x+15),Math.max(r[3],z+15)],[...data.bounds]);
+ function blocked(x,z){const [a,b,c,d]=area;if(x<a+5||x>c-5||z<b+5||z>d-5)return true;for(const p of grid.get(Math.floor(x/cell)+','+Math.floor(z/cell))||[]){let inside=false;for(let i=0,j=p.length-1;i<p.length;j=i++){const [ax,az]=p[j],[bx,bz]=p[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)inside=!inside;const dx=bx-ax,dz=bz-az,t=Math.max(0,Math.min(1,((x-ax)*dx+(z-az)*dz)/(dx*dx+dz*dz||1)));if(Math.hypot(x-ax-t*dx,z-az-t*dz)<1.15)return true;}if(inside)return true;}return false;}
  const wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
  function reset(x,z,yaw,speed=0){Object.assign(car,{x,z,yaw,course:yaw,speed,drifting:false});}
  function step(dt,input){let distance=0;const n=Math.max(1,Math.ceil(dt/.012));for(let i=0;i<n;i++){const t=dt/n,steer=Number(!!input.right)-Number(!!input.left);car.drifting=!!input.drift&&car.speed>5;

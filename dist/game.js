@@ -18,7 +18,7 @@ const music=createMusic();
 const keys=new Set(),touch=new Set(),heldPointers=new Map(),cameraHeading=new T.Vector3();
 function clearInputs(){keys.clear();touch.clear();heldPointers.clear();for(const id of ['freeLeft','freeRight','freeBrake','freeDrift'])$(id).classList.remove('held');}
 function freeInput(){return {left:keys.has('ArrowLeft')||keys.has('KeyA')||touch.has('left'),right:keys.has('ArrowRight')||keys.has('KeyD')||touch.has('right'),brake:keys.has('ArrowDown')||keys.has('KeyS')||touch.has('brake'),drift:keys.has('Space')||touch.has('drift')};}
-function startFree(){state='free';active=null;choices=[];queue=[];preview=null;roundaboutUndo=null;clearInputs();free.reset(position.x,position.z,Math.atan2(heading.x,-heading.z));ui.welcome.hidden=true;ui.drive.hidden=false;ui.finish.hidden=true;clearWorldChoices();document.body.classList.remove('choosing');$('freeControls').hidden=false;$('undoRoundabout').hidden=true;$('street').textContent='Frikjøring';updateHud();}
+function startFree(){state='free';freeAt=data.start;freeHint=null;active=null;choices=[];queue=[];preview=null;roundaboutUndo=null;clearInputs();free.reset(position.x,position.z,Math.atan2(heading.x,-heading.z));ui.welcome.hidden=true;ui.drive.hidden=false;ui.finish.hidden=true;clearWorldChoices();document.body.classList.remove('choosing');$('freeControls').hidden=false;$('undoRoundabout').hidden=true;$('street').textContent='Frikjøring';updateHud();}
 function recoverFree(){if(state!=='free')return;clearInputs();free.recover();position.set(free.car.x,free.altitude,free.car.z);speed=0;heading.set(Math.sin(free.car.yaw),0,-Math.cos(free.car.yaw));world.resetCamera();}
 
 let adjacency=new Map(),incoming=new Map(),distances=new Map(),optimal=new Map(),openRoads=new Set();
@@ -200,7 +200,7 @@ function undoRoundabout(){
 }
 $('undoRoundabout').onclick=undoRoundabout;
 function arrive(){if(!active)return;previous=active.e.arrivalFrom??active.e.from;current=active.e.to;if(current===kiwiParking)parkAtKiwi();if(current===ishallParking)parkAtIshall();if(current===remaParking)parkAtRema();if(current===bunnprisParking)parkAtBunnpris();if(current===ludvigParking)parkAtLudvig();if(current===data.start)parkAtHome();if(current===data.lakeside)parkAtLake();active.line.at(active.len,position);active.line.tangent(active.len,heading);lastEdge=active.e;if(active.hold)speed=0;active=null;state='decision';showDecision();}
-function finish(){state='finished';roundaboutUndo=null;queue=[];preview=null;$('undoRoundabout').hidden=true;clearWorldChoices();world.setTurnArrow(null);speed=0;ui.decision.hidden=true;ui.finish.hidden=false;document.body.classList.remove('choosing');$('remaining').textContent='Fremme!';$('finishSummary').textContent=`${(travelled/1000).toLocaleString('nb-NO',{maximumFractionDigits:1})} km gjennom nabolaget · ${turns} veivalg`;
+function finish(){state='finished';$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;$('undoRoundabout').hidden=true;clearWorldChoices();world.setTurnArrow(null);speed=0;ui.decision.hidden=true;ui.finish.hidden=false;document.body.classList.remove('choosing');$('remaining').textContent='Fremme!';$('finishSummary').textContent=`${(travelled/1000).toLocaleString('nb-NO',{maximumFractionDigits:1})} km gjennom nabolaget · ${freeMode?'frikjøring':turns+' veivalg'}`;
  arrivals++;newReward=['colour','cat','trail','rainbow','dog','duck','rocket','unicorn','bubbles','firetruck','horn','balloon','trex'][arrivals-1]||null;if(newReward==='trail')behind='trail';if(newReward==='bubbles')behind='bubbles';if(newReward==='rainbow')carColour='rainbow';if(MODEL_AT[newReward])model=newReward;saveProgress();if(newReward&&newReward!=='colour')applyRewards();
  const reward={colour:['🎨 Ny overraskelse! Nå kan du velge farge på bilen. Fargene finner du på startskjermen.','Velg farge på bilen 🎨',' Nå kan du velge farge på bilen!'],trail:['🌈 Ny overraskelse! Bilen har fått et regnbuespor. Du kan slå det av og på på startskjermen.','Prøv regnbuesporet 🌈',' Og nå har bilen fått et regnbuespor!'],
   rainbow:['🌈 Ny overraskelse! Du har fått en regnbuebil som skifter farge. Du finner den blant fargene på startskjermen.','Se regnbuebilen 🌈',' Nå har du fått en regnbuebil som skifter farge!'],
@@ -296,6 +296,19 @@ function parkAtBunnpris(){toast('🛒 Parkert ved Bunnpris');say('Vi har parkert
 // Lianvannet: the turning circle by the water at the end of Vetle Vislies veg (data.lakeside, a parking place once the map
 // is loaded). The big duck in the lake (world.js) rises out of the water as the car comes near.
 let duckSeen=false;
+// Free driving counts visits too (3 October 2026): driving into a parking place (within 8 m of it) is a visit, as parking there is with the arrows;
+// it counts again once the car has been 30 m away. Home and the kindergarten end the drive, so there the car must stop (brake) within 10 m;
+// on the way in the game says so.
+let freeAt=null,freeHint=null;
+function freeVisits(){
+ const x=free.car.x,z=free.car.z,away=n=>{const p=data.nodes[n];return p?Math.hypot(x-p[0],z-p[1]):Infinity;};
+ if(freeHint&&away(freeHint)>30)freeHint=null;if(freeAt){if(away(freeAt)>30)freeAt=null;else return;}
+ for(const [n,park] of [[kiwiParking,parkAtKiwi],[ludvigParking,parkAtLudvig],[ishallParking,parkAtIshall],[remaParking,parkAtRema],[bunnprisParking,parkAtBunnpris],[data.lakeside,parkAtLake]])
+  if(away(n)<8){freeAt=n;park();return;}
+ for(const n of [data.goal,data.start]){if(away(n)>=10)continue;
+  if(free.car.speed<1){freeAt=n;speed=free.car.speed=0;if(n===data.goal)finish();else parkAtHome();return;}
+  if(freeHint!==n){freeHint=n;toast(n===data.goal?'⚑ Brems for å parkere ved barnehagen':'🏠 Brems for å parkere hjemme');}}
+}
 function parkAtLake(){toast('🦆 Framme ved Lianvannet');say('Vi er framme ved Lianvannet. Hei, and!');}
 function watchDuck(){if(duckSeen||!world?.duck?.shown)return;duckSeen=true;toast('🦆 Se! En kjempeand i Lianvannet!');say('Se! En kjempestor and svømmer rundt i vannet!');}
 $('customColour').oninput=e=>pickColour(e.target.value);
@@ -326,7 +339,7 @@ window.addEventListener('keyup',e=>keys.delete(e.code||({' ':'Space',a:'KeyA',d:
 window.addEventListener('blur',clearInputs);
 document.addEventListener('visibilitychange',()=>{lastTime=performance.now();});
 function animate(now){requestAnimationFrame(animate);const dt=Math.min(.045,Math.max(0,(now-lastTime)/1000));lastTime=now;time+=dt;if(!world)return;
- if(state==='free'){travelled+=free.step(dt,freeInput());const c=free.car;speed=c.speed;position.set(c.x,free.altitude,c.z);const hx=Math.sin(c.yaw),hz=-Math.cos(c.yaw),slope=(carHeight(c.x+hx,c.z+hz)-carHeight(c.x-hx,c.z-hz))/2;heading.set(hx,slope,hz).normalize();$('freeDrift').classList.toggle('held',c.drifting);}
+ if(state==='free'){if(!homeAt)travelled+=free.step(dt,freeInput());const c=free.car;speed=c.speed;position.set(c.x,free.altitude,c.z);const hx=Math.sin(c.yaw),hz=-Math.cos(c.yaw),slope=(carHeight(c.x+hx,c.z+hz)-carHeight(c.x-hx,c.z-hz))/2;heading.set(hx,slope,hz).normalize();$('freeDrift').classList.toggle('held',c.drifting);if(!homeAt)freeVisits();}
  if(state==='driving'&&active){const remaining=active.len-distance;
   // The limit at this point already includes braking for whatever lies ahead (planAhead); the car catches up to it at ACCEL and follows it down at DECEL, or BRAKE at most.
   if(!active.limits)planAhead();
@@ -336,7 +349,7 @@ function animate(now){requestAnimationFrame(animate);const dt=Math.min(.045,Math
  cameraHeading.copy(heading);if(state==='free')cameraHeading.set(Math.sin(free.car.course),heading.y,-Math.cos(free.car.course)).normalize();
  // Stopped by Lianvannet, the camera turns from the road to the water and the big duck (the lake lies behind the car as it arrives).
  if(state==='decision'&&current===data.lakeside&&world.duck)cameraHeading.set(world.duck.centre[0]-position.x,0,world.duck.centre[1]-position.z).normalize();
- if(homeAt&&time>=homeAt){homeAt=0;if(state==='decision'&&current===data.start)reset();}
+ if(homeAt&&time>=homeAt){homeAt=0;if(state==='decision'&&current===data.start||state==='free')reset();}
  world.update(dt,position,cameraHeading,state==='driving'&&active&&active.line.reversing(distance)?-speed:speed,state==='intro'&&arrivals>=1?'introCar':(state==='intro'||travelled===0&&state==='decision')?'intro':camMode,state==='finished',time,heading);
  mapClock+=dt;if(mapClock>.16){mapClock=0;if(state!=='intro'&&state!=='finished')updateHud();watchDuck();}
 }

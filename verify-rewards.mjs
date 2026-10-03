@@ -22,7 +22,7 @@ async function launch(localStorage){
   createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on,setBoy:on=>world.boy=on,setBubbles:on=>world.bubbles=on,honk:()=>world.honks++})};
  if(localStorage)Object.defineProperty(env,'localStorage',{get:localStorage});
  const ctx=vm.createContext(env);
- const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},home(){start();current=data.start;state='decision';parkAtHome();},ludvig(){parkAtLudvig();},visit(n){start();active={e:{from:data.start,to:{kiwi:kiwiParking,ludvig:ludvigParking}[n]},line:{at(){},tangent(){}},len:0};arrive();},start(){start();},honkKey(){honk();},state:()=>state,progress:()=>({arrivals,carColour,trailOn:behind==='trail',catOn:model==='cat'}),model:()=>model,behind:()=>behind};})()`,ctx);
+ const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},home(){start();current=data.start;state='decision';parkAtHome();},ludvig(){parkAtLudvig();},freeDrive(x,z,v){if(state!=='free'){freeMode=true;start();}free.reset(x,z,0,v);freeVisits();},visit(n){start();active={e:{from:data.start,to:{kiwi:kiwiParking,ludvig:ludvigParking}[n]},line:{at(){},tangent(){}},len:0};arrive();},start(){start();},honkKey(){honk();},state:()=>state,progress:()=>({arrivals,carColour,trailOn:behind==='trail',catOn:model==='cat'}),model:()=>model,behind:()=>behind};})()`,ctx);
  for(let i=0;i<12;i++){await Promise.resolve();const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}await init;
  const key=(k,target={tagName:'BODY'})=>listeners.get('keydown')({key:k,repeat:false,target,preventDefault(){}});
  const tick=n=>{for(let i=0;i<n;i++){const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}};
@@ -134,6 +134,21 @@ for(let k=0;k<3;k++){game.test.visit('ludvig');assert.equal(game.world.boy,true,
 game.test.visit('kiwi');game.test.visit('ludvig');game=await launch(()=>storage);assert.equal(game.world.skin,'kiwi');assert.equal(game.world.boy,true,'both remembered');
 store.set('sofiatur.fremgang',JSON.stringify({arrivals:3,behind:'ludvig'}));game=await launch(()=>storage);assert.equal(game.world.boy,false,'Ludvig cannot be forced through storage');assert.equal(game.world.trail,true);
 console.log('Visiting Ludvig unlocks him; he and the rainbow trail are alternatives on the start screen: OK');
+// Free driving counts visits too: driving into KIWI's or Ludvig's parking place is a visit, again once the car has been away; home and the
+// kindergarten end the drive, so there the car must stop (and the game says so on the way in).
+{store.clear();store.set('sofiatur.fremgang',JSON.stringify({arrivals:3}));game=await launch(()=>storage);const node=n=>data.nodes[n],drive=(n,dx,v=12)=>game.test.freeDrive(node(n)[0]+dx,node(n)[1],v);
+ drive('kiwi-parkering',3);assert.equal(game.test.state(),'free');assert.equal(game.world.skin,'kiwi','Driving into KIWI puts the KIWI paint on');assert.match(game.element('toast').textContent,/KIWI/);
+ game.element('carColours').children[0].onclick();drive('kiwi-parkering',5);assert.equal(game.world.skin,null,'not again while still there');
+ drive('kiwi-parkering',45);drive('kiwi-parkering',2);assert.equal(game.world.skin,'kiwi','again after driving away and back');
+ drive('ludvig-parkering',2);assert.equal(game.world.boy,true,'Driving into Ludvig\'s yard is a visit');assert.match(game.element('toast').textContent,/Du besøker Ludvig/);
+ game.element('trail').onchange({target:{checked:true}});assert.equal(game.world.boy,false);drive('ludvig-parkering',40);drive('ludvig-parkering',-3);assert.equal(game.world.boy,true,'and every visit puts him back behind the car');
+ drive(data.lakeside,3);assert.match(game.element('toast').textContent,/Lianvannet/,'Lianvannet too');
+ drive(data.goal,5);assert.equal(game.test.state(),'free','Passing the kindergarten does not end the drive');assert.match(game.element('toast').textContent,/Brems for å parkere ved barnehagen/);
+ drive(data.goal,5,0);assert.equal(game.test.state(),'finished','Stopping there does');assert.equal(game.test.progress().arrivals,4,'and counts the trip');assert.equal(game.element('freeControls').hidden,true);assert.match(game.element('finishSummary').textContent,/frikjøring/);
+ game=await launch(()=>storage);drive(data.start,3,0);assert.equal(game.test.state(),'free','Starting at home is not a visit home');
+ drive(data.start,40);drive(data.start,4,0);assert.match(game.element('toast').textContent,/Hjemme/);game.tick(70);assert.equal(game.test.state(),'intro','Stopping at home again brings the start screen back');}
+{const f=createFreeDrive(data,()=>100);for(const n of ['kiwi-parkering','ludvig-parkering','ishall-parkering','rema-parkering','bunnpris-parkering',data.lakeside,data.goal,data.start])assert.equal(f.blocked(...data.nodes[n]),false,n+' can be reached in free driving');}
+console.log('Free driving counts visits: KIWI, Ludvig, Lianvannet, the kindergarten and home, all within reach: OK');
 
 {// The trail: seven stripes laid behind the car while it moves, fading, and gone a moment after it stops.
 const scene=new T.Scene(),trail=createRainbowTrail({T,scene}),pos=new T.Vector3(0,100,0),facing=new T.Vector3(0,0,-1);
