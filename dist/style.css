@@ -29,3 +29,4 @@
 .ahead-help{font-size:14px}
 .swatch.rainbow{background:linear-gradient(135deg,#ff4b4b 0 18%,#ffa53a 18% 34%,#ffd94a 34% 50%,#5ccf66 50% 66%,#41a7f4 66% 82%,#a65fe6 82%)}
 .swatch.kiwi{background:#5fae36;color:#1f2424;font-weight:900;font-size:14px;line-height:24px;text-align:center}
+.model-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:11px;font-size:13px;font-weight:750}.model-choice{border:2px solid #d5e0db;background:#fff;border-radius:999px;padding:5px 10px;font-size:13px;font-weight:750}.model-choice.on{border-color:#174e48;background:#e2efe9}

@@ -7,6 +7,7 @@ import {createDrivingLines} from './dist/driving-line.js';
 import {createFreeDrive} from './dist/free-drive.js';
 import {createMusic} from './dist/music.js';
 import {createBoy} from './dist/boy.js';
+import {createDog,createRideDuck,createRocket} from './dist/rides.js';
 import {createRainbowTrail} from './dist/rainbow-trail.js';
 import {createCat} from './dist/cat-model.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8'));
@@ -20,7 +21,7 @@ async function launch(localStorage){
   createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on,setBoy:on=>world.boy=on})};
  if(localStorage)Object.defineProperty(env,'localStorage',{get:localStorage});
  const ctx=vm.createContext(env);
- const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},home(){start();current=data.start;state='decision';parkAtHome();},ludvig(){parkAtLudvig();},state:()=>state,progress:()=>({arrivals,carColour,trailOn:behind==='trail',catOn}),behind:()=>behind};})()`,ctx);
+ const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},home(){start();current=data.start;state='decision';parkAtHome();},ludvig(){parkAtLudvig();},state:()=>state,progress:()=>({arrivals,carColour,trailOn:behind==='trail',catOn:model==='cat'}),model:()=>model,behind:()=>behind};})()`,ctx);
  for(let i=0;i<12;i++){await Promise.resolve();const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}await init;
  const key=(k,target={tagName:'BODY'})=>listeners.get('keydown')({key:k,repeat:false,target,preventDefault(){}});
  const tick=n=>{for(let i=0;i<n;i++){const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}};
@@ -47,10 +48,10 @@ console.log('First arrival unlocks the colour picker on the start screen: OK');
 // the start screen; the choice is kept after a reload.
 game=await launch(()=>storage);assert.equal(game.world.colour,'#7b4cc2');assert.equal(game.element('rewards').hidden,false);assert.match(game.element('rewardTeaser').textContent,/én gang til/);
 game.test.arrive();assert.equal(game.test.progress().arrivals,2);assert.equal(game.world.model,'cat');assert.match(game.element('unlock').textContent,/katt/);assert.match(game.element('again').textContent,/katten/);
-game.element('again').onclick();assert.equal(game.element('catRow').hidden,false);assert.equal(game.element('cat').checked,true);assert.equal(game.element('trailRow').hidden,true,'The trail waits for the third trip');assert.equal(game.element('rewardTeaser').hidden,false,'More surprises to come');
+game.element('again').onclick();assert.equal(game.element('modelRow').hidden,false);assert.ok(game.element('model-cat').classes.has('on'));assert.equal(game.element('model-dog').hidden,true,'The dog waits for the fifth trip');assert.equal(game.element('trailRow').hidden,true,'The trail waits for the third trip');assert.equal(game.element('rewardTeaser').hidden,false,'More surprises to come');
 assert.equal(game.world.trail,false);assert.equal(game.world.colour,'#7b4cc2','A purple cat');
-game.element('cat').onchange({target:{checked:false}});assert.equal(game.world.model,'car');game=await launch(()=>storage);assert.equal(game.world.model,'car','Car remembered');
-game.element('cat').onchange({target:{checked:true}});game=await launch(()=>storage);assert.equal(game.world.model,'cat','Cat remembered');
+game.element('model-car').onclick();assert.equal(game.world.model,'car');game=await launch(()=>storage);assert.equal(game.world.model,'car','Car remembered');
+game.element('model-cat').onclick();game=await launch(()=>storage);assert.equal(game.world.model,'cat','Cat remembered');
 console.log('Second arrival turns the car into a running cat; the switch survives a reload: OK');
 
 // Third arrival: the rainbow trail (on by default), with its switch on the start screen, remembered after a reload.
@@ -62,11 +63,18 @@ console.log('Third arrival unlocks the rainbow trail; the trail switch survives 
 
 // Fourth arrival: the rainbow colour that changes all the time, picked at once and kept after a reload; a colour can still be picked.
 game.test.arrive();assert.equal(game.test.progress().arrivals,4);assert.equal(game.world.colour,'rainbow');assert.match(game.element('unlock').textContent,/regnbuebil/);assert.match(game.element('again').textContent,/regnbuebilen/);
-game.element('again').onclick();let rainbowButton=game.element('carColours').children[10];assert.equal(rainbowButton.hidden,false);assert.ok(rainbowButton.classes.has('on'));assert.equal(game.element('rewardTeaser').hidden,true,'No teaser once everything is unlocked');
+game.element('again').onclick();let rainbowButton=game.element('carColours').children[10];assert.equal(rainbowButton.hidden,false);assert.ok(rainbowButton.classes.has('on'));assert.equal(game.element('rewardTeaser').hidden,false,'More surprises after the fourth trip');
 game.element('carColours').children[1].onclick();assert.equal(game.world.colour,'#c62828');rainbowButton.onclick();assert.equal(game.world.colour,'rainbow');
 game=await launch(()=>storage);assert.equal(game.world.colour,'rainbow','Rainbow colour remembered');assert.equal(game.world.model,'cat','A rainbow cat');assert.equal(game.world.trail,true);
+// Fifth, sixth and seventh arrival (3 October 2026): the dog, the duck and the rocket, each chosen at once and kept after a reload; then no more.
+game.test.arrive();assert.equal(game.test.progress().arrivals,5);assert.equal(game.world.model,'dog');assert.match(game.element('unlock').textContent,/hund/);assert.match(game.element('again').textContent,/hunden/);
+game.element('again').onclick();assert.equal(game.element('model-dog').hidden,false);assert.ok(game.element('model-dog').classes.has('on'));assert.equal(game.element('model-duck').hidden,true);assert.equal(game.element('rewardTeaser').hidden,false);
+game.test.arrive();assert.equal(game.world.model,'duck');assert.match(game.element('unlock').textContent,/and/);game.element('again').onclick();assert.equal(game.element('model-duck').hidden,false);assert.equal(game.element('model-rocket').hidden,true);
+game.test.arrive();assert.equal(game.world.model,'rocket');assert.match(game.element('unlock').textContent,/rakett/);game.element('again').onclick();assert.equal(game.element('model-rocket').hidden,false);assert.equal(game.element('rewardTeaser').hidden,true,'No teaser once everything is unlocked');
+game.element('model-dog').onclick();assert.equal(game.world.model,'dog');game=await launch(()=>storage);assert.equal(game.world.model,'dog','The dog remembered');assert.equal(game.world.colour,'rainbow','a rainbow dog');
 game.test.arrive();assert.equal(game.element('unlock').hidden,true,'No new reward on later trips');assert.match(game.element('again').textContent,/en gang til/);
-console.log('Fourth arrival unlocks the rainbow colour; everything survives a reload: OK');
+store.set('sofiatur.fremgang',JSON.stringify({arrivals:5,model:'rocket'}));game=await launch(()=>storage);assert.equal(game.world.model,'car','The rocket only after seven trips');
+console.log('Fourth arrival unlocks the rainbow colour, the fifth to seventh the dog, the duck and the rocket; everything survives a reload: OK');
 
 // Rewards that are not unlocked yet cannot be forced through storage.
 store.set('sofiatur.fremgang',JSON.stringify({arrivals:1,colour:'rainbow',model:'cat'}));game=await launch(()=>storage);assert.equal(game.world.colour,'#14171c');assert.equal(game.world.model,'car');assert.equal(game.world.trail,false);
@@ -136,12 +144,12 @@ console.log('Ludvig runs after the car, round bends, catches up when it stops an
 // Debug keys for testing the unlocks: X counts one more trip to the kindergarten, Z one fewer (saved like a real count).
 store.clear();game=await launch(()=>storage);
 for(let i=0;i<4;i++)game.key('x');assert.equal(game.test.progress().arrivals,4);assert.equal(game.world.colour,'rainbow');assert.equal(game.world.trail,true);assert.equal(game.world.model,'cat');
-assert.equal(game.element('catRow').hidden,false);assert.equal(game.element('carColours').children[10].hidden,false);assert.match(game.element('toast').textContent,/4 · regnbuebil/);
+assert.equal(game.element('modelRow').hidden,false);assert.equal(game.element('carColours').children[10].hidden,false);assert.match(game.element('toast').textContent,/4 · regnbuebil/);
 game.key('X');assert.equal(game.test.progress().arrivals,5);game.key('z');
 game.key('z');assert.equal(game.test.progress().arrivals,3);assert.equal(game.world.colour,'#14171c','Rainbow colour locked again below 4');assert.equal(game.element('carColours').children[10].hidden,true);assert.equal(game.world.model,'cat');
 game.key('Z');assert.equal(game.test.progress().arrivals,2);assert.equal(game.world.trail,false,'Trail locked again below 3');assert.equal(game.element('trailRow').hidden,true);assert.equal(game.world.model,'cat');
 game=await launch(()=>storage);assert.equal(game.test.progress().arrivals,2,'The count is saved');
-game.key('z');assert.equal(game.world.model,'car','Cat locked again below 2');assert.equal(game.element('catRow').hidden,true);
+game.key('z');assert.equal(game.world.model,'car','Cat locked again below 2');assert.equal(game.element('modelRow').hidden,true);
 for(let i=0;i<4;i++)game.key('z');assert.equal(game.test.progress().arrivals,0,'Never below 0');assert.equal(game.element('rewards').hidden,true);
 game.key('x',{tagName:'INPUT'});assert.equal(game.test.progress().arrivals,0,'Not while typing in a field');
 console.log('Debug keys: X and Z count trips up and down, unlocking and locking the rewards: OK');
@@ -155,3 +163,23 @@ console.log('Debug keys: X and Z count trips up and down, unlocking and locking 
  assert.ok(sides.every(({b})=>b.max.z-b.min.z>1.1&&b.max.y-b.min.y>.35),'The size of the logo on the doors');
  assert.deepEqual(Object.keys(createCat(T).skins),[],'No logos without a skin');}
 console.log('The cat wears the KIWI logo on both flanks with the KIWI skin: OK');
+
+// The dog, the duck and the rocket: about the car's size (forward −z, on the ground), they take the paint colour, wear the KIWI logo on
+// both flanks with the KIWI skin (hidden until it is chosen, facing out), and move: the dog's and duck's legs swing at speed, the rocket hovers
+// and its flame grows with the speed.
+for(const [name,make] of [['dog',createDog],['duck',createRideDuck],['rocket',createRocket]]){
+ const logo=new T.MeshBasicMaterial(),ride=make(T,{logos:{kiwi:logo}});ride.group.updateMatrixWorld(true);
+ const box=new T.Box3().setFromObject(ride.group),size=box.getSize(new T.Vector3());
+ assert.ok(size.z>3&&size.z<6.5&&size.x>1.2&&size.x<3.2&&size.y>1.5&&size.y<3.4,`${name}: about the car's size (${size.toArray().map(v=>v.toFixed(1))})`);
+ assert.ok(box.min.y>-.05&&box.min.y<.9,`${name}: on (or just over) the ground (${box.min.y.toFixed(2)})`);
+ assert.equal(ride.skins.kiwi.length,2);assert.ok(ride.skins.kiwi.every(m=>!m.visible&&m.material===logo),name+': logos hidden until the KIWI skin');
+ const sides=ride.skins.kiwi.map(m=>{m.geometry.computeBoundingBox();const b=m.geometry.boundingBox,n=m.geometry.attributes.normal;let out=0;for(let i=0;i<n.count;i++)out+=Math.sign(n.getX(i))*Math.sign(b.min.x+b.max.x);return {b,out:out/n.count};});
+ assert.ok(sides[0].b.max.x<-.4&&sides[1].b.min.x>.4&&sides.every(s=>s.out>.99),name+': one logo on each flank, facing out');
+ const pink=new T.Color('#ec6aa8');ride.update(.05,0,1,pink);let painted=false;ride.group.traverse(o=>{if(o.material&&o.material.color&&o.material.color.equals(pink))painted=true;});assert.ok(painted,name+' takes the paint colour');
+ const pose=()=>{const v=[];ride.group.traverse(o=>{if(o.isGroup||o.isMesh)v.push(o.rotation.x,o.position.y,o.scale.y);});return v;};
+ const still=pose();for(let i=0;i<10;i++)ride.update(.05,14,1+i*.05,pink);const moving=pose();assert.ok(still.some((v,i)=>Math.abs(v-moving[i])>.05),name+' moves at speed');
+}
+{const rocket=createRocket(T);rocket.update(.05,0,1);const flame=()=>{let len=0;rocket.group.traverse(o=>{if(o.isMesh&&o.material.isMeshBasicMaterial&&o.material.transparent)len=Math.max(len,o.scale.y);});return len;};
+ const idle=flame();rocket.update(.05,50,1);assert.ok(flame()>idle*3,'The rocket\'s flame grows with the speed');}
+console.log('The dog, the duck and the rocket: car-sized, painted, KIWI logos on both flanks, moving: OK');
+

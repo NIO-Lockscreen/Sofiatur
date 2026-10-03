@@ -4,6 +4,7 @@ import {roadWidth} from './transit-geometry.js';
 import {createRoadSurface} from './road-surface.js';
 import {createET5} from './car-model.js';
 import {createCat} from './cat-model.js';
+import {createDog,createRideDuck,createRocket} from './rides.js';
 import {createDuck} from './duck.js';
 import {createLakes,inRing} from './lakes.js';
 import {addMunkvoll,addTransit,addMunkvollDetails} from './munkvoll.js';
@@ -157,11 +158,14 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  const {car,wheels,paint,skins}=createET5(T);scene.add(car);
  // The running cat (the reward for the second trip) rides in the car's group and takes its place: model 'car' or 'cat'.
  // The cat wears the car's skin logos on its flanks (the KIWI logo with the KIWI skin).
- const bodywork=[...car.children],skinParts=new Set(Object.values(skins).flat()),cat=createCat(T,{logos:Object.fromEntries(Object.entries(skins).map(([k,list])=>[k,list[0].material]))});cat.group.visible=false;car.add(cat.group);
+ // The dog, the duck and the rocket (rides.js, the rewards for the fifth, sixth and seventh trip) ride in it the same way: model 'dog', 'duck' or 'rocket'.
+ const bodywork=[...car.children],skinParts=new Set(Object.values(skins).flat()),logos=Object.fromEntries(Object.entries(skins).map(([k,list])=>[k,list[0].material]));
+ const rides={cat:createCat(T,{logos}),dog:createDog(T,{logos}),duck:createRideDuck(T,{logos}),rocket:createRocket(T,{logos})};
+ for(const r of Object.values(rides)){r.group.visible=false;car.add(r.group);}
  let model='car',skin=null,rainbow=false;
- function showModel(){for(const o of bodywork)if(!skinParts.has(o))o.visible=model==='car';for(const [k,list] of Object.entries(skins))for(const m of list)m.visible=model==='car'&&k===skin;for(const [k,list] of Object.entries(cat.skins))for(const m of list)m.visible=k===skin;cat.group.visible=model==='cat';}
+ function showModel(){for(const o of bodywork)if(!skinParts.has(o))o.visible=model==='car';for(const [k,list] of Object.entries(skins))for(const m of list)m.visible=model==='car'&&k===skin;for(const [name,r] of Object.entries(rides)){for(const [k,list] of Object.entries(r.skins))for(const m of list)m.visible=k===skin;r.group.visible=model===name;}}
  function setCarSkin(name){skin=name||null;car.userData.skin=skin;showModel();}
- function setCarModel(name){model=name==='cat'?'cat':'car';car.userData.body=model;showModel();}
+ function setCarModel(name){model=rides[name]?name:'car';car.userData.body=model;showModel();}
  // Paint colour (a reward). Black keeps the original deep metallic look; brighter colours are less metallic so they read as colour.
  // 'rainbow' (the reward for the fourth trip) runs through all the colours in a little over three seconds; update() turns it.
  function setCarColour(hex){rainbow=hex==='rainbow';car.userData.colour=hex;if(rainbow){paint.metalness=.3;paint.roughness=.28;return;}paint.color.set(hex);const c=paint.color,dark=Math.max(c.r,c.g,c.b)<.06;paint.metalness=dark?.72:.38;paint.roughness=dark?.24:.3;}
@@ -190,7 +194,7 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  function update(dt,pos,tangent,velocity,mode,finished,time,carFacing=tangent){
  adaptResolution();
  trail.update(dt,pos,carFacing);boy.update(dt,pos,carFacing,velocity,time);trafficLights.update(dt,pos);updateDuck(dt,pos,time);
- if(rainbow)paint.color.setHSL((time*.3)%1,.9,.42);if(model==='cat')cat.update(dt,Math.abs(velocity),time,paint.color);
+ if(rainbow)paint.color.setHSL((time*.3)%1,.9,.42);if(rides[model])rides[model].update(dt,Math.abs(velocity),time,paint.color);
  car.position.copy(pos);const yaw=Math.atan2(-carFacing.x,-carFacing.z);rot.setFromEuler(facing.set(Math.atan2(carFacing.y,Math.hypot(carFacing.x,carFacing.z)),yaw,0));car.quaternion.slerp(rot,1-Math.exp(-dt*9));wheels.forEach(w=>w.rotation.x-=velocity*dt/.39);
  sm.position.set(pos.x,height(pos.x,pos.z)+.25,pos.z);sm.rotation.z=-yaw;turnArrow.position.set(pos.x,pos.y+6.2+Math.sin(time*3)*.22,pos.z);turnArrow.scale.setScalar(4.5+Math.sin(time*3)*.16);if(finished)turnArrow.visible=false;
  const follow=follows[mode]||follows.follow;
