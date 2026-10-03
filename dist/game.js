@@ -45,6 +45,8 @@ function start(){if(state!=='intro')return;if(sound&&musicOn)music.play();if(fre
 function roundaboutDirection(e,h){const d=endDirection(e.segments.find(s=>!s.roundabout)),angle=e.turn??Math.atan2(h.x*d.z-h.z*d.x,T.MathUtils.clamp(h.x*d.x+h.z*d.z,-1,1)),deg=Math.abs(angle)*180/Math.PI;
  const label=e.label||(deg>150||e.uTurn?'Snu':deg<55?'Rett frem':angle>0?'Høyre':'Venstre');return {label,symbol:{Høyre:'↱','Rett frem':'↑',Venstre:'↰',Snu:'↶'}[label],angle};}
 function directionInfo(e,h=heading){if(e.roundaboutPlan)return roundaboutDirection(e,h);const dir=endDirection(e);const dot=T.MathUtils.clamp(h.x*dir.x+h.z*dir.z,-1,1);const cross=h.x*dir.z-h.z*dir.x;const angle=Math.atan2(cross,dot);if(e.label)return {label:e.label,symbol:e.label==='Høyre'?'↱':'↰',angle};if(Math.abs(angle)>2.5)return {label:'Snu',symbol:'↶',angle};if(angle>.42)return {label:'Høyre',symbol:'↱',angle};if(angle<-.42)return {label:'Venstre',symbol:'↰',angle};return {label:'Rett frem',symbol:'↑',angle};}
+// The name on an arrow: "Hjem" for the road into home's parking place (it is the end of Herlofsons veg, 3 October 2026), "Innkjøring" for a local road.
+function choiceName(e){return e.to===data.start?'Hjem':e.name==='Lokalvei'?'Innkjøring':e.name;}
 function clearWorldChoices(){planKey='';aheadShown=false;worldLayout=null;const wrap=$('worldArrows');wrap.replaceChildren();wrap.hidden=true;$('turnHint').hidden=true;}
 function renderWorldChoices(list=choices,h=heading,pick=e=>choose(e.id,true),ahead=false){
  const wrap=$('worldArrows');wrap.replaceChildren();const groups=new Map();
@@ -56,9 +58,9 @@ function renderWorldChoices(list=choices,h=heading,pick=e=>choose(e.id,true),ahe
  const layout=[];for(const [key,items] of groups){if(key==='left'||key==='right')items.sort((a,b)=>Math.abs(a.info.angle)-Math.abs(b.info.angle));items.forEach(({e,info},i)=>{
   const b=document.createElement('button');b.type='button';b.className=`world-choice ${key}${e.roundaboutPlan?' roundabout-choice':''}${ahead?' ahead':''}`;
   const x=positions[key][0]+(key==='straight'||key==='reverse'?(i-(items.length-1)/2)*19:0),y=positions[key][1]+(key==='left'||key==='right'?(i-(items.length-1)/2)*17:0);
-  b.setAttribute('aria-label',`${e.roundaboutPlan?e.exitNumber+'. avkjørsel, ':''}${info.label}: ${e.name}`);
+  b.setAttribute('aria-label',`${e.roundaboutPlan?e.exitNumber+'. avkjørsel, ':''}${info.label}: ${choiceName(e)}`);
   const g=document.createElement('span');g.className='choice-glyph';g.textContent=key==='straight'?'↑':key==='left'?'←':key==='right'?'→':'↶';
-  const n=document.createElement('span');n.className='choice-name';n.textContent=e.name==='Lokalvei'?'Innkjøring':e.name;b.append(g,n);
+  const n=document.createElement('span');n.className='choice-name';n.textContent=choiceName(e);b.append(g,n);
   if(e.roundaboutPlan){const badge=document.createElement('span');badge.className='exit-number';badge.textContent=e.exitNumber;b.append(badge);}
   b.onclick=()=>pick(e);wrap.append(b);layout.push({b,g,r:Math.hypot((x-50)/23,(y-centre)/ry),a:Math.atan2((x-50)/23,(centre-y)/ry)});
  });}
@@ -177,7 +179,7 @@ function renderPlan(){
 function queueChoice(tapped){
  const e=aheadShown&&tapped&&preview.list.find(c=>c.id===tapped.id);if(state!=='driving'||!e||queue.length>=2)return false;
  const info=directionInfo(e,preview.h),glyph={Venstre:'←',Høyre:'→','Rett frem':'↑',Snu:'↶'}[info.label];
- queue.push({node:preview.node,id:e.id,name:e.name==='Lokalvei'?'Innkjøring':e.name,label:e.roundaboutPlan?`Avkjørsel ${e.exitNumber}`:info.label,symbol:e.roundaboutPlan?String(e.exitNumber):info.symbol,glyph:e.roundaboutPlan?`${e.exitNumber}.`:glyph});
+ queue.push({node:preview.node,id:e.id,name:choiceName(e),label:e.roundaboutPlan?`Avkjørsel ${e.exitNumber}`:info.label,symbol:e.roundaboutPlan?String(e.exitNumber):info.symbol,glyph:e.roundaboutPlan?`${e.exitNumber}.`:glyph});
  picked={e,h:preview.h};pickedUntil=time+.8;say(e.roundaboutPlan?`Så tar vi avkjørsel ${e.exitNumber}.`:{Venstre:'Så svinger vi til venstre!',Høyre:'Så svinger vi til høyre!','Rett frem':'Så kjører vi rett frem!',Snu:'Så snur vi!'}[info.label]);
  planAhead();return true;
 }

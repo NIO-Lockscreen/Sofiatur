@@ -32,12 +32,14 @@ const out=new Map();for(const e of data.edges){if(!out.has(e.from))out.set(e.fro
 function towards(target){const dist=new Map([[target,0]]),q=[target];while(q.length){q.sort((a,b)=>dist.get(a)-dist.get(b));const n=q.shift();for(const e of data.edges)if(e.to===n){const d=dist.get(n)+e.length;if(d<(dist.get(e.from)??Infinity)){dist.set(e.from,d);q.push(e.from);}}}return dist;}
 
 // Home: out to the first junction, then back the shortest way; the car parks at home and the start screen comes back with the colours.
-{const g=await launch(),home=towards(data.start);g.act('start_drive');g.drive();assert.equal(g.read().state,'decision');let n=0;
- while(g.read().state==='decision'&&g.read().currentNode!==data.start&&n++<20){const s=g.read();const best=s.choices.map(c=>({c,e:data.edges.find(e=>e.id===c.id)})).filter(k=>k.e).sort((a,b)=>(home.get(a.e.to)??1e9)+a.e.length-(home.get(b.e.to)??1e9)-b.e.length)[0];g.act('choose_road',{edgeId:best.c.id});g.drive();}
- assert.equal(g.read().currentNode,data.start,'Back home');assert.equal(g.read().state,'decision','The car parks at home and waits');assert.match(g.element('toast').textContent,/Hjemme/);
+{const g=await launch(),home=towards(data.start);g.act('start_drive');g.drive();assert.equal(g.read().state,'decision');let n=0,homeArrow=false;
+ while(g.read().state==='decision'&&g.read().currentNode!==data.start&&n++<20){const s=g.read();const best=s.choices.map(c=>({c,e:data.edges.find(e=>e.id===c.id)})).filter(k=>k.e).sort((a,b)=>(home.get(a.e.to)??1e9)+a.e.length-(home.get(b.e.to)??1e9)-b.e.length)[0];if(best.e.to===data.start){const names=g.element('worldArrows').children.map(b=>b.children[1].textContent),i=s.choices.findIndex(c=>c.id===best.c.id);
+  assert.equal(names[i],'Hjem','The arrow into home is called Hjem ('+names.join(', ')+')');assert.ok(s.choices[i].street,'its road keeps its name');homeArrow=true;}
+  g.act('choose_road',{edgeId:best.c.id});g.drive();}
+ assert.ok(homeArrow,'There was an arrow home');assert.equal(g.read().currentNode,data.start,'Back home');assert.equal(g.read().state,'decision','The car parks at home and waits');assert.match(g.element('toast').textContent,/Hjemme/);
  for(let i=0;i<70;i++)g.step();assert.equal(g.read().state,'intro','The start screen comes back');assert.equal(g.element('welcome').hidden,false);assert.equal(g.element('rewards').hidden,false,'with the car colours');
  g.act('start_drive');assert.equal(g.read().state,'driving','and a new trip drives out of the drive again by itself');
- console.log('Drive back home and park; the start screen with the car colours comes back: OK');}
+ console.log('Drive back home (the arrow says Hjem) and park; the start screen with the car colours comes back: OK');}
 
 // Ludvig: Bøckmans veg 102 lies off the main trip, near the kindergarten; drive there the shortest way and park.
 {const g=await launch(),to=towards('ludvig-parkering');g.act('start_drive');g.drive();let n=0,offered=false;
