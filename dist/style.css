@@ -39,3 +39,5 @@
 /* No zooming (3 October 2026): on the iPad a quick double tap on the start card or the speed box, or a pinch, zoomed the page in so far that the
    menus were off the screen. Taps stay taps (no double-tap zoom); the start card and the menu still scroll up and down; the map keeps its own drags. */
 html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}.welcome,dialog{touch-action:pan-y}
+/* Zoomed in all the same (game.js pageZoomed): a pinch is allowed again on the map and the start card, and a note sits in the corner of what is seen. */
+html.zoomed #world,html.zoomed .welcome{touch-action:manipulation}.zoom-hint{position:fixed;z-index:60;left:0;top:0;transform-origin:0 0;padding:14px 18px;background:#174e48;color:#fff9dc;font-size:17px;font-weight:800;line-height:1.35;text-align:center;box-shadow:0 6px 20px #0005}

@@ -228,11 +228,19 @@ function updateHud(){const rem=remaining();$('remaining').textContent=freeMode?'
 // The game never pauses. The settings menu is a modal box over the running game; changes to the road choices apply when it closes.
 function openMenu(){$('menu').showModal();}
 $('closeMenu').onclick=()=>$('menu').close();
-// No zooming on the iPad (3 October 2026): Safari's pinch is cancelled (its gesture events), and if the page is zoomed in all the same (double tap, an
-// accessibility zoom), the viewport is set again, which brings it back to its full size with the menus on the screen.
-for(const t of ['gesturestart','gesturechange'])document.addEventListener(t,e=>e.preventDefault(),{passive:false});
-{const vv=window.visualViewport,meta=document.querySelector?.('meta[name="viewport"]');let flip=false;
- if(vv&&meta)vv.addEventListener('resize',()=>{if(vv.scale>1.01){flip=!flip;meta.setAttribute('content',`width=device-width, initial-scale=1, maximum-scale=${flip?'1.0':'1'}, viewport-fit=cover`);}});}
+// No zooming on the iPad, and a way out if the page is zoomed in all the same (3 October 2026). A pinch on the full-size page is cancelled (Safari's
+// gesture events). But a page zoomed in already (a pinch from before, which Safari brings back on reload; the accessibility zoom) must zoom out again:
+// the map takes every touch for the camera, so zoomed in on it no pinch got through and the game seemed stuck. Zoomed in, a pinch is allowed again,
+// on the map too ('zoomed' on <html>), a note says to pinch the fingers together, and the viewport is set again once, which may bring it back by itself.
+const VIEWPORT='width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover';
+function pageZoomed(){return (window.visualViewport?.scale||1)>1.02;}
+document.addEventListener('gesturestart',e=>{if(!pageZoomed())e.preventDefault();},{passive:false});
+{const vv=window.visualViewport,meta=document.querySelector?.('meta[name="viewport"]'),hint=$('zoomHint');let tried=false;
+ const check=()=>{const zoomed=pageZoomed();document.documentElement?.classList.toggle('zoomed',zoomed);hint.hidden=!zoomed;
+  if(zoomed){hint.style.left=vv.offsetLeft+'px';hint.style.top=vv.offsetTop+'px';hint.style.width=vv.width*vv.scale+'px';hint.style.transform=`scale(${1/vv.scale})`;
+   if(!tried&&meta){tried=true;meta.setAttribute('content',VIEWPORT+', minimum-scale=1, user-scalable=no');setTimeout(()=>meta.setAttribute('content',VIEWPORT),400);}}
+  else tried=false;};
+ if(vv){vv.addEventListener('resize',check);vv.addEventListener('scroll',check);}check();}
 
 // A tap outside the menu (on its backdrop) closes it (3 October 2026): the press and the release both outside the dialog's box, so dragging out of a
 // list in it does not.

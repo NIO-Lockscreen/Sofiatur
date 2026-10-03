@@ -6,9 +6,11 @@ import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:asser
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8'));const elements=new Map();const tools=new Map(),listeners=new Map();let raf=[],now=0,cameraYaw=0;
 const context=new Proxy({},{get:(o,p)=>p==='measureText'?()=>({width:20}):()=>{}});
 function element(id){if(!elements.has(id))elements.set(id,{id,hidden:false,textContent:'',style:{},classList:{add(){},remove(){},toggle(){}},dataset:{},children:[],events:new Map(),append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},setAttribute(){},getContext(){return context},addEventListener(type,fn){this.events.set(type,fn);},showModal(){this.open=true},close(){this.open=false;this.events.get('close')?.();},getBoundingClientRect(){return {left:300,right:740,top:80,bottom:700};},width:700,height:520});return elements.get(id);}
-const document={getElementById:element,createElement:t=>({ ...element('new'+Math.random()),tagName:t}),body:element('body'),addEventListener(){},modelContext:{registerTool:t=>tools.set(t.name,t)}};
+const docListeners=new Map(),html={classes:new Set(),classList:{toggle(c,on){on?html.classes.add(c):html.classes.delete(c);}}},meta={content:'',setAttribute(k,v){this[k]=v;}};
+const vv={scale:1,offsetLeft:0,offsetTop:0,width:1080,height:810,listeners:new Map(),addEventListener(t,fn){this.listeners.set(t,fn);}};
+const document={getElementById:element,createElement:t=>({ ...element('new'+Math.random()),tagName:t}),body:element('body'),documentElement:html,querySelector:s=>s.includes('viewport')?meta:null,addEventListener:(t,fn)=>docListeners.set(t,fn),modelContext:{registerTool:t=>tools.set(t.name,t)}};
 const terrain=data.terrain;function height(x,z){let a=Math.max(0,Math.min(terrain.nx-1.001,(x-terrain.x0)/40)),b=Math.max(0,Math.min(terrain.nz-1.001,(z-terrain.z0)/40)),i=Math.floor(a),j=Math.floor(b),u=a-i,v=b-j,h=terrain.heights;return(h[j*terrain.nx+i]*(1-u)+h[j*terrain.nx+i+1]*u)*(1-v)+(h[(j+1)*terrain.nx+i]*(1-u)+h[(j+1)*terrain.nx+i+1]*u)*v;}
-const env={document,window:{addEventListener:(name,fn)=>listeners.set(name,fn)},location:{reload(){}},console,T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,createWorld:()=>({height,resetCamera(){},setTurnArrow(){},update(){},cameraYaw:()=>cameraYaw}),fetch:async()=>({ok:true,json:async()=>data}),setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>raf.push(cb),performance:{now:()=>now},Promise,Math,Map,Set,Number,Infinity,Error};
+const env={document,window:{addEventListener:(name,fn)=>listeners.set(name,fn),visualViewport:vv},location:{reload(){}},console,T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,createWorld:()=>({height,resetCamera(){},setTurnArrow(){},update(){},cameraYaw:()=>cameraYaw}),fetch:async()=>({ok:true,json:async()=>data}),setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>raf.push(cb),performance:{now:()=>now},Promise,Math,Map,Set,Number,Infinity,Error};
 const ctx=vm.createContext(env);const source=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');const init=vm.runInContext(`(async()=>{${source}})()`,ctx);for(let i=0;i<12;i++){await Promise.resolve();const q=raf.splice(0);q.forEach(cb=>cb(now));}await init;assert.equal(element('start').disabled,false);const read=()=>tools.get('read_drive_state').execute();const act=(name,input)=>tools.get(name).execute(input);
 function step(){now+=45;const q=raf.splice(0);q.forEach(cb=>cb(now));}
 // The start button drives the car out of the parking place: leaving it is the only road, so no arrow is shown for it.
@@ -39,13 +41,21 @@ console.log('The arrows turn with the camera: OK');
  const nav=html.match(/<nav>(.*?)<\/nav>/)[1];assert.ok(!/[♫♪⚙]/.test(nav)&&(nav.match(/<svg /g)||[]).length===4,'drawn icons in the round buttons');
  element('sound').onclick();assert.ok(!element('sound').textContent,'the sound button keeps its icon');element('sound').onclick();}
 console.log('The settings menu opens only from its button and closes with a tap outside; drawn, centred icons: OK');
-// No zooming on the iPad: the viewport cannot be zoomed by focusing a field, taps never double-tap zoom (the card and the menu still scroll), Safari's
-// pinch is cancelled, and a page zoomed in all the same gets its viewport set again.
-{const html=fs.readFileSync('dist/index.html','utf8'),css=fs.readFileSync('dist/style.css','utf8'),src=fs.readFileSync('dist/game.js','utf8');
- assert.ok(html.includes('content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"'),'the viewport');
+// No zooming on the iPad, and a way out: the viewport does not zoom for a field and taps never double-tap zoom (the card and the menu still scroll); a
+// pinch on the full-size page is cancelled; but a page zoomed in already (Safari brings a zoom back on reload) lets a pinch through again, on the map too,
+// shows a note in the corner of what is seen, and sets the viewport again once; back at full size, all as before.
+{const html_=fs.readFileSync('dist/index.html','utf8'),css=fs.readFileSync('dist/style.css','utf8');
+ assert.ok(html_.includes('content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"'),'the viewport');
  assert.ok(css.includes('html,body{touch-action:manipulation;')&&css.includes('.welcome,dialog{touch-action:pan-y}')&&/#world\{[^}]*touch-action:none/.test(css),'no double-tap zoom; the card and the menu scroll; the map keeps its drags');
- assert.ok(src.includes("for(const t of ['gesturestart','gesturechange'])document.addEventListener(t,e=>e.preventDefault(),{passive:false});")&&src.includes('if(vv.scale>1.01)'),'pinch cancelled, zoom put back');}
-console.log('No zooming on the iPad (viewport, double tap, pinch, zoom put back): OK');
+ assert.ok(css.includes('html.zoomed #world,html.zoomed .welcome{touch-action:manipulation}'),'zoomed in, the map and the card let a pinch through');
+ const pinch=()=>{let stopped=false;docListeners.get('gesturestart')({preventDefault(){stopped=true;}});return stopped;},hint=element('zoomHint');
+ assert.equal(pinch(),true,'A pinch on the full-size page is cancelled');assert.equal(hint.hidden,true);assert.ok(!html.classes.has('zoomed'));
+ Object.assign(vv,{scale:4.5,offsetLeft:300,offsetTop:200,width:240,height:180});vv.listeners.get('resize')();
+ assert.ok(html.classes.has('zoomed'),'Zoomed in: the map lets a pinch through');assert.equal(pinch(),false,'and a pinch is not cancelled, so it can zoom out');
+ assert.equal(hint.hidden,false,'a note says what to do');assert.equal(hint.style.left,'300px');assert.equal(hint.style.top,'200px');assert.equal(hint.style.width,'1080px');assert.ok(/scale\(0\.222/.test(hint.style.transform),'at its normal size in the corner of what is seen');
+ assert.ok(/user-scalable=no/.test(meta.content),'and the viewport is set again (once) to bring the page back');meta.content='x';vv.listeners.get('scroll')();assert.equal(meta.content,'x','only once while zoomed');
+ Object.assign(vv,{scale:1,offsetLeft:0,offsetTop:0,width:1080,height:810});vv.listeners.get('resize')();assert.equal(hint.hidden,true,'Back at full size the note goes');assert.ok(!html.classes.has('zoomed'));assert.equal(pinch(),true,'and pinches are cancelled again');}
+console.log('No zooming on the iPad, and a way out if zoomed in all the same (pinch allowed again, a note, the viewport set again): OK');
 let choices=0,peak=0;while(read().state!=='finished'&&choices<180){let s=read();if(s.state==='decision'){const e=s.choices.find(c=>c.recommended);assert.ok(e,'Every junction has route home');act('choose_road',{edgeId:e.id});choices++;if(choices===2){listeners.get('blur')();const old=read().travelledMetres;for(let i=0;i<20;i++)step();assert.ok(read().travelledMetres>old,'Losing focus does not stop the game');console.log('The game keeps running without focus: OK');}}
  for(let i=0;i<600&&read().state==='driving';i++){step();peak=Math.max(peak,read().speedKmh);assert.ok(read().speedKmh<=200);}}
 assert.equal(read().state,'finished');assert.ok(read().travelledMetres>2900&&read().travelledMetres<3400);assert.equal(element('finish').hidden,false);console.log('Full route arrival: OK',read(),{choices});
