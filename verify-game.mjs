@@ -5,7 +5,7 @@ import {createMusic} from './dist/music.js';
 import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';import * as T from './dist/vendor/three.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8'));const elements=new Map();const tools=new Map(),listeners=new Map();let raf=[],now=0,cameraYaw=0;
 const context=new Proxy({},{get:(o,p)=>p==='measureText'?()=>({width:20}):()=>{}});
-function element(id){if(!elements.has(id))elements.set(id,{id,hidden:false,textContent:'',style:{},classList:{add(){},remove(){},toggle(){}},dataset:{},children:[],events:new Map(),append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},setAttribute(){},getContext(){return context},addEventListener(type,fn){this.events.set(type,fn);},showModal(){this.open=true},close(){this.open=false;this.events.get('close')?.();},width:700,height:520});return elements.get(id);}
+function element(id){if(!elements.has(id))elements.set(id,{id,hidden:false,textContent:'',style:{},classList:{add(){},remove(){},toggle(){}},dataset:{},children:[],events:new Map(),append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},setAttribute(){},getContext(){return context},addEventListener(type,fn){this.events.set(type,fn);},showModal(){this.open=true},close(){this.open=false;this.events.get('close')?.();},getBoundingClientRect(){return {left:300,right:740,top:80,bottom:700};},width:700,height:520});return elements.get(id);}
 const document={getElementById:element,createElement:t=>({ ...element('new'+Math.random()),tagName:t}),body:element('body'),addEventListener(){},modelContext:{registerTool:t=>tools.set(t.name,t)}};
 const terrain=data.terrain;function height(x,z){let a=Math.max(0,Math.min(terrain.nx-1.001,(x-terrain.x0)/40)),b=Math.max(0,Math.min(terrain.nz-1.001,(z-terrain.z0)/40)),i=Math.floor(a),j=Math.floor(b),u=a-i,v=b-j,h=terrain.heights;return(h[j*terrain.nx+i]*(1-u)+h[j*terrain.nx+i+1]*u)*(1-v)+(h[(j+1)*terrain.nx+i]*(1-u)+h[(j+1)*terrain.nx+i+1]*u)*v;}
 const env={document,window:{addEventListener:(name,fn)=>listeners.set(name,fn)},location:{reload(){}},console,T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,createWorld:()=>({height,resetCamera(){},setTurnArrow(){},update(){},cameraYaw:()=>cameraYaw}),fetch:async()=>({ok:true,json:async()=>data}),setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>raf.push(cb),performance:{now:()=>now},Promise,Math,Map,Set,Number,Infinity,Error};
@@ -25,6 +25,20 @@ const before=read();assert.throws(()=>act('choose_road',{edgeId:-1}));assert.equ
   const straight=buttons.find(b=>b.className.includes('straight'));if(straight&&turn===Math.PI/2)assert.ok(parseFloat(straight.style.left)>70,'A quarter turn: straight on sits to the right');if(straight&&turn===Math.PI)assert.ok(parseFloat(straight.style.top)>80,'Half a turn: straight on at the bottom');}
  cameraYaw=0;step();assert.deepEqual(buttons.map(b=>b.style.top),tops,'Behind the car again, as before');assert.ok(buttons.every(b=>!b.children[0].style.transform));}
 console.log('The arrows turn with the camera: OK');
+// The settings menu: opened only by its button (the map credit at the bottom left, where a tap meant for the speed box or the steering opened it, is
+// plain text now); a tap outside it (press and release on the backdrop) closes it, a tap inside or a drag out of it does not.
+{const menu=element('menu'),html=fs.readFileSync('dist/index.html','utf8'),tap=(down,up)=>{menu.events.get('pointerdown')({target:menu,...down});menu.events.get('click')({target:menu,...up});};
+ assert.ok(!/<button id="about"/.test(html)&&/<span id="about" class="credit">Kart: OpenStreetMap/.test(html),'The map credit is text, not a button');assert.equal(element('about').onclick,undefined);
+ element('settings').onclick();assert.equal(menu.open,true,'The gear opens the menu');
+ tap({clientX:500,clientY:300},{clientX:500,clientY:300});assert.equal(menu.open,true,'A tap inside it (on its padding) keeps it open');
+ menu.events.get('pointerdown')({target:element('closeMenu'),clientX:520,clientY:90});menu.events.get('click')({target:element('closeMenu'),clientX:520,clientY:90});assert.equal(menu.open,true,'so does a tap on something in it');
+ tap({clientX:500,clientY:300},{clientX:100,clientY:300});assert.equal(menu.open,true,'and a drag out of it');
+ tap({clientX:100,clientY:300},{clientX:100,clientY:300});assert.equal(menu.open,false,'A tap outside closes it');
+ element('settings').onclick();tap({clientX:500,clientY:760},{clientX:500,clientY:760});assert.equal(menu.open,false,'below it too');
+ // The three round buttons top right draw their icons (SVG), no text glyphs (iPadOS drew the gear as an emoji off the middle).
+ const nav=html.match(/<nav>(.*?)<\/nav>/)[1];assert.ok(!/[♫♪⚙]/.test(nav)&&(nav.match(/<svg /g)||[]).length===4,'drawn icons in the round buttons');
+ element('sound').onclick();assert.ok(!element('sound').textContent,'the sound button keeps its icon');element('sound').onclick();}
+console.log('The settings menu opens only from its button and closes with a tap outside; drawn, centred icons: OK');
 let choices=0,peak=0;while(read().state!=='finished'&&choices<180){let s=read();if(s.state==='decision'){const e=s.choices.find(c=>c.recommended);assert.ok(e,'Every junction has route home');act('choose_road',{edgeId:e.id});choices++;if(choices===2){listeners.get('blur')();const old=read().travelledMetres;for(let i=0;i<20;i++)step();assert.ok(read().travelledMetres>old,'Losing focus does not stop the game');console.log('The game keeps running without focus: OK');}}
  for(let i=0;i<600&&read().state==='driving';i++){step();peak=Math.max(peak,read().speedKmh);assert.ok(read().speedKmh<=200);}}
 assert.equal(read().state,'finished');assert.ok(read().travelledMetres>2900&&read().travelledMetres<3400);assert.equal(element('finish').hidden,false);console.log('Full route arrival: OK',read(),{choices});

@@ -422,3 +422,10 @@ The user: the fire engine could not change colour; it should, with different col
 - **Its beacons** have a pair of colours for each colour of the picker (`BEACONS` in `rides.js`): red blue and blue (the standard), black blue and red, pink purple and white, purple pink and yellow, blue red and white, turquoise yellow and pink, green yellow and white, yellow amber, orange yellow and blue, white red and blue, KIWI green and white; with the rainbow they go round the rainbow. `world.js` sets them with the colour and the skin.
 - **The colour wheel** (a free colour) is gone: ten colours, the rainbow and KIWI. A colour saved from the wheel becomes the nearest of the ten.
 Tests: `verify-rewards.mjs`.
+
+## The settings menu, and the round buttons · 3 October 2026
+The user: the settings menu sometimes came up without anyone pressing it; it should close on a tap outside it; and the three round buttons top right had their icons off the middle.
+- **Opening by itself**: the map credit at the bottom left ("Kart: OpenStreetMap · Terreng: Kartverket, Mapzen") was a button that opened the menu, right under the speed box, the start card's foot and the free-driving steering, so a tap meant for those opened it. It is plain text now (still shown; the sources are in the menu), and the footer lets taps through to the map.
+- **Closing**: a tap on the backdrop closes the menu (the press and the release both outside its box, so a drag out of a list in it does not).
+- **The icons**: the sound and settings buttons were text glyphs (♫ and ⚙), which iPadOS draws as emoji off the middle; all three are drawn icons now (SVG: a music note, crossed out when the sound is off; a cog; the fullscreen corners), centred in the circle with a grid.
+Tests: `verify-game.mjs`.
