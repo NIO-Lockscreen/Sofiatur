@@ -7,21 +7,22 @@ import {createDrivingLines} from './dist/driving-line.js';
 import {createFreeDrive} from './dist/free-drive.js';
 import {createMusic} from './dist/music.js';
 import {createBoy} from './dist/boy.js';
-import {createDog,createRideDuck,createRocket} from './dist/rides.js';
+import {createDog,createRideDuck,createRocket,createUnicorn,createFireTruck,createBalloon,createTRex} from './dist/rides.js';
+import {createBubbles} from './dist/bubbles.js';
 import {createRainbowTrail} from './dist/rainbow-trail.js';
 import {createCat} from './dist/cat-model.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8'));
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
 // Starts a fresh game (as after a page reload) with the given browser storage; the world records paint, boy and model calls.
 async function launch(localStorage){
- const els=new Map(),world={colour:null,trail:null,boy:null,skin:null,model:null};let callbacks=[],now=0;const canvasContext=new Proxy({},{get:()=>()=>{}});
+ const els=new Map(),world={colour:null,trail:null,boy:null,bubbles:null,honks:0,skin:null,model:null};let callbacks=[],now=0;const canvasContext=new Proxy({},{get:()=>()=>{}});
  const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',value:'',checked:false,style:{},children:[],attrs:{},classes:new Set(),classList:{add(){},remove(){},toggle(c,on){on?this.owner.classes.add(c):this.owner.classes.delete(c);}},setAttribute(k,v){this.attrs[k]=v;},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(){},getContext(){return canvasContext}});const el=els.get(id);el.classList.owner=el;return el;};
  const listeners=new Map();
  const env={T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener:(type,fn)=>listeners.set(type,fn)},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),
-  createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on,setBoy:on=>world.boy=on})};
+  createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on,setBoy:on=>world.boy=on,setBubbles:on=>world.bubbles=on,honk:()=>world.honks++})};
  if(localStorage)Object.defineProperty(env,'localStorage',{get:localStorage});
  const ctx=vm.createContext(env);
- const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},home(){start();current=data.start;state='decision';parkAtHome();},ludvig(){parkAtLudvig();},state:()=>state,progress:()=>({arrivals,carColour,trailOn:behind==='trail',catOn:model==='cat'}),model:()=>model,behind:()=>behind};})()`,ctx);
+ const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},home(){start();current=data.start;state='decision';parkAtHome();},ludvig(){parkAtLudvig();},start(){start();},honkKey(){honk();},state:()=>state,progress:()=>({arrivals,carColour,trailOn:behind==='trail',catOn:model==='cat'}),model:()=>model,behind:()=>behind};})()`,ctx);
  for(let i=0;i<12;i++){await Promise.resolve();const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}await init;
  const key=(k,target={tagName:'BODY'})=>listeners.get('keydown')({key:k,repeat:false,target,preventDefault(){}});
  const tick=n=>{for(let i=0;i<n;i++){const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}};
@@ -70,11 +71,23 @@ game=await launch(()=>storage);assert.equal(game.world.colour,'rainbow','Rainbow
 game.test.arrive();assert.equal(game.test.progress().arrivals,5);assert.equal(game.world.model,'dog');assert.match(game.element('unlock').textContent,/hund/);assert.match(game.element('again').textContent,/hunden/);
 game.element('again').onclick();assert.equal(game.element('model-dog').hidden,false);assert.ok(game.element('model-dog').classes.has('on'));assert.equal(game.element('model-duck').hidden,true);assert.equal(game.element('rewardTeaser').hidden,false);
 game.test.arrive();assert.equal(game.world.model,'duck');assert.match(game.element('unlock').textContent,/and/);game.element('again').onclick();assert.equal(game.element('model-duck').hidden,false);assert.equal(game.element('model-rocket').hidden,true);
-game.test.arrive();assert.equal(game.world.model,'rocket');assert.match(game.element('unlock').textContent,/rakett/);game.element('again').onclick();assert.equal(game.element('model-rocket').hidden,false);assert.equal(game.element('rewardTeaser').hidden,true,'No teaser once everything is unlocked');
+game.test.arrive();assert.equal(game.world.model,'rocket');assert.match(game.element('unlock').textContent,/rakett/);game.element('again').onclick();assert.equal(game.element('model-rocket').hidden,false);assert.equal(game.element('rewardTeaser').hidden,false,'More to come after the seventh trip');
 game.element('model-dog').onclick();assert.equal(game.world.model,'dog');game=await launch(()=>storage);assert.equal(game.world.model,'dog','The dog remembered');assert.equal(game.world.colour,'rainbow','a rainbow dog');
+// Trips 8 to 13 (3 October 2026): the unicorn, soap bubbles (an alternative behind the car), the fire engine, the horn, the hot-air balloon and last the T. rex.
+game.test.arrive();assert.equal(game.test.progress().arrivals,8);assert.equal(game.world.model,'unicorn');assert.match(game.element('unlock').textContent,/enhjørning/);game.element('again').onclick();assert.equal(game.element('model-unicorn').hidden,false);assert.equal(game.element('bubblesRow').hidden,true);
+game.test.arrive();assert.match(game.element('unlock').textContent,/såpebobler/);assert.equal(game.world.bubbles,true,'Bubbles on at once');assert.equal(game.world.trail,false,'instead of the trail');game.element('again').onclick();assert.equal(game.element('bubblesRow').hidden,false);assert.equal(game.element('bubbles').checked,true);
+game.element('trail').onchange({target:{checked:true}});assert.equal(game.world.trail,true);assert.equal(game.world.bubbles,false,'The trail switches the bubbles off');game.element('bubbles').onchange({target:{checked:true}});assert.equal(game.world.bubbles,true);assert.equal(game.world.trail,false);
+game.test.arrive();assert.equal(game.world.model,'firetruck');assert.match(game.element('unlock').textContent,/brannbil/);assert.equal(game.element('horn').hidden,true,'The horn waits for the eleventh trip');
+game.test.arrive();assert.match(game.element('unlock').textContent,/tute/);assert.equal(game.element('horn').hidden,false,'The horn button');game.element('again').onclick();game.test.start();game.element('horn').onclick();assert.equal(game.world.honks,1,'Honking makes the ride react');
+game.test.honkKey();assert.equal(game.world.honks,2,'H honks too');
+game.test.arrive();assert.equal(game.world.model,'balloon');assert.match(game.element('unlock').textContent,/luftballong/);game.element('again').onclick();assert.equal(game.element('rewardTeaser').hidden,false);
+game.test.arrive();assert.equal(game.test.progress().arrivals,13);assert.equal(game.world.model,'trex');assert.match(game.element('unlock').textContent,/T-rex/);assert.match(game.element('unlock').textContent,/alle overraskelsene/);
+game.element('again').onclick();for(const m of ['car','cat','dog','duck','rocket','unicorn','firetruck','balloon','trex'])assert.equal(game.element('model-'+m).hidden,false,m+' in the picker');assert.equal(game.element('rewardTeaser').hidden,true,'No teaser once everything is unlocked');
+game=await launch(()=>storage);assert.equal(game.world.model,'trex','The T. rex remembered');assert.equal(game.world.bubbles,true,'and the bubbles');
 game.test.arrive();assert.equal(game.element('unlock').hidden,true,'No new reward on later trips');assert.match(game.element('again').textContent,/en gang til/);
+store.set('sofiatur.fremgang',JSON.stringify({arrivals:8,model:'trex',behind:'bubbles'}));game=await launch(()=>storage);assert.equal(game.world.model,'car','The T. rex only after thirteen trips');assert.equal(game.world.bubbles,false,'bubbles only after nine');
 store.set('sofiatur.fremgang',JSON.stringify({arrivals:5,model:'rocket'}));game=await launch(()=>storage);assert.equal(game.world.model,'car','The rocket only after seven trips');
-console.log('Fourth arrival unlocks the rainbow colour, the fifth to seventh the dog, the duck and the rocket; everything survives a reload: OK');
+console.log('Fourth arrival unlocks the rainbow colour, then the dog, duck, rocket, unicorn, soap bubbles, fire engine, horn, hot-air balloon and last the T. rex; everything survives a reload: OK');
 
 // Rewards that are not unlocked yet cannot be forced through storage.
 store.set('sofiatur.fremgang',JSON.stringify({arrivals:1,colour:'rainbow',model:'cat'}));game=await launch(()=>storage);assert.equal(game.world.colour,'#14171c');assert.equal(game.world.model,'car');assert.equal(game.world.trail,false);
@@ -182,4 +195,23 @@ for(const [name,make] of [['dog',createDog],['duck',createRideDuck],['rocket',cr
 {const rocket=createRocket(T);rocket.update(.05,0,1);const flame=()=>{let len=0;rocket.group.traverse(o=>{if(o.isMesh&&o.material.isMeshBasicMaterial&&o.material.transparent)len=Math.max(len,o.scale.y);});return len;};
  const idle=flame();rocket.update(.05,50,1);assert.ok(flame()>idle*3,'The rocket\'s flame grows with the speed');}
 console.log('The dog, the duck and the rocket: car-sized, painted, KIWI logos on both flanks, moving: OK');
+
+// Trips 8 to 13: the unicorn, the fire engine (always fire-engine red), the hot-air balloon (floating) and the T. rex: their sizes, the KIWI logos,
+// the paint, movement, and honk (the T. rex opens its jaws).
+for(const [name,make,{x,y,z,minY,paints}] of [['unicorn',createUnicorn,{x:[1,2.5],y:[3,4.2],z:[3.5,5.5],minY:[-.05,.2],paints:true}],['firetruck',createFireTruck,{x:[2,2.6],y:[2.4,3],z:[5,6.5],minY:[-.1,.1],paints:false}],
+  ['balloon',createBalloon,{x:[3,4],y:[4.5,6.2],z:[3,4],minY:[.5,1.3],paints:true}],['trex',createTRex,{x:[1.5,2.5],y:[3,4],z:[6,8.5],minY:[-.05,.4],paints:true}]]){
+ const logo=new T.MeshBasicMaterial(),ride=make(T,{logos:{kiwi:logo}});ride.group.updateMatrixWorld(true);
+ const box=new T.Box3().setFromObject(ride.group),size=box.getSize(new T.Vector3()),within=(v,[a,b])=>v>=a&&v<=b;
+ assert.ok(within(size.x,x)&&within(size.y,y)&&within(size.z,z)&&within(box.min.y,minY),`${name}: size ${size.toArray().map(v=>v.toFixed(1))}, lowest point ${box.min.y.toFixed(2)}`);
+ assert.equal(ride.skins.kiwi.length,2,name+': a KIWI logo on each side');assert.ok(ride.skins.kiwi.every(m=>!m.visible),name+': hidden until the KIWI skin');
+ const pink=new T.Color('#ec6aa8');ride.update(.05,0,1,pink);let painted=false;ride.group.traverse(o=>{if(o.material?.color?.equals(pink))painted=true;});assert.equal(painted,paints,name+(paints?' takes the paint colour':' keeps its own colour'));
+ const pose=()=>{const v=[];ride.group.traverse(o=>{if(o.isGroup||o.isMesh)v.push(o.rotation.x,o.rotation.y,o.position.y,o.scale.y);});return v;};
+ const still=pose();for(let i=0;i<10;i++)ride.update(.05,14,1+i*.05,pink);assert.ok(still.some((v,i)=>Math.abs(v-pose()[i])>.03),name+' moves');
+ assert.equal(typeof ride.honk,'function',name+' reacts to the horn');}
+{const rex=createTRex(T);rex.update(.05,0,1);const shut=rex.jaw.rotation.x;rex.honk();let widest=0;for(let i=0;i<30;i++){rex.update(.05,0,1+i*.05);widest=Math.max(widest,rex.jaw.rotation.x);}
+ assert.ok(widest>shut+.6,'The T. rex opens its jaws wide when it honks ('+widest.toFixed(2)+')');assert.ok(rex.jaw.rotation.x<widest,'and shuts them again');}
+{const scene=new T.Scene(),b=createBubbles({T,scene}),pos=new T.Vector3(0,100,0),facing=new T.Vector3(0,0,-1);assert.equal(b.mesh.visible,false);b.setOn(true);
+ for(let i=0;i<60;i++){pos.z-=10*.05;b.update(.05,pos,facing);}assert.ok(b.mesh.count>15,'Soap bubbles are blown ('+b.mesh.count+')');assert.ok(b.bubbles.every(q=>q.y>pos.y),'and rise above the car');
+ assert.ok(b.bubbles.reduce((a,q)=>a+q.z,0)/b.bubbles.length>pos.z+1,'behind it');for(let i=0;i<120;i++)b.update(.05,pos,facing);assert.ok(b.bubbles.every(q=>q.age<=q.life),'and pop');b.setOn(false);assert.equal(b.mesh.visible,false);}
+console.log('Unicorn, fire engine, hot-air balloon and T. rex: sizes, logos, paint, movement, honk; soap bubbles blown, rising and popping: OK');
 
