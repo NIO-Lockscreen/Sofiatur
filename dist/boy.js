@@ -45,11 +45,12 @@ export function createBoy({T,scene}){
  function along(d){let rest=d;for(let i=track.length-1;i>0;i--){const a=track[i-1],b=track[i],l=Math.hypot(b.x-a.x,b.z-a.z);if(l>=rest){const f=l>0?rest/l:0;return {x:b.x+(a.x-b.x)*f,y:b.y+(a.y-b.y)*f,z:b.z+(a.z-b.z)*f,dx:(b.x-a.x)/(l||1),dz:(b.z-a.z)/(l||1)};}rest-=l;}
   const a=track[0],b=track[1]||track[0],l=Math.hypot(b.x-a.x,b.z-a.z)||1;return {x:a.x,y:a.y,z:a.z,dx:(b.x-a.x)/l,dz:(b.z-a.z)/l};}
  // pos: the car (its ground is 8 cm under pos.y), facing: its direction, speed in m/s.
- function update(dt,pos,facing,speed,time){
+ function update(dt,pos,facing,speed,time,{held=false}={}){
   if(!on)return;const v=Math.abs(speed),gap=lastX===null?Infinity:Math.hypot(pos.x-lastX,pos.z-lastZ);
   if(gap>12)clear(); // the car was moved (a new trip, recovery): start again right behind it
   if(!track.length){const h=Math.hypot(facing.x,facing.z)||1;for(let k=12;k>=0;k--)track.push({x:pos.x-facing.x/h*k*.5,y:pos.y-.08,z:pos.z-facing.z/h*k*.5});}
   if(gap>.4||lastX===null){track.push({x:pos.x,y:pos.y-.08,z:pos.z});lastX=pos.x;lastZ=pos.z;if(track.length>MAX)track.shift();}
+  if(held){behind=3.1;wave=0;return;} // in the T. rex's mouth (hold() places him); afterwards he runs on from right behind the car
   // Six metres behind while the car drives, three by its rear when it stops; he never falls further back than the track reaches.
   const want=v>.8?6:3.1;behind+=(want-behind)*Math.min(1,dt*(v>.8?.8:1.6));
   const p=along(Math.min(behind,Math.max(0,track.length*.4-.5)));
@@ -60,5 +61,15 @@ export function createBoy({T,scene}){
   // Running pace: the car's speed while it drives, a jog while he catches up.
   run+=((v>.8?v:Math.abs(want-behind)>.3?2.2:0)-run)*Math.min(1,dt*4);model.update(dt,run,time,wave);
  }
- return {setOn,update,clear,group,track,isOn:()=>on};
+ // An easter egg (3 October 2026): driving as the T. rex with Ludvig running after it, the T. rex carries him by the back of his shirt in the
+ // right corner of its mouth, its head turned a little to the right, so he dangles beside its face where the chase camera sees him: facing out,
+ // swinging, still running with his legs in the air. anchor and quat: the T. rex's grip (its world position and rotation).
+ const fwd=new T.Vector3(),scruff=new T.Vector3();
+ function hold(anchor,quat,dt,time){
+  if(!on)return;fwd.set(0,0,-1).applyQuaternion(quat);
+  yaw.set(Math.sin(time*5.3)*.1,Math.atan2(-fwd.x,-fwd.z)-Math.PI/2,Math.sin(time*3.1)*.12);group.quaternion.setFromEuler(yaw);
+  scruff.set(0,.86,.12).applyQuaternion(group.quaternion);group.position.copy(anchor).sub(scruff);
+  run+=(9-run)*Math.min(1,dt*4);model.update(dt,run,time,0);
+ }
+ return {setOn,update,clear,hold,group,track,isOn:()=>on};
 }

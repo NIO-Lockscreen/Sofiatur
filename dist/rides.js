@@ -221,7 +221,7 @@ export function createTRex(T,{logos={}}={}){
  part(sphere,skin,[0,2.15,.1],[.78,.85,1.45]);part(sphere,belly,[0,1.85,-.2],[.55,.55,1.0]);part(sphere,skin,[0,2.55,-1.05],[.55,.6,.65]);
  const head=new T.Group();head.position.set(0,3.05,-1.55);body.add(head);
  part(sphere,skin,[0,.05,-.35],[.48,.42,.78],head);
- const jaw=new T.Group();jaw.position.set(0,-.18,0);head.add(jaw);part(sphere,skin,[0,-.12,-.4],[.42,.18,.7],jaw);part(sphere,mouth,[0,-.02,-.45],[.36,.08,.6],jaw);
+ const jaw=new T.Group();jaw.position.set(0,-.18,0);head.add(jaw);const grip=new T.Object3D();grip.position.set(.46,-.04,-.5);jaw.add(grip);part(sphere,skin,[0,-.12,-.4],[.42,.18,.7],jaw);part(sphere,mouth,[0,-.02,-.45],[.36,.08,.6],jaw);
  for(const s of [-1,1]){for(let k=0;k<5;k++){const z=-.15-k*.17;part(cone,tooth,[s*.3*(1-k*.08),-.12,z],[.035,.1,.035],head).rotation.x=Math.PI;part(cone,tooth,[s*.27*(1-k*.08),.02,z-.05],[.03,.08,.03],jaw);}
   part(sphere,eye,[s*.33,.25,-.25],[.08,.08,.07],head);part(sphere,pupil,[s*.37,.25,-.27],[.03,.07,.03],head);}
  // tiny arms with two claws each
@@ -235,7 +235,7 @@ export function createTRex(T,{logos={}}={}){
  const tail=[];let joint=new T.Group();joint.position.set(0,2.25,1.4);body.add(joint);
  for(let i=0;i<6;i++){const r=.5-i*.075;part(sphere,skin,[0,0,.3],[r,r*.9,.55],joint);tail.push(joint);const next=new T.Group();next.position.set(0,0,.55);joint.add(next);joint=next;}
  const skins=flankLogos(T,body,logos,{cy:2.15,cz:.1,rx:.78,ry:.85,rz:1.45,w:1.3,h:.42,y:2.25,z:.25});
- let phase=0,roar=0;
+ let phase=0,roar=0;const held={carrying:false};
  function update(dt,speed,time,colour){
   if(colour)skin.color.copy(colour);
   const run=Math.min(1,speed/5);phase+=dt*(1.8+speed*.35);
@@ -243,8 +243,8 @@ export function createTRex(T,{logos={}}={}){
   body.position.y=Math.abs(Math.sin(phase))*.14*run;body.rotation.x=-.08*run+Math.sin(phase*2)*.03*run;
   tail.forEach((seg,i)=>{seg.rotation.y=Math.sin(time*(2+run*3)-i*.5)*(.12+.05*run);seg.rotation.x=i?.04:-.05;});
   arms.forEach((a,i)=>{a.rotation.x=Math.sin(phase+i)*.3*run;});
-  roar=Math.max(0,roar-dt*.8);const open=Math.sin(Math.PI*Math.min(1,roar*1.3));jaw.rotation.x=.75*open+.06*run*Math.abs(Math.sin(phase));head.rotation.x=-.25*open+Math.sin(phase*2)*.04*run;head.rotation.y=Math.sin(time*.6)*.15*(1-run);
+  roar=Math.max(0,roar-dt*.8);const open=Math.sin(Math.PI*Math.min(1,roar*1.3));jaw.rotation.x=Math.max(held.carrying?.3:0,.75*open+.06*run*Math.abs(Math.sin(phase)));head.rotation.x=-.25*open+Math.sin(phase*2)*.04*run;head.rotation.y=held.carrying?-.3+Math.sin(time*1.3)*.05:Math.sin(time*.6)*.15*(1-run);
  }
  update(0,0,0);
- return {group,update,skins,jaw,honk(){roar=1;}};
+ return {group,update,skins,jaw,grip,honk(){roar=1;},get carrying(){return held.carrying;},set carrying(v){held.carrying=!!v;}};
 }

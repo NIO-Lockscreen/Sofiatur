@@ -215,3 +215,19 @@ for(const [name,make,{x,y,z,minY,paints}] of [['unicorn',createUnicorn,{x:[1,2.5
  assert.ok(b.bubbles.reduce((a,q)=>a+q.z,0)/b.bubbles.length>pos.z+1,'behind it');for(let i=0;i<120;i++)b.update(.05,pos,facing);assert.ok(b.bubbles.every(q=>q.age<=q.life),'and pop');b.setOn(false);assert.equal(b.mesh.visible,false);}
 console.log('Unicorn, fire engine, hot-air balloon and T. rex: sizes, logos, paint, movement, honk; soap bubbles blown, rising and popping: OK');
 
+// The easter egg: driving as the T. rex with Ludvig running after it, the T. rex carries him in its mouth (by the back of his shirt, beside
+// its face, his legs still running), its jaws a little open; his track is still kept, so he runs on behind the car when it is something else again; and the game says so.
+{const scene=new T.Scene(),rex=createTRex(T),boy=createBoy({T,scene}),car=new T.Group();car.add(rex.group);scene.add(car);car.position.set(10,100,20);car.updateMatrixWorld(true);
+ boy.setOn(true);rex.carrying=true;const pos=new T.Vector3(10,100.08,20),facing=new T.Vector3(0,0,-1),at=new T.Vector3(),q=new T.Quaternion();
+ const legs=[];for(let i=0;i<20;i++){rex.update(.05,12,i*.05);car.updateMatrixWorld(true);boy.update(.05,pos,facing,12,i*.05,{held:true});boy.hold(rex.grip.getWorldPosition(at),rex.grip.getWorldQuaternion(q),.05,i*.05);
+  boy.group.traverse(o=>{if(o.isGroup&&o!==boy.group&&o.children.length===2&&o.position.y>.4&&o.position.y<.5)legs.push(o.rotation.x);});}
+ assert.ok(rex.jaw.rotation.x>=.29,'The T. rex holds its jaws a little open');
+ const scruff=new T.Vector3(0,.86,.12).applyQuaternion(boy.group.quaternion).add(boy.group.position);assert.ok(scruff.distanceTo(at)<.05,'Ludvig is held by the back of his shirt in its mouth');
+ assert.ok(at.y>pos.y+2.4,'up at the T. rex\'s mouth ('+(at.y-pos.y).toFixed(2)+' m)');const up=new T.Vector3(0,1,0).applyQuaternion(boy.group.quaternion);assert.ok(up.y>.9,'hanging upright');
+ const chest=new T.Vector3(0,.7,0).applyQuaternion(boy.group.quaternion).add(boy.group.position);assert.ok(chest.x-car.position.x>.5,'beside its face on its right, where the camera behind sees him ('+(chest.x-car.position.x).toFixed(2)+' m)');
+ const box=new T.Box3().setFromObject(boy.group);assert.ok(box.min.y>pos.y+1.2,'his feet well off the ground ('+(box.min.y-pos.y).toFixed(2)+' m)');
+ assert.ok(Math.max(...legs)-Math.min(...legs)>.5,'his legs still running in the air');assert.ok(boy.track.length>10,'his track kept');}
+{store.set('sofiatur.fremgang',JSON.stringify({arrivals:13,model:'trex',ludvig:'on',behind:'ludvig'}));const game=await launch(()=>storage);game.test.start();assert.match(game.element('toast').textContent,/T-rexen har tatt Ludvig i munnen/);
+ store.set('sofiatur.fremgang',JSON.stringify({arrivals:13,model:'trex',ludvig:'on',behind:'trail'}));const other=await launch(()=>storage);other.test.start();assert.doesNotMatch(other.element('toast').textContent||'',/T-rexen/,'only with Ludvig on');}
+console.log('Easter egg: the T. rex carries Ludvig in its mouth, his legs still running: OK');
+

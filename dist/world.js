@@ -168,6 +168,7 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  function setCarSkin(name){skin=name||null;car.userData.skin=skin;showModel();}
  function setCarModel(name){model=rides[name]?name:'car';car.userData.body=model;showModel();}
  // The horn (the reward for the eleventh trip): a little hop, and the ride's own reaction (the T. rex opens its jaws).
+ const holdAt=new T.Vector3(),holdQ=new T.Quaternion();
  let hopT=0;function honk(){hopT=.55;rides[model]?.honk?.();}
  // Paint colour (a reward). Black keeps the original deep metallic look; brighter colours are less metallic so they read as colour.
  // 'rainbow' (the reward for the fourth trip) runs through all the colours in a little over three seconds; update() turns it.
@@ -196,9 +197,11 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  }
  function update(dt,pos,tangent,velocity,mode,finished,time,carFacing=tangent){
  adaptResolution();
- trail.update(dt,pos,carFacing);boy.update(dt,pos,carFacing,velocity,time);bubbles.update(dt,pos,carFacing);trafficLights.update(dt,pos);updateDuck(dt,pos,time);
+ const carrying=model==='trex'&&boy.isOn();rides.trex.carrying=carrying; // the easter egg: the T. rex carries Ludvig in its mouth
+ trail.update(dt,pos,carFacing);boy.update(dt,pos,carFacing,velocity,time,{held:carrying});bubbles.update(dt,pos,carFacing);trafficLights.update(dt,pos);updateDuck(dt,pos,time);
  if(rainbow)paint.color.setHSL((time*.3)%1,.9,.42);if(rides[model])rides[model].update(dt,Math.abs(velocity),time,paint.color);
  car.position.copy(pos);if(hopT>0){hopT=Math.max(0,hopT-dt);car.position.y+=Math.sin(Math.PI*hopT/.55)*.45;}const yaw=Math.atan2(-carFacing.x,-carFacing.z);rot.setFromEuler(facing.set(Math.atan2(carFacing.y,Math.hypot(carFacing.x,carFacing.z)),yaw,0));car.quaternion.slerp(rot,1-Math.exp(-dt*9));wheels.forEach(w=>w.rotation.x-=velocity*dt/.39);
+ if(carrying){car.updateMatrixWorld(true);boy.hold(rides.trex.grip.getWorldPosition(holdAt),rides.trex.grip.getWorldQuaternion(holdQ),dt,time);}
  sm.position.set(pos.x,height(pos.x,pos.z)+.25,pos.z);sm.rotation.z=-yaw;turnArrow.position.set(pos.x,pos.y+6.2+Math.sin(time*3)*.22,pos.z);turnArrow.scale.setScalar(4.5+Math.sin(time*3)*.16);if(finished)turnArrow.visible=false;
  const follow=follows[mode]||follows.follow;
  horizontal.set(tangent.x,0,tangent.z).normalize();if(horizontal.lengthSq()<.1)horizontal.set(0,0,-1);

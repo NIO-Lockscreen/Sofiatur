@@ -384,3 +384,9 @@ The user: find five more fun rewards for reaching the kindergarten, then a T. re
 - **13: the T. rex**, the last reward: on two big legs with its tail held out behind, tiny arms and a big head with teeth, running at the car's speed; on the horn it opens its jaws wide. The game says that all the surprises are found, and the teaser on the start screen goes away.
 
 All of them wear the KIWI logo on both sides with the KIWI skin; all but the fire engine take the car's colour. The "Kjør som" row has the four new ones, the X/Z debug keys go up to thirteen. Tests: `verify-rewards.mjs` (each trip's reward, the bubbles as an alternative, the horn button and key, sizes, logos, paint, movement, the T. rex's jaws, the bubbles rising and popping).
+
+## Easter egg: the T. rex carries Ludvig · 3 October 2026
+The user: if you drive as the T. rex with Ludvig running after it, the T. rex takes him in its mouth while he runs. It holds him by the back of his shirt in the right corner of its mouth, its jaws a little open and its head turned a little to the right, so he dangles beside its face where the chase camera sees him, swinging, still running with his legs in the air (`boy.hold`, the T. rex's `grip` and `carrying` in `rides.js`, set each frame in `world.js`). His track behind the car is still kept, so with another ride he runs after it again. When such a trip starts the game says "Oi! T-rexen har tatt Ludvig i munnen!". Test: `verify-rewards.mjs`.
+
+## The start card fits with all the rewards · 3 October 2026
+With all thirteen rewards the start card was taller than an iPad screen in landscape, and at 1024×768 the footer covered the start button. Once rewards show, the card drops the intro text and the hints and tightens its rows (640 px instead of 795); if it still does not fit (Safari's toolbars, a phone on its side) it scrolls and the start button stays at its foot. On phones the title read "vikjøre": it has a space before its line break now.
