@@ -288,7 +288,12 @@ function applyRewards(){if(!world)return;const kiwi=carColour==='kiwi'&&kiwiUnlo
 function showRewards(){$('rewards').hidden=arrivals<1&&!kiwiUnlocked&&!ludvigUnlocked&&!duckUnlocked;$('trailRow').hidden=arrivals<3;$('trail').checked=behind==='trail';$('ludvigRow').hidden=!ludvigUnlocked;$('ludvig').checked=behind==='ludvig';$('duckRunnerRow').hidden=!duckUnlocked;$('duckRunner').checked=behind==='duck';$('bubblesRow').hidden=arrivals<BUBBLES_AT;$('bubbles').checked=behind==='bubbles';$('modelRow').hidden=arrivals<2;for(const m of MODELS){$('model-'+m).hidden=arrivals<(MODEL_AT[m]||0);$('model-'+m).classList.toggle('on',m===model);}
  swatches.forEach((b,i)=>{const on=carColours[i][1]===carColour||i===0&&carColour!=='kiwi'&&arrivals<1;b.hidden=arrivals<1&&i>0;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');});
  rainbowSwatch.hidden=arrivals<4;rainbowSwatch.classList.toggle('on',carColour==='rainbow');rainbowSwatch.setAttribute('aria-pressed',carColour==='rainbow'?'true':'false');kiwiSwatch.hidden=!kiwiUnlocked;kiwiSwatch.classList.toggle('on',carColour==='kiwi');kiwiSwatch.setAttribute('aria-pressed',carColour==='kiwi'?'true':'false');
- $('rewardTeaser').hidden=arrivals>=LAST_REWARD;$('rewardTeaser').textContent=arrivals<1?'🎁 Kom frem til barnehagen, så får du en overraskelse!':'🎁 Kjør til barnehagen én gang til for en ny overraskelse!';showReAward();}
+ // How much is still locked (4 October 2026): the thirteen rewards for the trips and the three secrets (KIWI, Ludvig and the duck that runs after the car).
+ const left=lockedCount();$('rewardTeaser').hidden=!$('rewards').hidden;$('rewardTeaser').textContent=`🎁 ${left} ${left===1?'overraskelse':'overraskelser'} å låse opp · kom frem til barnehagen for å få den første!`;
+ $('rewardCount').textContent=left?`🎁 ${left} igjen å låse opp`:'🎉 Du har låst opp alt';$('rewardCount').classList.toggle('done',!left);showReAward();}
+// What can be unlocked: 13 rewards for the trips (arrivals counts them, to the last) and 3 secrets.
+const TOTAL_UNLOCKS=LAST_REWARD+3;
+function lockedCount(){return TOTAL_UNLOCKS-Math.min(arrivals,LAST_REWARD)-(kiwiUnlocked?1:0)-(ludvigUnlocked?1:0)-(duckUnlocked?1:0);}
 // RE-ward (4 October 2026), a kind of prestige: the button in the settings saves everything unlocked so far (the trips and so the colours and rides, the secrets
 // KIWI, Ludvig and the duck) and starts over with nothing; "rull tilbake" brings the latest saved game back, the new one is dropped. The saved games are a
 // stack (the latest last, at most 20), so a second RE-ward does not overwrite the first. Both are two taps (the first arms the button for eight seconds).
