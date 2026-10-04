@@ -81,3 +81,5 @@ body.at-lake:has(#freeControls:not([hidden])) .horn:not([hidden]){display:grid!i
 .horn-home{right:176px;bottom:50px;z-index:32}
 @media(max-height:500px){.horn-home{bottom:28px;width:60px;height:60px}}
 @media(max-width:700px){.horn-home{right:142px;top:68px;bottom:auto;width:52px;height:52px}}
+/* RE-ward in the settings (4 October 2026): the two buttons ask for a second tap; the armed one is yellow. */
+.reaward{margin-top:6px}.reaward .secondary{margin:12px 0}.secondary:disabled{opacity:.5;cursor:default}.secondary.armed{background:#ffe398;box-shadow:inset 0 0 0 2px #e0a92b}

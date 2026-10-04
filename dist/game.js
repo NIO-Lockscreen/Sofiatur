@@ -243,7 +243,7 @@ for(const t of ['gesturestart','gesturechange'])document.addEventListener(t,e=>e
 // list in it does not.
 {const menu=$('menu'),outside=e=>{const r=menu.getBoundingClientRect?.();return e.target===menu&&!!r&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom);};let downOutside=false;
  menu.addEventListener('pointerdown',e=>{downOutside=outside(e);});menu.addEventListener('click',e=>{if(downOutside&&outside(e))menu.close();downOutside=false;});}
-$('menu').addEventListener('close',()=>{if(choicesStale&&state==='decision')showDecision();});// Fullscreen (the Fullscreen API, with Safari's webkit names): the button shows where the browser allows it (not on an
+$('menu').addEventListener('close',()=>{disarm();if(choicesStale&&state==='decision')showDecision();});// Fullscreen (the Fullscreen API, with Safari's webkit names): the button shows where the browser allows it (not on an
 // iPhone) and turns into "exit fullscreen" while the game fills the screen; the world follows the resize by itself.
 const fsElement=()=>document.fullscreenElement||document.webkitFullscreenElement;
 function toggleFullscreen(){const root=document.documentElement;try{if(fsElement())(document.exitFullscreen||document.webkitExitFullscreen).call(document);else (root.requestFullscreen||root.webkitRequestFullscreen).call(root,{navigationUI:'hide'})?.catch?.(()=>{});}catch{}}
@@ -290,8 +290,11 @@ const SECRETS=[[()=>kiwiUnlocked,'En hemmelig bil gjemmer seg hos en grønn buti
  [()=>pigUnlocked,'Noe rosa gjemmer seg inne i huset ditt. Se etter en krøllete hale!'],[hoverReady,'Noe fra fremtiden venter helt til slutt.']];
 const missingSecrets=()=>SECRETS.filter(([found])=>!found());let hintTurn=-1;
 function rideOK(m){return m==='taxi'?taxiReady():m==='pig'?pigUnlocked:arrivals>=(MODEL_AT[m]||0);}
-function saveProgress(){try{localStorage.setItem('sofiatur.fremgang',JSON.stringify({arrivals,colour:carColour,trail:behind==='trail'?'on':'off',behind,kiwi:kiwiUnlocked?'on':'off',ludvig:ludvigUnlocked?'on':'off',duck:duckUnlocked?'on':'off',model,ishall:ishallVisited?'on':'off',rema:remaVisited?'on':'off',taxi:taxiSeen?'on':'off',pig:pigUnlocked?'on':'off',inside:beenInside?'on':'off',hoverSeen:hoverSeen?'on':'off',hover:hoverOn?'on':'off'}));}catch{}}
-try{const saved=JSON.parse(localStorage.getItem('sofiatur.fremgang'))||{};arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour))carColour=nearestColour(saved.colour);else if(saved.colour==='kiwi'&&kiwiUnlocked||saved.colour==='rainbow'&&arrivals>=4)carColour=saved.colour;ludvigUnlocked=saved.ludvig==='on';duckUnlocked=saved.duck==='on';ishallVisited=saved.ishall==='on';remaVisited=saved.rema==='on';taxiSeen=saved.taxi==='on';pigUnlocked=saved.pig==='on';beenInside=saved.inside==='on';hoverSeen=saved.hoverSeen==='on';hoverOn=saved.hover!=='off';behind=['trail','ludvig','duck','bubbles','none'].includes(saved.behind)?saved.behind:saved.trail==='off'?'none':'trail';if(behind==='ludvig'&&!ludvigUnlocked||behind==='duck'&&!duckUnlocked||behind==='bubbles'&&arrivals<BUBBLES_AT)behind='trail';model=MODELS.includes(saved.model)&&rideOK(saved.model)?saved.model:'car';}catch{}
+function snapshot(){return {arrivals,colour:carColour,trail:behind==='trail'?'on':'off',behind,kiwi:kiwiUnlocked?'on':'off',ludvig:ludvigUnlocked?'on':'off',duck:duckUnlocked?'on':'off',model,ishall:ishallVisited?'on':'off',rema:remaVisited?'on':'off',taxi:taxiSeen?'on':'off',pig:pigUnlocked?'on':'off',inside:beenInside?'on':'off',hoverSeen:hoverSeen?'on':'off',hover:hoverOn?'on':'off'};}
+function saveProgress(){try{localStorage.setItem('sofiatur.fremgang',JSON.stringify(snapshot()));}catch{}}
+// Sets the progress from a saved one (what snapshot() gives): anything missing or wrong is as in a new game. Used when the game starts and by RE-ward (and so by the rollback).
+function applySaved(saved){saved=saved&&typeof saved==='object'?saved:{};carColour='#14171c';arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour))carColour=nearestColour(saved.colour);else if(saved.colour==='kiwi'&&kiwiUnlocked||saved.colour==='rainbow'&&arrivals>=4)carColour=saved.colour;ludvigUnlocked=saved.ludvig==='on';duckUnlocked=saved.duck==='on';ishallVisited=saved.ishall==='on';remaVisited=saved.rema==='on';taxiSeen=saved.taxi==='on';pigUnlocked=saved.pig==='on';beenInside=saved.inside==='on';hoverSeen=saved.hoverSeen==='on';hoverOn=saved.hover!=='off';behind=['trail','ludvig','duck','bubbles','none'].includes(saved.behind)?saved.behind:saved.trail==='off'?'none':'trail';if(behind==='ludvig'&&!ludvigUnlocked||behind==='duck'&&!duckUnlocked||behind==='bubbles'&&arrivals<BUBBLES_AT)behind='trail';model=MODELS.includes(saved.model)&&rideOK(saved.model)?saved.model:'car';}
+try{applySaved(JSON.parse(localStorage.getItem('sofiatur.fremgang')));}catch{}
 const swatches=carColours.map(([name,hex])=>{const b=document.createElement('button');b.type='button';b.className='swatch';b.title=name;b.setAttribute('aria-label',name);b.style.background=hex;b.onclick=()=>pickColour(hex);return b;});
 const kiwiSwatch=document.createElement('button');kiwiSwatch.type='button';kiwiSwatch.className='swatch kiwi';kiwiSwatch.title='KIWI';kiwiSwatch.setAttribute('aria-label','Hemmelig KIWI-bil');kiwiSwatch.textContent='K';kiwiSwatch.onclick=()=>pickColour('kiwi');
 const rainbowSwatch=document.createElement('button');rainbowSwatch.type='button';rainbowSwatch.className='swatch rainbow';rainbowSwatch.title='Regnbue';rainbowSwatch.setAttribute('aria-label','Regnbuebil som skifter farge');rainbowSwatch.onclick=()=>pickColour('rainbow');
@@ -308,7 +311,7 @@ function showRewards(){$('rewards').hidden=arrivals<1&&!kiwiUnlocked&&!ludvigUnl
  const hints=missingSecrets(),missing=hints.length;$('rewardTeaser').hidden=arrivals>=LAST_REWARD&&!missing;$('rewardTeaser').textContent=arrivals>=LAST_REWARD?`🔎 ${missing} ${missing===1?'hemmelighet':'hemmeligheter'} mangler fortsatt`:arrivals<1?'🎁 Kom frem til barnehagen, så får du en overraskelse!':'🎁 Kjør til barnehagen én gang til for en ny overraskelse!';
  $('secretHint').hidden=arrivals<LAST_REWARD||!missing;if(missing)$('secretHint').textContent='💡 '+hints[Math.max(0,hintTurn)%missing][1];
  $('hornHome').hidden=state!=='intro'||arrivals<HORN_AT;
- if(state==='inside')inside?.refresh(podiumItems(),{pigHidden:!pigUnlocked});}
+ if(state==='inside')inside?.refresh(podiumItems(),{pigHidden:!pigUnlocked});showReAward();}
 // Inside the house (5 October 2026): the "Gå inn" button on the start screen opens a room (inside.js, drawn with the world's renderer) with a podium for all 19 unlocks.
 // Tapping one tells how it was unlocked, or gives a hint if it is still missing; the girl walks where you tap, and a pig hides behind the sofa.
 // Going in for the first time is also what puts the girl in the hot-air balloon (applyRewards); that is no unlock, so it is never announced.
@@ -365,6 +368,38 @@ function houseTap(x,y){const hit=inside.pick(x,y);$('unlockInfo').hidden=true;if
 {let down=null;const canvas=$('world');canvas.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,t:performance.now()};});
  canvas.addEventListener('pointerup',e=>{const d=down;down=null;if(state==='inside'&&d&&Math.hypot(e.clientX-d.x,e.clientY-d.y)<12&&performance.now()-d.t<600)houseTap(e.clientX,e.clientY);});}
 $('goInside').onclick=goInside;$('goOut').onclick=goOutside;$('unlockInfo').onclick=()=>{$('unlockInfo').hidden=true;};
+// RE-ward (4 October 2026, with the taxi, the pig, the hover car and the house from 7 October), a kind of prestige: the button in the settings saves everything unlocked so far
+// (the trips and so the colours and rides; the secrets KIWI, Ludvig, the duck, the places visited, the pig; the hover switch; whether she has been inside) and starts over with
+// nothing; "rull tilbake" brings the latest saved game back, the new one is dropped. The saved games are a
+// stack (the latest last, at most 20), so a second RE-ward does not overwrite the first. Both are two taps (the first arms the button for eight seconds).
+const STASH_KEY='sofiatur.re-ward';let stash=[],armed=null,armTimer=0;
+try{const raw=JSON.parse(localStorage.getItem(STASH_KEY));if(Array.isArray(raw?.saves))stash=raw.saves.filter(x=>x&&typeof x==='object').slice(-20);}catch{}
+function saveStash(){try{localStorage.setItem(STASH_KEY,JSON.stringify({v:1,saves:stash}));}catch{}}
+const hasProgress=()=>arrivals>=1||kiwiUnlocked||ludvigUnlocked||duckUnlocked||ishallVisited||remaVisited||pigUnlocked; // the places visited count too: they are what the taxi needs
+// "7 turer · KIWI · Ludvig · anda · taxi · gris · svevebil" for a saved game (the taxi and the hover car as the game works them out from what is saved).
+function describeSave(x){const trips=Math.max(0,Math.floor(Number(x.arrivals))||0),on=k=>x[k]==='on',taxi=trips>=1&&on('kiwi')&&on('ludvig')&&on('ishall')&&on('rema'),hover=trips>=LAST_REWARD&&on('kiwi')&&on('ludvig')&&on('duck')&&taxi&&on('pig');
+ return [trips+(trips===1?' tur':' turer'),on('kiwi')&&'KIWI',on('ludvig')&&'Ludvig',on('duck')&&'anda',taxi&&'taxi',on('pig')&&'gris',hover&&'svevebil'].filter(Boolean).join(' · ');}
+function disarm(){clearTimeout(armTimer);armed=null;showReAward();}
+function arm(which){clearTimeout(armTimer);armed=which;armTimer=setTimeout(disarm,8000);showReAward();}
+function showReAward(){
+ const can=hasProgress(),last=stash.at(-1);
+ $('reAward').disabled=!can;$('reAward').classList.toggle('armed',armed==='reAward');$('reAward').textContent=armed==='reAward'?'Trykk igjen · alt starter på nytt':'RE-ward';
+ $('reAwardHelp').textContent=can?'RE-ward lagrer alt du har låst opp og starter helt på nytt, uten overraskelser. Du kan rulle tilbake til det lagrede spillet senere.':'Kom fram til barnehagen først, så er det noe å lagre.';
+ $('reAwardSaved').hidden=!last;if(last)$('reAwardSaved').textContent='Lagret spill: '+describeSave(last)+(stash.length>1?` (${stash.length} lagrede)`:'');
+ $('reAwardRollback').hidden=!last;$('reAwardRollback').classList.toggle('armed',armed==='rollback');$('reAwardRollback').textContent=armed==='rollback'?'Trykk igjen · det nye spillet forkastes':'↩ Rull tilbake til lagret spill';
+}
+function reAward(){
+ if(!world||!hasProgress())return;stash.push(snapshot());stash=stash.slice(-20);saveStash();
+ applySaved({});saveProgress();applyRewards();$('menu').close();reset();
+ toast('🔁 RE-ward! Spillet er lagret · du starter på nytt');say('RE-ward! Spillet ditt er lagret. Nå starter vi på nytt!');
+}
+function rollBack(){
+ if(!world||!stash.length)return;const old=stash.pop();saveStash();
+ applySaved(old);saveProgress();applyRewards();$('menu').close();reset();
+ toast('↩ Tilbake til det lagrede spillet · '+describeSave(snapshot()));say('Nå er vi tilbake i det lagrede spillet!');
+}
+$('reAward').onclick=()=>{if(armed==='reAward'){disarm();reAward();}else arm('reAward');};
+$('reAwardRollback').onclick=()=>{if(armed==='rollback'){disarm();rollBack();}else arm('rollback');};
 // Debug keys, to test the unlocks (keyboard only, not while typing in a field): X counts one more trip to the
 // kindergarten, Z one fewer. Counting up picks the new reward as an arrival does (the cat at 2, the rainbow car at 4);
 // counting down locks what the count no longer allows. The count is saved like a real one.
