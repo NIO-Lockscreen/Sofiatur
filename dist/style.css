@@ -44,3 +44,8 @@ html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adju
 /* With the running duck found there are four alternatives behind the car, and the start card with every reward was 35 px too tall for an iPad in landscape
    (1024×768; the last row of rides went behind the start button). On a wide screen the heading takes one line instead of two (4 October 2026). */
 @media(min-width:701px){.welcome:has(#rewards:not([hidden])) h1{font-size:34px}.welcome:has(#rewards:not([hidden])) h1 br{display:none}}
+/* The horn by the water (4 October 2026): visible while the car is at Lianvannet, where it stands at a choice of road (the button is hidden then, elsewhere)
+   and, in free driving, above the brake and drift buttons that take its corner. body.at-lake is set by game.js (lakeHorn); the button still has to be unlocked. */
+body.choosing.at-lake .horn:not([hidden]){visibility:visible}
+body.at-lake:has(#freeControls:not([hidden])) .horn:not([hidden]){display:grid!important;bottom:118px}
+@media(max-width:700px){body.at-lake:has(#freeControls:not([hidden])) .horn:not([hidden]){bottom:104px}}

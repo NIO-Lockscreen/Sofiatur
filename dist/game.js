@@ -344,8 +344,14 @@ $('horn').onclick=honk;
 // An easter egg (4 October 2026): visit the big duck in Lianvannet driving as the duck, and honk, and a duck runs after the car (duck-runner.js), one more
 // alternative behind it on the start screen. It must be a visit (parkAtLake) and the horn must sound by the water (within 30 m of the turning circle, as in free
 // driving, where 30 m away ends a visit). Every such honk puts the duck back behind the car, as every visit to Ludvig puts him back.
+function atLake(){
+ if(!lakeVisit)return false;const p=data.nodes[data.lakeside],c=state==='free'?free.car:position;if(!p||Math.hypot(c.x-p[0],c.z-p[1])>30){lakeVisit=false;return false;}return true;
+}
+// By the water the horn button shows (4 October 2026): the car stands at a choice of road there, where the button is otherwise hidden, and in free driving
+// the brake and drift buttons take its corner, so the button moves up above them (style.css, body.at-lake).
+function lakeHorn(){document.body.classList.toggle('at-lake',atLake());}
 function honkAtDuck(){
- if(!lakeVisit)return;const p=data.nodes[data.lakeside],c=state==='free'?free.car:position;if(!p||Math.hypot(c.x-p[0],c.z-p[1])>30){lakeVisit=false;return;}
+ if(!atLake())return;
  const first=!duckUnlocked,again=!first&&behind!=='duck';if(!first&&!again)return;
  duckUnlocked=true;behind='duck';saveProgress();applyRewards();showRewards();
  if(first){toast('🦆 Anda hørte tuta · Nå løper en and etter bilen!');say('Kvakk kvakk! Anda hørte tuta! Nå løper en and etter bilen. Du kan slå den av og på hjemme.');}
@@ -387,7 +393,7 @@ function animate(now){requestAnimationFrame(animate);const dt=Math.min(.045,Math
  if(homeAt&&time>=homeAt){homeAt=0;if(state==='decision'&&current===data.start||state==='free')reset();}
  if(worldLayout&&Math.abs((world.cameraYaw?.()||0)-layoutYaw)>.02)layoutWorldChoices();world.setViewShift?.(...introShift());
  world.update(dt,position,cameraHeading,state==='driving'&&active&&active.line.reversing(distance)?-speed:speed,state==='intro'&&arrivals>=1?'introCar':(state==='intro'||travelled===0&&state==='decision')?'intro':camMode,state==='finished',time,heading);
- mapClock+=dt;if(mapClock>.16){mapClock=0;if(state!=='intro'&&state!=='finished')updateHud();watchDuck();}
+ mapClock+=dt;if(mapClock>.16){mapClock=0;if(state!=='intro'&&state!=='finished')updateHud();watchDuck();lakeHorn();}
 }
 function gameState(){return {state,mode:freeMode?'free':'route',speedKmh:Math.round(speed*3.6),drifting:state==='free'&&free.car.drifting,position:[position.x,position.z],street:$('street').textContent,currentNode:current,remainingMetres:Math.round(remaining()),travelledMetres:Math.round(travelled),choices:state==='decision'?choices.map(e=>({id:e.id,direction:directionInfo(e).label,street:e.name,exitNumber:e.exitNumber,roundabout:!!e.roundaboutPlan,recommended:e.id===best?.id})):[],upcomingMetres:state==='driving'&&aheadShown?Math.round(active.len-distance+preview.ahead):null,upcoming:state==='driving'&&aheadShown?preview.list.map(e=>({id:e.id,direction:directionInfo(e,preview.h).label,street:e.name,exitNumber:e.exitNumber,roundabout:!!e.roundaboutPlan,recommended:e.id===preview.top?.id})):[],queued:queue.map(q=>({id:q.id,direction:q.label,street:q.name}))};}
 function registerTools(){const m=document.modelContext;if(!m?.registerTool)return;const definitions=[{name:'read_drive_state',description:'Read the car state and currently offered road choices.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:()=>gameState()},{name:'start_drive',description:'Start Sofia’s drive from home.',inputSchema:{type:'object',properties:{},additionalProperties:false},execute:()=>{if(state!=='intro')throw new Error('The drive is already started');start();return gameState();}},{name:'choose_road',description:'Choose one of the offered roads at a junction, or while driving queue one of the upcoming roads (up to two junctions ahead).',inputSchema:{type:'object',properties:{edgeId:{type:'integer'}},required:['edgeId'],additionalProperties:false},execute:input=>{const ok=Number.isInteger(input?.edgeId)&&(state==='decision'?choose(input.edgeId,true):state==='driving'&&queueChoice({id:input.edgeId}));if(!ok)throw new Error('That road choice is not available');return gameState();}}];for(const def of definitions)try{Promise.resolve(m.registerTool(def)).catch(()=>{});}catch{}}

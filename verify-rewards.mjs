@@ -157,8 +157,9 @@ console.log('Free driving counts visits: KIWI, Ludvig, Lianvannet, the kindergar
 // trip), the duck (the sixth), a visit to the lake and a honk by the water. It is one more alternative behind the car on the start screen.
 {const duckStore=extra=>{store.clear();store.set('sofiatur.fremgang',JSON.stringify({arrivals:11,model:'duck',...extra}));};
  duckStore();let game=await launch(()=>storage);assert.equal(game.world.duckRunner,false,'No duck behind the car to begin with');assert.equal(game.element('duckRunnerRow').hidden,true);
- game.test.start();game.test.honkKey();assert.equal(game.world.duckRunner,false,'Honking away from the lake does nothing');assert.equal(game.world.honks,1);
+ game.test.start();game.tick(6);assert.ok(!game.element('body').classes.has('at-lake'),'Not by the lake, no');game.test.honkKey();assert.equal(game.world.duckRunner,false,'Honking away from the lake does nothing');assert.equal(game.world.honks,1);
  game.test.visit('lake');assert.match(game.element('toast').textContent,/Lianvannet/);assert.equal(game.world.duckRunner,false,'Visiting the lake alone does not unlock it');
+ game.tick(6);assert.ok(game.element('body').classes.has('at-lake'),'Parked at the lake, the horn button shows (body.at-lake)');assert.equal(game.element('horn').hidden,false);
  game.element('toast').textContent='';game.test.honkKey();assert.equal(game.world.duckRunner,true,'Honking at the lake, driving as the duck, does');assert.match(game.element('toast').textContent,/Anda hørte tuta/);assert.equal(game.test.behind(),'duck');assert.equal(game.world.boy,false);assert.equal(game.world.trail,false);
  assert.equal(game.element('duckRunnerRow').hidden,false);assert.equal(game.element('duckRunner').checked,true);assert.equal(game.element('rewards').hidden,false);
  game.element('toast').textContent='';game.test.honkKey();game.test.honkKey();assert.equal(game.element('toast').textContent,'','Honking again says nothing more while it already runs');
@@ -177,10 +178,15 @@ console.log('Free driving counts visits: KIWI, Ludvig, Lianvannet, the kindergar
  // Free driving: a visit (within 8 m of the turning circle), the horn within 30 m of it; further away, or without a visit, nothing.
  {duckStore();game=await launch(()=>storage);const node=data.nodes[data.lakeside],drive=(dx,v=12)=>game.test.freeDrive(node[0]+dx,node[1],v);
   drive(60);game.test.honkKey();assert.equal(game.world.duckRunner,false,'Honking near the lake without having visited it');
-  drive(4);assert.match(game.element('toast').textContent,/Lianvannet/);drive(25);game.test.honkKey();assert.equal(game.world.duckRunner,true,'Honked 25 m from the turning circle, after the visit');
-  duckStore();game=await launch(()=>storage);drive(4);drive(45);game.test.honkKey();assert.equal(game.world.duckRunner,false,'Honking 45 m from it, after the visit, does not count');
+  drive(4);assert.match(game.element('toast').textContent,/Lianvannet/);game.tick(6);assert.ok(game.element('body').classes.has('at-lake'),'In free driving too: the horn button shows by the water');drive(25);game.test.honkKey();assert.equal(game.world.duckRunner,true,'Honked 25 m from the turning circle, after the visit');
+  duckStore();game=await launch(()=>storage);drive(4);drive(45);game.tick(6);assert.ok(!game.element('body').classes.has('at-lake'),'Driven away from the lake (30 m), the button is as before');game.test.honkKey();assert.equal(game.world.duckRunner,false,'Honking 45 m from it, after the visit, does not count');
   drive(20);game.test.honkKey();assert.equal(game.world.duckRunner,false,'and that visit is spent: back within 30 m but not at the circle, nothing');drive(4);game.test.honkKey();assert.equal(game.world.duckRunner,true,'a new visit, then the horn, does');}}
 console.log('Easter egg: visiting the duck as the duck and honking sets a duck running after the car; it is one of the alternatives behind it: OK');
+// The horn button by the water: shown at a choice of road (hidden elsewhere) and above the free-driving buttons, and only once the horn is unlocked.
+{const css=fs.readFileSync('dist/style.css','utf8');assert.ok(css.includes('body.choosing .horn{visibility:hidden}'),'hidden at a choice of road, as before');
+ assert.ok(css.includes('body.choosing.at-lake .horn:not([hidden]){visibility:visible}'),'but shown at the lake');
+ assert.ok(css.includes('body.at-lake:has(#freeControls:not([hidden])) .horn:not([hidden]){display:grid!important;bottom:118px}'),'and above the brake and drift buttons in free driving, if unlocked');}
+console.log('The horn button shows by the water, at a choice of road and in free driving: OK');
 
 {// The trail: seven stripes laid behind the car while it moves, fading, and gone a moment after it stops.
 const scene=new T.Scene(),trail=createRainbowTrail({T,scene}),pos=new T.Vector3(0,100,0),facing=new T.Vector3(0,0,-1);
