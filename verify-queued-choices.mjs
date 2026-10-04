@@ -39,7 +39,7 @@ console.log(`Picked arrow lights up, arrows ahead from ${firstJunction.length&&2
 
 // Drive the whole trip queuing the recommended road at every junction: no stop after the start, at most two queued,
 // and the car keeps its speed into every queued junction.
-element('again').onclick();
+element('again').onclick();assert.equal(read().state,'intro','"Kjør en gang til" goes to the start screen, with the car to choose');act('start_drive');
 let stops=0,queuedTurns=0,crossings=[],roundaboutUndo=false,maxQueued=0,farthest=0,replanned=false;
 for(let i=0;i<20000&&read().state!=='finished';i++){
  s=read();if(s.state==='decision'){stops++;act('choose_road',{edgeId:recommended(s.choices)});continue;}
