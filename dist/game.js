@@ -238,7 +238,7 @@ for(const t of ['gesturestart','gesturechange'])document.addEventListener(t,e=>e
 // list in it does not.
 {const menu=$('menu'),outside=e=>{const r=menu.getBoundingClientRect?.();return e.target===menu&&!!r&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom);};let downOutside=false;
  menu.addEventListener('pointerdown',e=>{downOutside=outside(e);});menu.addEventListener('click',e=>{if(downOutside&&outside(e))menu.close();downOutside=false;});}
-$('menu').addEventListener('close',()=>{if(choicesStale&&state==='decision')showDecision();});// Fullscreen (the Fullscreen API, with Safari's webkit names): the button shows where the browser allows it (not on an
+$('menu').addEventListener('close',()=>{disarm();if(choicesStale&&state==='decision')showDecision();});// Fullscreen (the Fullscreen API, with Safari's webkit names): the button shows where the browser allows it (not on an
 // iPhone) and turns into "exit fullscreen" while the game fills the screen; the world follows the resize by itself.
 const fsElement=()=>document.fullscreenElement||document.webkitFullscreenElement;
 function toggleFullscreen(){const root=document.documentElement;try{if(fsElement())(document.exitFullscreen||document.webkitExitFullscreen).call(document);else (root.requestFullscreen||root.webkitRequestFullscreen).call(root,{navigationUI:'hide'})?.catch?.(()=>{});}catch{}}
@@ -272,8 +272,11 @@ const parkingPlaces=new Set([kiwiParking,ishallParking,remaParking,bunnprisParki
 // that changes colour (colour 'rainbow').
 // A colour saved from the old colour wheel becomes the nearest of the ten.
 function nearestColour(hex){const rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)),c=rgb(hex.toLowerCase());let best=carColours[0][1],d=Infinity;for(const [,h] of carColours){const q=rgb(h),e=(q[0]-c[0])**2+(q[1]-c[1])**2+(q[2]-c[2])**2;if(e<d){d=e;best=h;}}return best;}
-function saveProgress(){try{localStorage.setItem('sofiatur.fremgang',JSON.stringify({arrivals,colour:carColour,trail:behind==='trail'?'on':'off',behind,kiwi:kiwiUnlocked?'on':'off',ludvig:ludvigUnlocked?'on':'off',duck:duckUnlocked?'on':'off',model}));}catch{}}
-try{const saved=JSON.parse(localStorage.getItem('sofiatur.fremgang'))||{};arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour))carColour=nearestColour(saved.colour);else if(saved.colour==='kiwi'&&kiwiUnlocked||saved.colour==='rainbow'&&arrivals>=4)carColour=saved.colour;ludvigUnlocked=saved.ludvig==='on';duckUnlocked=saved.duck==='on';behind=['trail','ludvig','duck','bubbles','none'].includes(saved.behind)?saved.behind:saved.trail==='off'?'none':'trail';if(behind==='ludvig'&&!ludvigUnlocked||behind==='duck'&&!duckUnlocked||behind==='bubbles'&&arrivals<BUBBLES_AT)behind='trail';model=MODEL_AT[saved.model]&&arrivals>=MODEL_AT[saved.model]?saved.model:'car';}catch{}
+function snapshot(){return {arrivals,colour:carColour,trail:behind==='trail'?'on':'off',behind,kiwi:kiwiUnlocked?'on':'off',ludvig:ludvigUnlocked?'on':'off',duck:duckUnlocked?'on':'off',model};}
+function saveProgress(){try{localStorage.setItem('sofiatur.fremgang',JSON.stringify(snapshot()));}catch{}}
+// Sets the progress from a saved one (what snapshot() gives): anything missing or wrong is as in a new game. Used when the game starts and by RE-ward.
+function applySaved(saved){saved=saved&&typeof saved==='object'?saved:{};carColour='#14171c';arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour))carColour=nearestColour(saved.colour);else if(saved.colour==='kiwi'&&kiwiUnlocked||saved.colour==='rainbow'&&arrivals>=4)carColour=saved.colour;ludvigUnlocked=saved.ludvig==='on';duckUnlocked=saved.duck==='on';behind=['trail','ludvig','duck','bubbles','none'].includes(saved.behind)?saved.behind:saved.trail==='off'?'none':'trail';if(behind==='ludvig'&&!ludvigUnlocked||behind==='duck'&&!duckUnlocked||behind==='bubbles'&&arrivals<BUBBLES_AT)behind='trail';model=MODEL_AT[saved.model]&&arrivals>=MODEL_AT[saved.model]?saved.model:'car';}
+try{applySaved(JSON.parse(localStorage.getItem('sofiatur.fremgang')));}catch{}
 const swatches=carColours.map(([name,hex])=>{const b=document.createElement('button');b.type='button';b.className='swatch';b.title=name;b.setAttribute('aria-label',name);b.style.background=hex;b.onclick=()=>pickColour(hex);return b;});
 const kiwiSwatch=document.createElement('button');kiwiSwatch.type='button';kiwiSwatch.className='swatch kiwi';kiwiSwatch.title='KIWI';kiwiSwatch.setAttribute('aria-label','Hemmelig KIWI-bil');kiwiSwatch.textContent='K';kiwiSwatch.onclick=()=>pickColour('kiwi');
 const rainbowSwatch=document.createElement('button');rainbowSwatch.type='button';rainbowSwatch.className='swatch rainbow';rainbowSwatch.title='Regnbue';rainbowSwatch.setAttribute('aria-label','Regnbuebil som skifter farge');rainbowSwatch.onclick=()=>pickColour('rainbow');
@@ -285,7 +288,37 @@ function applyRewards(){if(!world)return;const kiwi=carColour==='kiwi'&&kiwiUnlo
 function showRewards(){$('rewards').hidden=arrivals<1&&!kiwiUnlocked&&!ludvigUnlocked&&!duckUnlocked;$('trailRow').hidden=arrivals<3;$('trail').checked=behind==='trail';$('ludvigRow').hidden=!ludvigUnlocked;$('ludvig').checked=behind==='ludvig';$('duckRunnerRow').hidden=!duckUnlocked;$('duckRunner').checked=behind==='duck';$('bubblesRow').hidden=arrivals<BUBBLES_AT;$('bubbles').checked=behind==='bubbles';$('modelRow').hidden=arrivals<2;for(const m of MODELS){$('model-'+m).hidden=arrivals<(MODEL_AT[m]||0);$('model-'+m).classList.toggle('on',m===model);}
  swatches.forEach((b,i)=>{const on=carColours[i][1]===carColour||i===0&&carColour!=='kiwi'&&arrivals<1;b.hidden=arrivals<1&&i>0;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');});
  rainbowSwatch.hidden=arrivals<4;rainbowSwatch.classList.toggle('on',carColour==='rainbow');rainbowSwatch.setAttribute('aria-pressed',carColour==='rainbow'?'true':'false');kiwiSwatch.hidden=!kiwiUnlocked;kiwiSwatch.classList.toggle('on',carColour==='kiwi');kiwiSwatch.setAttribute('aria-pressed',carColour==='kiwi'?'true':'false');
- $('rewardTeaser').hidden=arrivals>=LAST_REWARD;$('rewardTeaser').textContent=arrivals<1?'🎁 Kom frem til barnehagen, så får du en overraskelse!':'🎁 Kjør til barnehagen én gang til for en ny overraskelse!';}
+ $('rewardTeaser').hidden=arrivals>=LAST_REWARD;$('rewardTeaser').textContent=arrivals<1?'🎁 Kom frem til barnehagen, så får du en overraskelse!':'🎁 Kjør til barnehagen én gang til for en ny overraskelse!';showReAward();}
+// RE-ward (4 October 2026), a kind of prestige: the button in the settings saves everything unlocked so far (the trips and so the colours and rides, the secrets
+// KIWI, Ludvig and the duck) and starts over with nothing; "rull tilbake" brings the latest saved game back, the new one is dropped. The saved games are a
+// stack (the latest last, at most 20), so a second RE-ward does not overwrite the first. Both are two taps (the first arms the button for eight seconds).
+const STASH_KEY='sofiatur.re-ward';let stash=[],armed=null,armTimer=0;
+try{const raw=JSON.parse(localStorage.getItem(STASH_KEY));if(Array.isArray(raw?.saves))stash=raw.saves.filter(x=>x&&typeof x==='object').slice(-20);}catch{}
+function saveStash(){try{localStorage.setItem(STASH_KEY,JSON.stringify({v:1,saves:stash}));}catch{}}
+const hasProgress=()=>arrivals>=1||kiwiUnlocked||ludvigUnlocked||duckUnlocked;
+// "7 turer · KIWI · Ludvig · anda" for a saved game.
+function describeSave(x){const trips=Math.max(0,Math.floor(Number(x.arrivals))||0);return [trips+(trips===1?' tur':' turer'),x.kiwi==='on'&&'KIWI',x.ludvig==='on'&&'Ludvig',x.duck==='on'&&'anda'].filter(Boolean).join(' · ');}
+function disarm(){clearTimeout(armTimer);armed=null;showReAward();}
+function arm(which){clearTimeout(armTimer);armed=which;armTimer=setTimeout(disarm,8000);showReAward();}
+function showReAward(){
+ const can=hasProgress(),last=stash.at(-1);
+ $('reAward').disabled=!can;$('reAward').classList.toggle('armed',armed==='reAward');$('reAward').textContent=armed==='reAward'?'Trykk igjen · alt starter på nytt':'RE-ward';
+ $('reAwardHelp').textContent=can?'RE-ward lagrer alt du har låst opp og starter helt på nytt, uten overraskelser. Du kan rulle tilbake til det lagrede spillet senere.':'Kom fram til barnehagen først, så er det noe å lagre.';
+ $('reAwardSaved').hidden=!last;if(last)$('reAwardSaved').textContent='Lagret spill: '+describeSave(last)+(stash.length>1?` (${stash.length} lagrede)`:'');
+ $('reAwardRollback').hidden=!last;$('reAwardRollback').classList.toggle('armed',armed==='rollback');$('reAwardRollback').textContent=armed==='rollback'?'Trykk igjen · det nye spillet forkastes':'↩ Rull tilbake til lagret spill';
+}
+function reAward(){
+ if(!world||!hasProgress())return;stash.push(snapshot());stash=stash.slice(-20);saveStash();
+ applySaved({});saveProgress();applyRewards();$('menu').close();reset();
+ toast('🔁 RE-ward! Spillet er lagret · du starter på nytt');say('RE-ward! Spillet ditt er lagret. Nå starter vi på nytt!');
+}
+function rollBack(){
+ if(!world||!stash.length)return;const old=stash.pop();saveStash();
+ applySaved(old);saveProgress();applyRewards();$('menu').close();reset();
+ toast('↩ Tilbake til det lagrede spillet · '+describeSave(snapshot()));say('Nå er vi tilbake i det lagrede spillet!');
+}
+$('reAward').onclick=()=>{if(armed==='reAward'){disarm();reAward();}else arm('reAward');};
+$('reAwardRollback').onclick=()=>{if(armed==='rollback'){disarm();rollBack();}else arm('rollback');};
 // Debug keys, to test the unlocks (keyboard only, not while typing in a field): X counts one more trip to the
 // kindergarten, Z one fewer. Counting up picks the new reward as an arrival does (the cat at 2, the rainbow car at 4);
 // counting down locks what the count no longer allows. The count is saved like a real one.

@@ -49,3 +49,5 @@ html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adju
 body.choosing.at-lake .horn:not([hidden]){visibility:visible}
 body.at-lake:has(#freeControls:not([hidden])) .horn:not([hidden]){display:grid!important;bottom:118px}
 @media(max-width:700px){body.at-lake:has(#freeControls:not([hidden])) .horn:not([hidden]){bottom:104px}}
+/* RE-ward in the settings (4 October 2026): the two buttons ask for a second tap; the armed one is yellow. */
+.reaward{margin-top:6px}.reaward .secondary{margin:12px 0}.secondary:disabled{opacity:.5;cursor:default}.secondary.armed{background:#ffe398;box-shadow:inset 0 0 0 2px #e0a92b}
