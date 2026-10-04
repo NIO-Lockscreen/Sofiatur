@@ -7,6 +7,7 @@ import {createDrivingLines} from './dist/driving-line.js';
 import {createFreeDrive} from './dist/free-drive.js';
 import {createMusic} from './dist/music.js';
 import {createBoy} from './dist/boy.js';
+import {createDuckRunner} from './dist/duck-runner.js';
 import {createDog,createRideDuck,createRocket,createUnicorn,createFireTruck,createBalloon,createTRex,BEACONS} from './dist/rides.js';
 import {createBubbles} from './dist/bubbles.js';
 import {createRainbowTrail} from './dist/rainbow-trail.js';
@@ -19,10 +20,10 @@ async function launch(localStorage){
  const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',value:'',checked:false,style:{},children:[],attrs:{},classes:new Set(),classList:{add(){},remove(){},toggle(c,on){on?this.owner.classes.add(c):this.owner.classes.delete(c);}},setAttribute(k,v){this.attrs[k]=v;},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(){},getContext(){return canvasContext}});const el=els.get(id);el.classList.owner=el;return el;};
  const listeners=new Map();
  const env={T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener:(type,fn)=>listeners.set(type,fn)},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),
-  createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on,setBoy:on=>world.boy=on,setBubbles:on=>world.bubbles=on,honk:()=>world.honks++})};
+  createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on,setBoy:on=>world.boy=on,setDuckRunner:on=>world.duckRunner=on,setBubbles:on=>world.bubbles=on,honk:()=>world.honks++})};
  if(localStorage)Object.defineProperty(env,'localStorage',{get:localStorage});
  const ctx=vm.createContext(env);
- const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},home(){start();current=data.start;state='decision';parkAtHome();},ludvig(){parkAtLudvig();},freeDrive(x,z,v){if(state!=='free'){freeMode=true;start();}free.reset(x,z,0,v);freeVisits();},visit(n){start();active={e:{from:data.start,to:{kiwi:kiwiParking,ludvig:ludvigParking}[n]},line:{at(){},tangent(){}},len:0};arrive();},start(){start();},honkKey(){honk();},state:()=>state,progress:()=>({arrivals,carColour,trailOn:behind==='trail',catOn:model==='cat'}),model:()=>model,behind:()=>behind};})()`,ctx);
+ const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},home(){start();current=data.start;state='decision';parkAtHome();},ludvig(){parkAtLudvig();},freeDrive(x,z,v){if(state!=='free'){freeMode=true;start();}free.reset(x,z,0,v);freeVisits();},visit(n){start();active={e:{from:data.start,to:{kiwi:kiwiParking,ludvig:ludvigParking,lake:data.lakeside}[n]},line:{at(l,p){if(n==='lake'){const q=data.nodes[data.lakeside];p.set(q[0],100,q[1]);}},tangent(){}},len:0};arrive();},start(){start();},honkKey(){honk();},state:()=>state,progress:()=>({arrivals,carColour,trailOn:behind==='trail',catOn:model==='cat'}),model:()=>model,behind:()=>behind};})()`,ctx);
  for(let i=0;i<12;i++){await Promise.resolve();const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}await init;
  const key=(k,target={tagName:'BODY'})=>listeners.get('keydown')({key:k,repeat:false,target,preventDefault(){}});
  const tick=n=>{for(let i=0;i<n;i++){const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}};
@@ -152,6 +153,34 @@ console.log('Visiting Ludvig unlocks him; he and the rainbow trail are alternati
  drive(data.start,40);drive(data.start,4,0);assert.match(game.element('toast').textContent,/Hjemme/);game.tick(70);assert.equal(game.test.state(),'intro','Stopping at home again brings the start screen back');}
 {const f=createFreeDrive(data,()=>100);for(const n of ['kiwi-parkering','ludvig-parkering','ishall-parkering','rema-parkering','bunnpris-parkering',data.lakeside,data.goal,data.start])assert.equal(f.blocked(...data.nodes[n]),false,n+' can be reached in free driving');}
 console.log('Free driving counts visits: KIWI, Ludvig, Lianvannet, the kindergarten and home, all within reach: OK');
+// The easter egg (4 October 2026): visit the big duck in Lianvannet driving as the duck, honk, and a duck runs after the car. It takes the horn (the eleventh
+// trip), the duck (the sixth), a visit to the lake and a honk by the water. It is one more alternative behind the car on the start screen.
+{const duckStore=extra=>{store.clear();store.set('sofiatur.fremgang',JSON.stringify({arrivals:11,model:'duck',...extra}));};
+ duckStore();let game=await launch(()=>storage);assert.equal(game.world.duckRunner,false,'No duck behind the car to begin with');assert.equal(game.element('duckRunnerRow').hidden,true);
+ game.test.start();game.test.honkKey();assert.equal(game.world.duckRunner,false,'Honking away from the lake does nothing');assert.equal(game.world.honks,1);
+ game.test.visit('lake');assert.match(game.element('toast').textContent,/Lianvannet/);assert.equal(game.world.duckRunner,false,'Visiting the lake alone does not unlock it');
+ game.element('toast').textContent='';game.test.honkKey();assert.equal(game.world.duckRunner,true,'Honking at the lake, driving as the duck, does');assert.match(game.element('toast').textContent,/Anda hørte tuta/);assert.equal(game.test.behind(),'duck');assert.equal(game.world.boy,false);assert.equal(game.world.trail,false);
+ assert.equal(game.element('duckRunnerRow').hidden,false);assert.equal(game.element('duckRunner').checked,true);assert.equal(game.element('rewards').hidden,false);
+ game.element('toast').textContent='';game.test.honkKey();game.test.honkKey();assert.equal(game.element('toast').textContent,'','Honking again says nothing more while it already runs');
+ game=await launch(()=>storage);assert.equal(game.world.duckRunner,true,'Remembered');assert.equal(game.element('duckRunner').checked,true);
+ // An alternative to the trail, Ludvig and the bubbles: one at a time, all may be off, the choice is remembered.
+ game.element('trail').onchange({target:{checked:true}});assert.equal(game.world.duckRunner,false,'The trail switches it off');assert.equal(game.element('duckRunner').checked,false);
+ game.element('duckRunner').onchange({target:{checked:true}});assert.equal(game.world.duckRunner,true);assert.equal(game.world.trail,false,'and it switches the trail off');
+ game.test.ludvig();assert.equal(game.world.boy,true);assert.equal(game.world.duckRunner,false,'Ludvig takes its place');game.element('duckRunner').onchange({target:{checked:true}});assert.equal(game.world.boy,false,'and it takes his');
+ game.element('bubbles').onchange({target:{checked:true}});assert.equal(game.world.duckRunner,false);game.element('duckRunner').onchange({target:{checked:true}});assert.equal(game.world.bubbles,false);
+ game.element('duckRunner').onchange({target:{checked:false}});assert.equal(game.world.duckRunner,false);assert.equal(game.test.behind(),'none','All off');game=await launch(()=>storage);assert.equal(game.test.behind(),'none','All off is remembered');
+ // Every honk at the lake puts it back behind the car.
+ game.test.visit('lake');game.element('toast').textContent='';game.test.honkKey();assert.equal(game.world.duckRunner,true,'It is back behind the car');assert.match(game.element('toast').textContent,/igjen/);
+ // Not driving as the duck, without the horn, or with the duck not unlocked in storage: nothing.
+ for(const [what,extra] of [['as the dog',{model:'dog'}],['as the car',{model:'car'}],['as the T. rex',{arrivals:13,model:'trex'}],['before the horn',{arrivals:10}]]){duckStore(extra);game=await launch(()=>storage);game.test.visit('lake');game.test.honkKey();game.test.honkKey();assert.equal(game.world.duckRunner,false,'No duck '+what);assert.equal(game.element('duckRunnerRow').hidden,true);}
+ duckStore({behind:'duck'});game=await launch(()=>storage);assert.equal(game.world.duckRunner,false,'It cannot be forced through storage');assert.equal(game.test.behind(),'trail');
+ // Free driving: a visit (within 8 m of the turning circle), the horn within 30 m of it; further away, or without a visit, nothing.
+ {duckStore();game=await launch(()=>storage);const node=data.nodes[data.lakeside],drive=(dx,v=12)=>game.test.freeDrive(node[0]+dx,node[1],v);
+  drive(60);game.test.honkKey();assert.equal(game.world.duckRunner,false,'Honking near the lake without having visited it');
+  drive(4);assert.match(game.element('toast').textContent,/Lianvannet/);drive(25);game.test.honkKey();assert.equal(game.world.duckRunner,true,'Honked 25 m from the turning circle, after the visit');
+  duckStore();game=await launch(()=>storage);drive(4);drive(45);game.test.honkKey();assert.equal(game.world.duckRunner,false,'Honking 45 m from it, after the visit, does not count');
+  drive(20);game.test.honkKey();assert.equal(game.world.duckRunner,false,'and that visit is spent: back within 30 m but not at the circle, nothing');drive(4);game.test.honkKey();assert.equal(game.world.duckRunner,true,'a new visit, then the horn, does');}}
+console.log('Easter egg: visiting the duck as the duck and honking sets a duck running after the car; it is one of the alternatives behind it: OK');
 
 {// The trail: seven stripes laid behind the car while it moves, fading, and gone a moment after it stops.
 const scene=new T.Scene(),trail=createRainbowTrail({T,scene}),pos=new T.Vector3(0,100,0),facing=new T.Vector3(0,0,-1);
@@ -179,6 +208,23 @@ console.log('Rainbow trail follows, fades and resets: OK');}
  pos.x+=300;boy.update(.045,pos,facing,0,30);assert.ok(Math.hypot(b.x-pos.x,b.z-pos.z)<7,'A jump starts him again right behind the car');
  boy.setOn(false);assert.equal(boy.group.visible,false);}
 console.log('Ludvig runs after the car, round bends, catches up when it stops and waves: OK');
+// The running duck (the easter egg, duck-runner.js): the same follower as Ludvig with a mallard for a model; it runs six metres behind the car on its
+// track, its legs swing and it waddles while it runs, beats its wings half spread, and by the parked car it flaps them.
+{const scene=new T.Scene(),duck=createDuckRunner({T,scene}),pos=new T.Vector3(0,100.08,0),facing=new T.Vector3(0,0,-1),lift=()=>Math.max(...duck.model.wings.map(w=>Math.abs(w.rotation.z))),span=()=>duck.model.wings[0].userData.paddle.scale.x;
+ assert.equal(duck.group.visible,false,'Hidden until the easter egg is found');duck.setOn(true);assert.equal(duck.group.visible,true);
+ assert.ok(lift()<.01&&span()<.06,'Standing, the wings are folded along its flanks');
+ let roll=0,swing=0,beat=0,lo=9,hi=-9;for(let i=0;i<200;i++){pos.z-=20*.045;duck.update(.045,pos,facing,20,i*.045);if(i>20){roll=Math.max(roll,Math.abs(duck.model.group.children[0].rotation.z));swing=Math.max(swing,Math.abs(duck.model.legs[0].rotation.x));lo=Math.min(lo,lift());hi=Math.max(hi,lift());}}
+ const d=duck.group.position;assert.ok(Math.abs(d.x)<.05&&d.z-pos.z>5.5&&d.z-pos.z<6.5,`Six metres behind the car on its track (${(d.z-pos.z).toFixed(2)} m)`);assert.ok(Math.abs(d.y-100)<.01,'On the road under the car');
+ assert.ok(new T.Vector3(0,0,-1).applyQuaternion(duck.group.quaternion).z<-.99,'Running towards the car');
+ assert.ok(roll>.1&&swing>.8,'It waddles and its legs swing while it runs');assert.ok(span()>.12&&span()<.2&&hi-lo>.1&&hi<.8,'The wings beat, half spread');
+ for(let i=0;i<160;i++)duck.update(.045,pos,facing,0,9+i*.045);
+ const g=Math.hypot(d.x-pos.x,d.z-pos.z);assert.ok(g>2.8&&g<4,`Caught up with the parked car (${g.toFixed(2)} m)`);assert.ok((d.x-pos.x)>.9,'standing by its rear corner');assert.ok(span()>.2,'and its wings are spread');
+ let top=0;for(let i=0;i<60;i++){duck.update(.045,pos,facing,0,12+i*.045);top=Math.max(top,lift());}assert.ok(top>.5&&top<1,'raised and beating: the duck waves');
+ pos.x+=300;duck.update(.045,pos,facing,0,30);assert.ok(Math.hypot(d.x-pos.x,d.z-pos.z)<7,'A jump starts it again right behind the car');
+ duck.setOn(false);assert.equal(duck.group.visible,false);
+ const box=new T.Box3().setFromObject(duck.model.group);assert.ok(box.max.y-box.min.y>.7&&box.max.y-box.min.y<1.2,'about 0.9 m tall: '+(box.max.y-box.min.y).toFixed(2));
+ let meshes=0;duck.model.group.traverse(o=>{if(o.isMesh)meshes++;});assert.ok(meshes<45,'cheap: '+meshes+' meshes');}
+console.log('The running duck follows the car, waddles, beats its wings and flaps them by the parked car: OK');
 
 // Debug keys for testing the unlocks: X counts one more trip to the kindergarten, Z one fewer (saved like a real count).
 store.clear();game=await launch(()=>storage);

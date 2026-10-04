@@ -41,3 +41,6 @@
 html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}.welcome,dialog{touch-action:pan-y}
 /* The horn button (3 October 2026): a drawn icon (SVG, not the 📯 emoji, which iPadOS draws off the middle), centred in the circle with a grid. */
 .horn{display:grid;place-items:center;padding:0;line-height:0}.horn svg{width:54%;height:54%;display:block;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}.horn svg .fill{fill:currentColor}
+/* With the running duck found there are four alternatives behind the car, and the start card with every reward was 35 px too tall for an iPad in landscape
+   (1024×768; the last row of rides went behind the start button). On a wide screen the heading takes one line instead of two (4 October 2026). */
+@media(min-width:701px){.welcome:has(#rewards:not([hidden])) h1{font-size:34px}.welcome:has(#rewards:not([hidden])) h1 br{display:none}}

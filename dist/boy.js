@@ -47,8 +47,9 @@ export function createBoyModel(T){
 }
 
 // The follower: a track of the car's path (a point every 0.4 m) and the boy that runs along it.
-export function createBoy({T,scene}){
- const model=createBoyModel(T),group=model.group;group.visible=false;scene.add(group);
+// createModel: what runs (Ludvig; the running duck of duck-runner.js is the same follower with another model).
+export function createBoy({T,scene,createModel=createBoyModel}){
+ const model=createModel(T),group=model.group;group.visible=false;scene.add(group);
  const track=[],MAX=160,yaw=new T.Euler(0,0,0,'YXZ');let on=false,behind=6,wave=0,run=0,lastX=null,lastZ=null,hanging=false;
  function clear(){track.length=0;behind=6;wave=0;lastX=lastZ=null;hanging=false;}
  function setOn(value){if(!!value===on)return;on=!!value;group.visible=on;clear();} // already on: he keeps his place (a visit to KIWI applies the rewards again)

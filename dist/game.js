@@ -6,7 +6,7 @@ import {createMusic} from './music.js';
 const $=id=>document.getElementById(id);
 let world,data,state='loading',sound=true,current,previous=null,active=null,distance=0,speed=0,travelled=0,turns=0,heading=new T.Vector3(0,0,1),position=new T.Vector3(),choices=[],best=null,totalInitial=0,maxKmh=200,camMode='follow',lastTime=performance.now(),time=0,mapClock=0,leavingHome=false,lastEdge=null,lines=null;
 let roundaboutUndo=null,freeMode=false,free=null,carHeight,showDeadEnds=true,choicesStale=false,musicOn=true,queue=[],preview=null,picked=null,pickedUntil=-9,aheadShown=false,planKey='';
-let arrivals=0,carColour='#14171c',behind='trail',ludvigUnlocked=false,model='car',newReward=null,homeAt=0; // behind: what follows the car, 'trail' (the rainbow trail), 'ludvig' or 'none'
+let arrivals=0,carColour='#14171c',behind='trail',ludvigUnlocked=false,duckUnlocked=false,model='car',newReward=null,homeAt=0; // behind: what follows the car, 'trail' (the rainbow trail), 'ludvig', 'duck' (a running duck) or 'none'
 const roundaboutKmh=45; // speed round the circle and into it
 // The car speeds up by ACCEL, brakes ahead of a slower stretch (a turn, a junction where it must stop) by DECEL, and by BRAKE at most when a new plan needs it at once.
 // Strong, like a toy car (30 September 2026; 7, 4.5 and 8 before), so it reaches 200 km/h on the longest stretches of the trip again; turns keep their gentle arcs (driving-line.js A_LAT).
@@ -37,7 +37,7 @@ function endDirection(e,start=true){const p=e.path.map(n=>data.nodes[n]),i=start
 function routeFrom(n){const route=[];const visited=new Set();while(n!==data.goal&&!visited.has(n)){visited.add(n);const e=optimal.get(n);if(!e)break;route.push(e);n=e.to;}return route;}
 function computeRoutes(){const reverse=incoming;for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);if(!reverse.has(e.to))reverse.set(e.to,[]);reverse.get(e.to).push(e);}distances.set(data.goal,0);const todo=[data.goal];while(todo.length){todo.sort((a,b)=>distances.get(b)-distances.get(a));const n=todo.pop(),d=distances.get(n);for(const e of reverse.get(n)||[]){const nd=d+(e.cost||e.length);if(nd<(distances.get(e.from)??Infinity)){distances.set(e.from,nd);optimal.set(e.from,e);if(!todo.includes(e.from))todo.push(e.from);}}}}
 function reset(){clearInputs();homeAt=0;$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;picked=null;$('undoRoundabout').hidden=true;maxKmh=200;current=data.start;previous=null;lastEdge=null;active=null;distance=0;speed=0;travelled=0;turns=0;state='intro';position.copy(point(current));heading.copy(endDirection(optimal.get(current)));totalInitial=routeFrom(current).reduce((n,e)=>n+e.length,0);ui.welcome.hidden=false;ui.drive.hidden=true;ui.decision.hidden=true;ui.finish.hidden=true;document.body.classList.remove('choosing');world.resetCamera();clearWorldChoices();world.setTurnArrow(null);$('remaining').textContent='Herlofsons veg → Skjermvegen';newReward=null;showRewards();}
-function start(){if(state!=='intro')return;if(sound&&musicOn)music.play();if(sound&&arrivals>=HORN_AT)music.preloadHorns?.();if(freeMode){startFree();return;}ui.welcome.hidden=true;ui.drive.hidden=false;state='decision';const rexCarries=model==='trex'&&arrivals>=MODEL_AT.trex&&ludvigUnlocked&&behind==='ludvig'; // the easter egg (world.js)
+function start(){if(state!=='intro')return;lakeVisit=false;if(sound&&musicOn)music.play();if(sound&&arrivals>=HORN_AT)music.preloadHorns?.();if(freeMode){startFree();return;}ui.welcome.hidden=true;ui.drive.hidden=false;state='decision';const rexCarries=model==='trex'&&arrivals>=MODEL_AT.trex&&ludvigUnlocked&&behind==='ludvig'; // the easter egg (world.js)
  if(rexCarries)toast('🦖 Oi! T-rexen har tatt Ludvig i munnen!');say('Hei Sofia! Nå kjører vi til barnehagen. Ved hvert kryss velger du vei med en pil.'+(rexCarries?' Oi! T-rexen har tatt Ludvig i munnen!':''));leavingHome=true;showDecision();}
 // A roundabout exit's arrow shows where its road goes, seen from the circle (roundaboutLabels); without that, where its
 // road leaves the circle, seen from the car as it comes in. An exit that leads back to the junction the car came from
@@ -272,17 +272,17 @@ const parkingPlaces=new Set([kiwiParking,ishallParking,remaParking,bunnprisParki
 // that changes colour (colour 'rainbow').
 // A colour saved from the old colour wheel becomes the nearest of the ten.
 function nearestColour(hex){const rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)),c=rgb(hex.toLowerCase());let best=carColours[0][1],d=Infinity;for(const [,h] of carColours){const q=rgb(h),e=(q[0]-c[0])**2+(q[1]-c[1])**2+(q[2]-c[2])**2;if(e<d){d=e;best=h;}}return best;}
-function saveProgress(){try{localStorage.setItem('sofiatur.fremgang',JSON.stringify({arrivals,colour:carColour,trail:behind==='trail'?'on':'off',behind,kiwi:kiwiUnlocked?'on':'off',ludvig:ludvigUnlocked?'on':'off',model}));}catch{}}
-try{const saved=JSON.parse(localStorage.getItem('sofiatur.fremgang'))||{};arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour))carColour=nearestColour(saved.colour);else if(saved.colour==='kiwi'&&kiwiUnlocked||saved.colour==='rainbow'&&arrivals>=4)carColour=saved.colour;ludvigUnlocked=saved.ludvig==='on';behind=['trail','ludvig','bubbles','none'].includes(saved.behind)?saved.behind:saved.trail==='off'?'none':'trail';if(behind==='ludvig'&&!ludvigUnlocked||behind==='bubbles'&&arrivals<BUBBLES_AT)behind='trail';model=MODEL_AT[saved.model]&&arrivals>=MODEL_AT[saved.model]?saved.model:'car';}catch{}
+function saveProgress(){try{localStorage.setItem('sofiatur.fremgang',JSON.stringify({arrivals,colour:carColour,trail:behind==='trail'?'on':'off',behind,kiwi:kiwiUnlocked?'on':'off',ludvig:ludvigUnlocked?'on':'off',duck:duckUnlocked?'on':'off',model}));}catch{}}
+try{const saved=JSON.parse(localStorage.getItem('sofiatur.fremgang'))||{};arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour))carColour=nearestColour(saved.colour);else if(saved.colour==='kiwi'&&kiwiUnlocked||saved.colour==='rainbow'&&arrivals>=4)carColour=saved.colour;ludvigUnlocked=saved.ludvig==='on';duckUnlocked=saved.duck==='on';behind=['trail','ludvig','duck','bubbles','none'].includes(saved.behind)?saved.behind:saved.trail==='off'?'none':'trail';if(behind==='ludvig'&&!ludvigUnlocked||behind==='duck'&&!duckUnlocked||behind==='bubbles'&&arrivals<BUBBLES_AT)behind='trail';model=MODEL_AT[saved.model]&&arrivals>=MODEL_AT[saved.model]?saved.model:'car';}catch{}
 const swatches=carColours.map(([name,hex])=>{const b=document.createElement('button');b.type='button';b.className='swatch';b.title=name;b.setAttribute('aria-label',name);b.style.background=hex;b.onclick=()=>pickColour(hex);return b;});
 const kiwiSwatch=document.createElement('button');kiwiSwatch.type='button';kiwiSwatch.className='swatch kiwi';kiwiSwatch.title='KIWI';kiwiSwatch.setAttribute('aria-label','Hemmelig KIWI-bil');kiwiSwatch.textContent='K';kiwiSwatch.onclick=()=>pickColour('kiwi');
 const rainbowSwatch=document.createElement('button');rainbowSwatch.type='button';rainbowSwatch.className='swatch rainbow';rainbowSwatch.title='Regnbue';rainbowSwatch.setAttribute('aria-label','Regnbuebil som skifter farge');rainbowSwatch.onclick=()=>pickColour('rainbow');
 // The ten colours, then the rainbow and KIWI (the free colour wheel was taken out on 3 October 2026, the user's wish).
 $('carColours').append(...swatches,rainbowSwatch,kiwiSwatch);
 function pickColour(hex){carColour=hex.toLowerCase();saveProgress();applyRewards();showRewards();}
-function applyRewards(){if(!world)return;const kiwi=carColour==='kiwi'&&kiwiUnlocked;world.setCarColour?.(kiwi?'#5fae36':arrivals>=1&&carColour!=='kiwi'?carColour:'#14171c');world.setCarSkin?.(kiwi?'kiwi':null);world.setTrail?.(arrivals>=3&&behind==='trail');world.setBoy?.(ludvigUnlocked&&behind==='ludvig');world.setBubbles?.(arrivals>=BUBBLES_AT&&behind==='bubbles');$('horn').hidden=arrivals<HORN_AT;world.setCarModel?.(arrivals>=(MODEL_AT[model]||0)?model:'car');}
+function applyRewards(){if(!world)return;const kiwi=carColour==='kiwi'&&kiwiUnlocked;world.setCarColour?.(kiwi?'#5fae36':arrivals>=1&&carColour!=='kiwi'?carColour:'#14171c');world.setCarSkin?.(kiwi?'kiwi':null);world.setTrail?.(arrivals>=3&&behind==='trail');world.setBoy?.(ludvigUnlocked&&behind==='ludvig');world.setDuckRunner?.(duckUnlocked&&behind==='duck');world.setBubbles?.(arrivals>=BUBBLES_AT&&behind==='bubbles');$('horn').hidden=arrivals<HORN_AT;world.setCarModel?.(arrivals>=(MODEL_AT[model]||0)?model:'car');}
 // Before the first trip to the kindergarten, a KIWI unlock shows only black and the KIWI car.
-function showRewards(){$('rewards').hidden=arrivals<1&&!kiwiUnlocked&&!ludvigUnlocked;$('trailRow').hidden=arrivals<3;$('trail').checked=behind==='trail';$('ludvigRow').hidden=!ludvigUnlocked;$('ludvig').checked=behind==='ludvig';$('bubblesRow').hidden=arrivals<BUBBLES_AT;$('bubbles').checked=behind==='bubbles';$('modelRow').hidden=arrivals<2;for(const m of MODELS){$('model-'+m).hidden=arrivals<(MODEL_AT[m]||0);$('model-'+m).classList.toggle('on',m===model);}
+function showRewards(){$('rewards').hidden=arrivals<1&&!kiwiUnlocked&&!ludvigUnlocked&&!duckUnlocked;$('trailRow').hidden=arrivals<3;$('trail').checked=behind==='trail';$('ludvigRow').hidden=!ludvigUnlocked;$('ludvig').checked=behind==='ludvig';$('duckRunnerRow').hidden=!duckUnlocked;$('duckRunner').checked=behind==='duck';$('bubblesRow').hidden=arrivals<BUBBLES_AT;$('bubbles').checked=behind==='bubbles';$('modelRow').hidden=arrivals<2;for(const m of MODELS){$('model-'+m).hidden=arrivals<(MODEL_AT[m]||0);$('model-'+m).classList.toggle('on',m===model);}
  swatches.forEach((b,i)=>{const on=carColours[i][1]===carColour||i===0&&carColour!=='kiwi'&&arrivals<1;b.hidden=arrivals<1&&i>0;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');});
  rainbowSwatch.hidden=arrivals<4;rainbowSwatch.classList.toggle('on',carColour==='rainbow');rainbowSwatch.setAttribute('aria-pressed',carColour==='rainbow'?'true':'false');kiwiSwatch.hidden=!kiwiUnlocked;kiwiSwatch.classList.toggle('on',carColour==='kiwi');kiwiSwatch.setAttribute('aria-pressed',carColour==='kiwi'?'true':'false');
  $('rewardTeaser').hidden=arrivals>=LAST_REWARD;$('rewardTeaser').textContent=arrivals<1?'🎁 Kom frem til barnehagen, så får du en overraskelse!':'🎁 Kjør til barnehagen én gang til for en ny overraskelse!';}
@@ -315,7 +315,7 @@ function parkAtRema(){toast('🛒 Framme ved Rema 1000 Stavset');say('Vi er fram
 function parkAtBunnpris(){toast('🛒 Parkert ved Bunnpris');say('Vi har parkert ved Bunnpris på Ugla!');}
 // Lianvannet: the turning circle by the water at the end of Vetle Vislies veg (data.lakeside, a parking place once the map
 // is loaded). The big duck in the lake (world.js) rises out of the water as the car comes near.
-let duckSeen=false;
+let duckSeen=false,lakeVisit=false; // lakeVisit: the car has come to the lake (parkAtLake) and is still by it; see honkAtDuck
 // Free driving counts visits too (3 October 2026): driving into a parking place (within 8 m of it) is a visit, as parking there is with the arrows;
 // it counts again once the car has been 30 m away. Home and the kindergarten end the drive, so there the car must stop (brake) within 10 m;
 // on the way in the game says so.
@@ -329,17 +329,28 @@ function freeVisits(){
   if(free.car.speed<1){freeAt=n;speed=free.car.speed=0;if(n===data.goal)finish();else parkAtHome();return;}
   if(freeHint!==n){freeHint=n;toast(n===data.goal?'⚑ Brems for å parkere ved barnehagen':'🏠 Brems for å parkere hjemme');}}
 }
-function parkAtLake(){toast('🦆 Framme ved Lianvannet');say('Vi er framme ved Lianvannet. Hei, and!');}
+function parkAtLake(){lakeVisit=true;toast('🦆 Framme ved Lianvannet');say('Vi er framme ved Lianvannet. Hei, and!');}
 function watchDuck(){if(duckSeen||!world?.duck?.shown)return;duckSeen=true;toast('🦆 Se! En kjempeand i Lianvannet!');say('Se! En kjempestor and svømmer rundt i vannet!');}
-// The rainbow trail and Ludvig are alternatives behind the car: switching one on switches the other off; both may be off.
+// The rainbow trail, Ludvig, the running duck and the bubbles are alternatives behind the car: switching one on switches the others off; all may be off.
 $('trail').onchange=e=>{behind=e.target.checked?'trail':behind==='trail'?'none':behind;saveProgress();applyRewards();showRewards();};
 $('ludvig').onchange=e=>{behind=e.target.checked?'ludvig':behind==='ludvig'?'none':behind;saveProgress();applyRewards();showRewards();};
+$('duckRunner').onchange=e=>{behind=e.target.checked?'duck':behind==='duck'?'none':behind;saveProgress();applyRewards();showRewards();};
 $('bubbles').onchange=e=>{behind=e.target.checked?'bubbles':behind==='bubbles'?'none':behind;saveProgress();applyRewards();showRewards();};
 // The horn (the reward for the eleventh trip): the button on the drive screen, or H. What you drive as says its own sound, and hops.
 const HONK={car:'Tut tut!',cat:'Mjau!',dog:'Voff voff!',duck:'Kvakk kvakk!',rocket:'Sjuuuuu!',unicorn:'Ihihihi!',firetruck:'Ba-bu, ba-bu!',balloon:'Fffff!',trex:'RAAAAWR!'};
 // The horn plays the ride's own sound (a real recording, music.js HORNS); while it is not loaded yet, the voice says it (HONK).
-function honk(){if(arrivals<HORN_AT||state==='intro')return;world?.honk?.();const ride=arrivals>=(MODEL_AT[model]||0)?model:'car';if(sound&&!music.horn?.(ride))say(HONK[ride]);}
+function honk(){if(arrivals<HORN_AT||state==='intro')return;world?.honk?.();const ride=arrivals>=(MODEL_AT[model]||0)?model:'car';if(sound&&!music.horn?.(ride))say(HONK[ride]);if(ride==='duck')honkAtDuck();}
 $('horn').onclick=honk;
+// An easter egg (4 October 2026): visit the big duck in Lianvannet driving as the duck, and honk, and a duck runs after the car (duck-runner.js), one more
+// alternative behind it on the start screen. It must be a visit (parkAtLake) and the horn must sound by the water (within 30 m of the turning circle, as in free
+// driving, where 30 m away ends a visit). Every such honk puts the duck back behind the car, as every visit to Ludvig puts him back.
+function honkAtDuck(){
+ if(!lakeVisit)return;const p=data.nodes[data.lakeside],c=state==='free'?free.car:position;if(!p||Math.hypot(c.x-p[0],c.z-p[1])>30){lakeVisit=false;return;}
+ const first=!duckUnlocked,again=!first&&behind!=='duck';if(!first&&!again)return;
+ duckUnlocked=true;behind='duck';saveProgress();applyRewards();showRewards();
+ if(first){toast('🦆 Anda hørte tuta · Nå løper en and etter bilen!');say('Kvakk kvakk! Anda hørte tuta! Nå løper en and etter bilen. Du kan slå den av og på hjemme.');}
+ else{toast('🦆 Anda hørte tuta · Nå løper den etter bilen igjen!');say('Kvakk kvakk! Nå løper anda etter bilen igjen.');}
+}
 // What the car is (the start screen's "Kjør som" row): the unlocked ones of car, cat, dog, duck and rocket.
 for(const m of MODELS)$('model-'+m).onclick=()=>{model=m;saveProgress();applyRewards();showRewards();};
 $('music').onchange=e=>{musicOn=e.target.value==='on';saveSettings();if(musicOn&&sound)music.play();else music.stop();};

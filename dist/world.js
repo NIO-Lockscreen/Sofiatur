@@ -12,6 +12,7 @@ import {addMunkvoll,addTransit,addMunkvollDetails} from './munkvoll.js';
 import {createTrafficLights} from './traffic-lights.js';
 import {createRainbowTrail} from './rainbow-trail.js';
 import {createBoy} from './boy.js';
+import {createDuckRunner} from './duck-runner.js';
 import {addLandmark,addLandmarkGround} from './landmarks.js';
 import {buildingStyles,addKiwi} from './building-details.js';
 import {addDalgardSchool,addSportsGrounds,addDalgardDetails} from './dalgard.js';
@@ -188,7 +189,7 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  // Paint colour (a reward). Black keeps the original deep metallic look; brighter colours are less metallic so they read as colour.
  // 'rainbow' (the reward for the fourth trip) runs through all the colours in a little over three seconds; update() turns it.
  function setCarColour(hex){rainbow=hex==='rainbow';car.userData.colour=hex;paintBeacons();if(rainbow){paint.metalness=.3;paint.roughness=.28;return;}paint.color.set(hex);const c=paint.color,dark=Math.max(c.r,c.g,c.b)<.06;paint.metalness=dark?.72:.38;paint.roughness=dark?.24:.3;}
- const trail=createRainbowTrail({T,scene}),boy=createBoy({T,scene}),bubbles=createBubbles({T,scene}); // behind the car: the rainbow trail, Ludvig running after it (boy.js) or soap bubbles (bubbles.js), one at a time
+ const trail=createRainbowTrail({T,scene}),boy=createBoy({T,scene}),duckRunner=createDuckRunner({T,scene}),bubbles=createBubbles({T,scene}); // behind the car: the rainbow trail, Ludvig running after it (boy.js), a running duck (duck-runner.js) or soap bubbles (bubbles.js), one at a time
  // Soft contact shadow remains visible with economical mobile shadows.
  const shc=document.createElement('canvas');shc.width=64;shc.height=64;const sc=shc.getContext('2d'),gr=sc.createRadialGradient(32,32,6,32,32,32);gr.addColorStop(0,'rgba(24,40,35,.48)');gr.addColorStop(1,'rgba(24,40,35,0)');sc.fillStyle=gr;sc.fillRect(0,0,64,64);const sm=new T.Mesh(new T.PlaneGeometry(3.4,6),new T.MeshBasicMaterial({map:new T.CanvasTexture(shc),transparent:true,depthWrite:false}));sm.rotation.x=-Math.PI/2;scene.add(sm);
  const confetti=[];const cg=new T.BoxGeometry(.12,.04,.24);for(let i=0;i<75;i++){const m=new T.Mesh(cg,new T.MeshBasicMaterial({color:['#ffd66c','#6ad2c9','#e99584','#fff5cf'][i%4]}));m.visible=false;scene.add(m);confetti.push(m);}
@@ -213,7 +214,7 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  function update(dt,pos,tangent,velocity,mode,finished,time,carFacing=tangent){
  adaptResolution();
  const carrying=model==='trex'&&boy.isOn();rides.trex.carrying=carrying; // the easter egg: the T. rex carries Ludvig in its mouth
- trail.update(dt,pos,carFacing);boy.update(dt,pos,carFacing,velocity,time,{held:carrying});bubbles.update(dt,pos,carFacing);trafficLights.update(dt,pos);updateDuck(dt,pos,time);
+ trail.update(dt,pos,carFacing);boy.update(dt,pos,carFacing,velocity,time,{held:carrying});duckRunner.update(dt,pos,carFacing,velocity,time);bubbles.update(dt,pos,carFacing);trafficLights.update(dt,pos);updateDuck(dt,pos,time);
  if(rainbow)paint.color.setHSL((time*.3)%1,.9,.42);if(rides[model])rides[model].update(dt,Math.abs(velocity),time,paint.color);
  car.position.copy(pos);if(hopT>0){hopT=Math.max(0,hopT-dt);car.position.y+=Math.sin(Math.PI*hopT/.55)*.45;}const yaw=Math.atan2(-carFacing.x,-carFacing.z);rot.setFromEuler(facing.set(Math.atan2(carFacing.y,Math.hypot(carFacing.x,carFacing.z)),yaw,0));car.quaternion.slerp(rot,1-Math.exp(-dt*9));wheels.forEach(w=>w.rotation.x-=velocity*dt/.39);
  if(carrying){car.updateMatrixWorld(true);boy.hold(rides.trex.grip.getWorldPosition(holdAt),rides.trex.grip.getWorldQuaternion(holdQ),dt,time);}
@@ -258,5 +259,5 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
   for(const m of buildingMeshes)m.material=seeThrough.material;renderer.compile(scene,camera);renderer.render(scene,camera);for(const m of buildingMeshes)m.material=staticMaterial; // the see-through shader, compiled now
   renderer.setRenderTarget(null);rt.dispose();
   chunks.forEach((c,i)=>{[c.mesh.visible,c.mesh.frustumCulled,c.mesh.castShadow]=keep[i];});}
- resize();window.addEventListener('resize',resize);return {houseStats:houses.stats,height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setViewShift,cameraYaw:()=>orbit.yaw,setTrail:trail.setOn,setBoy:boy.setOn,setBubbles:bubbles.setOn,boy,honk,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();trail.clear();boy.clear();bubbles.clear();}};
+ resize();window.addEventListener('resize',resize);return {houseStats:houses.stats,height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setViewShift,cameraYaw:()=>orbit.yaw,setTrail:trail.setOn,setBoy:boy.setOn,setDuckRunner:duckRunner.setOn,setBubbles:bubbles.setOn,boy,honk,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();trail.clear();boy.clear();duckRunner.clear();bubbles.clear();}};
 }
