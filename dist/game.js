@@ -360,7 +360,9 @@ function honkAtDuck(){
 // What the car is (the start screen's "Kjør som" row): the unlocked ones of car, cat, dog, duck and rocket.
 for(const m of MODELS)$('model-'+m).onclick=()=>{model=m;saveProgress();applyRewards();showRewards();};
 $('music').onchange=e=>{musicOn=e.target.value==='on';saveSettings();if(musicOn&&sound)music.play();else music.stop();};
-$('cameraMode').onchange=e=>camMode=e.target.value;$('start').onclick=start;$('again').onclick=()=>{const toStart=!!newReward;reset();if(!toStart)start();};$('restart').onclick=()=>{$('menu').close();reset();if(freeMode)start();};
+$('cameraMode').onchange=e=>camMode=e.target.value;$('start').onclick=start;// Arriving at the kindergarten and starting over both lead to the start screen, with the car to choose (4 October 2026; before, "Kjør en gang til" started at once
+// unless a new reward had come, and "Begynn turen på nytt" started at once in free driving).
+$('again').onclick=()=>reset();$('restart').onclick=()=>{$('menu').close();reset();};
 $('deadEnds').onchange=e=>{showDeadEnds=e.target.value==='on';saveSettings();queue=[];if(active)planAhead();choicesStale=true;};
 // Switching choosing ahead off drops any queued roads; the car then stops at the next junction again.
 $('chooseAhead').onchange=e=>{chooseAhead=e.target.value==='on';saveSettings();if(!chooseAhead){queue=[];picked=null;}planKey='';if(active)planAhead();};
