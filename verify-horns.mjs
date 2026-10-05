@@ -37,6 +37,6 @@ console.log('Horn sounds: loaded from the tap, played one at a time, false while
 
 // The game: the horn plays the ride's sound when the sound is on, says the word while the clip is not there, and the start button loads them.
 {const g=fs.readFileSync('dist/game.js','utf8');
- assert.ok(g.includes("const ride=arrivals>=(MODEL_AT[model]||0)?model:'car';if(sound&&!music.horn?.(ride))say(HONK[ride]);"),'honk() plays the ride\'s sound, the word as fallback');
+ assert.ok(g.includes("const ride=rideOK(model)?model:'car';if(sound&&!music.horn?.(ride==='taxi'?'car':ride))say(HONK[ride]);"),'honk() plays the ride\'s sound (the taxi the car\'s, the pig has none), the word as fallback');
  assert.ok(g.includes("if(sound&&arrivals>=HORN_AT)music.preloadHorns?.();"),'start() loads the horns once the horn is unlocked');}
 console.log('Horn sounds: the game plays them on the horn: OK');

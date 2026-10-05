@@ -49,3 +49,24 @@ html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adju
 body.choosing.at-lake .horn:not([hidden]){visibility:visible}
 body.at-lake:has(#freeControls:not([hidden])) .horn:not([hidden]){display:grid!important;bottom:118px}
 @media(max-width:700px){body.at-lake:has(#freeControls:not([hidden])) .horn:not([hidden]){bottom:104px}}
+/* Inside the house (5 October 2026): "Gå inn" on the start screen, and over the room (inside.js) a way out, a title and the popup that says how an unlock was got.
+   The button sits bottom right on a wide screen, where the card is at the left; on a phone the card is at the bottom, so it moves up under the header. */
+.go-inside,.go-out{position:absolute;z-index:32;min-height:56px;padding:10px 22px;display:flex;align-items:center;gap:10px;border:2px solid white;border-radius:18px;background:#fffdf1;color:#174e48;box-shadow:0 4px 0 #174e4840;font-size:18px;font-weight:800;white-space:nowrap;touch-action:manipulation}
+.go-inside:active,.go-out:active{transform:translateY(3px)}.go-inside{right:28px;bottom:58px}.go-out{left:28px;top:92px}
+#insideHud{position:absolute;inset:0;z-index:31;pointer-events:none}#insideHud>*{pointer-events:auto}
+.inside-title{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);padding:8px 22px;border-radius:18px;background:#fffdf1e8;box-shadow:0 3px 0 #174e4830;text-align:center;font-weight:850;font-size:17px;white-space:nowrap;pointer-events:none}
+.inside-title small{display:block;font-size:12px;font-weight:700;color:#4f6f64;margin-top:2px}
+.unlock-info{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);width:min(480px,calc(100% - 32px));padding:16px 20px;display:flex;align-items:center;gap:16px;touch-action:manipulation}
+.unlock-info[hidden]{display:none}.info-icon{font-size:44px;line-height:1;flex:none}.unlock-info strong{font-size:19px}.unlock-info p{margin:4px 0 0;font-size:16px;line-height:1.4;font-weight:700}
+@media(max-width:700px){.go-inside{right:14px;top:68px;bottom:auto;min-height:52px;padding:8px 18px;font-size:17px}.welcome{max-height:calc(100dvh - 170px)}.go-out{left:14px;top:78px;min-height:52px;padding:8px 18px;font-size:17px}.inside-title{bottom:14px;padding:6px 16px;font-size:15px}.unlock-info{bottom:80px;padding:12px 16px}.info-icon{font-size:36px}}
+@media(max-height:500px){.go-inside{bottom:30px}.go-out{top:70px}.inside-title{padding:4px 14px;bottom:26px}.unlock-info{bottom:74px;padding:10px 16px}.info-icon{font-size:32px}.unlock-info p{font-size:14px}}
+/* With the taxi, the pig or the hover switch on the start card (5 October 2026) the card was 60 px too tall for an iPad in landscape (1024×768): on a wide screen it
+   drops the little heading and tightens up while they show. On a phone the card stops short of "Gå inn", which sits under the header. */
+@media(min-width:701px){.welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])){padding:24px 30px 26px}
+ .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])) .eyebrow{display:none}
+ .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])) h1{margin:0}
+ .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])) .route-line{margin:12px 0 14px}
+ .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])) .rewards{padding:9px 13px 10px;margin:-6px 0 14px}
+ .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])) .model-row{gap:5px;margin-top:8px}
+ .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])) .model-choice{padding:4px 9px}
+ .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])) .trail-row{margin:5px 0 0}}

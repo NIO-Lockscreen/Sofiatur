@@ -8,26 +8,30 @@ import {createFreeDrive} from './dist/free-drive.js';
 import {createMusic} from './dist/music.js';
 import {createBoy} from './dist/boy.js';
 import {createDuckRunner} from './dist/duck-runner.js';
-import {createDog,createRideDuck,createRocket,createUnicorn,createFireTruck,createBalloon,createTRex,BEACONS} from './dist/rides.js';
+import {createDog,createRideDuck,createRocket,createUnicorn,createFireTruck,createBalloon,createTRex,createPig,BEACONS} from './dist/rides.js';
 import {createBubbles} from './dist/bubbles.js';
 import {createRainbowTrail} from './dist/rainbow-trail.js';
 import {createCat} from './dist/cat-model.js';
+import {createET5} from './dist/car-model.js';
+import {createGirlModel} from './dist/girl.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8'));
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
 // Starts a fresh game (as after a page reload) with the given browser storage; the world records paint, boy and model calls.
 async function launch(localStorage){
  const els=new Map(),world={colour:null,trail:null,boy:null,bubbles:null,honks:0,skin:null,model:null};let callbacks=[],now=0;const canvasContext=new Proxy({},{get:()=>()=>{}});
- const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',value:'',checked:false,style:{},children:[],attrs:{},classes:new Set(),classList:{add(){},remove(){},toggle(c,on){on?this.owner.classes.add(c):this.owner.classes.delete(c);}},setAttribute(k,v){this.attrs[k]=v;},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(){},getContext(){return canvasContext}});const el=els.get(id);el.classList.owner=el;return el;};
- const listeners=new Map();
- const env={T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener:(type,fn)=>listeners.set(type,fn)},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),
-  createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on,setBoy:on=>world.boy=on,setDuckRunner:on=>world.duckRunner=on,setBubbles:on=>world.bubbles=on,honk:()=>world.honks++})};
+ const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',value:'',checked:false,style:{},children:[],attrs:{},classes:new Set(),classList:{add(){},remove(){},toggle(c,on){on?this.owner.classes.add(c):this.owner.classes.delete(c);}},setAttribute(k,v){this.attrs[k]=v;},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(type,fn){(this.listeners??={})[type]=fn;},getContext(){return canvasContext}});const el=els.get(id);el.classList.owner=el;return el;};
+ const listeners=new Map(),spoken=[],tts={cancel(){},speak:u=>spoken.push(u.text),getVoices:()=>[]},inside={created:0,enters:[],refreshes:[],picks:[]}; // spoken: every text say() speaks; inside: what game.js asks of the house (inside.js, stubbed here)
+ const env={T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener:(type,fn)=>listeners.set(type,fn),speechSynthesis:tts},speechSynthesis:tts,SpeechSynthesisUtterance:class{constructor(text){this.text=text;}},createInside:()=>{inside.created++;return {enter:(items,o)=>inside.enters.push({items,o}),refresh:(items,o)=>inside.refreshes.push({items,o}),update(){},pick:()=>inside.picks.length?inside.picks.shift():null};},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),
+  createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on,setBoy:on=>world.boy=on,setDuckRunner:on=>world.duckRunner=on,setBubbles:on=>world.bubbles=on,setHover:on=>world.hover=on,setBalloonGirl:on=>world.balloonGirl=on,honk:()=>world.honks++})};
  if(localStorage)Object.defineProperty(env,'localStorage',{get:localStorage});
  const ctx=vm.createContext(env);
- const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},home(){start();current=data.start;state='decision';parkAtHome();},ludvig(){parkAtLudvig();},freeDrive(x,z,v){if(state!=='free'){freeMode=true;start();}free.reset(x,z,0,v);freeVisits();},visit(n){start();active={e:{from:data.start,to:{kiwi:kiwiParking,ludvig:ludvigParking,lake:data.lakeside}[n]},line:{at(l,p){if(n==='lake'){const q=data.nodes[data.lakeside];p.set(q[0],100,q[1]);}},tangent(){}},len:0};arrive();},start(){start();},honkKey(){honk();},state:()=>state,progress:()=>({arrivals,carColour,trailOn:behind==='trail',catOn:model==='cat'}),model:()=>model,behind:()=>behind};})()`,ctx);
+ const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},home(){start();current=data.start;state='decision';parkAtHome();},ludvig(){parkAtLudvig();},freeDrive(x,z,v){if(state!=='free'){freeMode=true;start();}free.reset(x,z,0,v);freeVisits();},ishall(){parkAtIshall();},rema(){parkAtRema();},visit(n){start();active={e:{from:data.start,to:{kiwi:kiwiParking,ludvig:ludvigParking,lake:data.lakeside}[n]},line:{at(l,p){if(n==='lake'){const q=data.nodes[data.lakeside];p.set(q[0],100,q[1]);}},tangent(){}},len:0};arrive();},start(){start();},honkKey(){honk();},state:()=>state,progress:()=>({arrivals,carColour,trailOn:behind==='trail',catOn:model==='cat'}),model:()=>model,behind:()=>behind};})()`,ctx);
  for(let i=0;i<12;i++){await Promise.resolve();const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}await init;
  const key=(k,target={tagName:'BODY'})=>listeners.get('keydown')({key:k,repeat:false,target,preventDefault(){}});
  const tick=n=>{for(let i=0;i<n;i++){const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}};
- return {element,test:env.test,world,key,tick};
+ // tap(hit): a short tap on the 3D view, which the stubbed house answers with hit (what inside.pick returns)
+ const tap=(hit,dx=0)=>{inside.picks.push(hit);const c=element('world').listeners;c.pointerdown({clientX:100,clientY:100});c.pointerup({clientX:100+dx,clientY:100});};
+ return {element,test:env.test,world,key,tick,spoken,inside,tap};
 }
 const store=new Map(),storage={getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,String(v))};
 
@@ -337,3 +341,142 @@ console.log('Ludvig\'s ragdoll: trails, swings on, swings out in bends, settles,
  store.set('sofiatur.fremgang',JSON.stringify({arrivals:13,model:'trex',ludvig:'on',behind:'trail'}));const other=await launch(()=>storage);other.test.start();assert.doesNotMatch(other.element('toast').textContent||'',/T-rexen/,'only with Ludvig on');}
 console.log('Easter egg: the T. rex carries Ludvig in its mouth, his legs still running: OK');
 
+
+// ---- New unlocks (5 October 2026): the taxi, the hover car, inside the house, the pig and the girl in the balloon ----
+const save=o=>{store.clear();store.set('sofiatur.fremgang',JSON.stringify(o));};
+const placesDone={kiwi:'on',ludvig:'on',ishall:'on',rema:'on'};
+const house=g=>{g.element('goInside').onclick();return g.inside.enters.at(-1).items;};
+// The taxi: KIWI, Ludvig, Dalgård ishall, Rema 1000 and the kindergarten, in any order; announced once, in the caller's own toast and speech.
+{save({arrivals:1,kiwi:'on',ludvig:'on',ishall:'on'});let g=await launch(()=>storage);
+ assert.equal(g.element('model-taxi').hidden,true);assert.equal(g.world.model,'car');
+ const spokenBefore=g.spoken.length;g.test.rema();
+ assert.equal(g.world.model,'taxi','the last place visited unlocks the taxi and picks it');assert.equal(g.world.colour,'#f3c531','yellow, the Gul swatch');assert.equal(g.world.skin,null);assert.ok(g.element('carColours').children[7].classes.has('on'),'and Gul shows as picked');
+ assert.equal(g.element('model-taxi').hidden,false);assert.equal(g.element('modelRow').hidden,false);assert.ok(g.element('model-taxi').classes.has('on'));
+ assert.match(g.element('toast').textContent,/Framme ved Rema 1000.*Taxi låst opp/);assert.equal(g.spoken.length-spokenBefore,1,'one spoken text, not two that cancel each other');
+ assert.match(g.spoken.at(-1),/Rema 1000 på Stavset senter.*Og du har besøkt alle stedene! Nå kan du kjøre taxi!/);
+ g.test.rema();assert.doesNotMatch(g.element('toast').textContent,/Taxi/,'announced once');assert.doesNotMatch(g.spoken.at(-1),/taxi/i);
+ g=await launch(()=>storage);assert.equal(g.world.model,'taxi','the taxi is remembered');assert.equal(g.world.colour,'#f3c531');assert.equal(g.element('model-taxi').hidden,false);
+ // the colour can still be changed on the taxi, and is remembered; choosing the taxi again from the car paints it yellow
+ g.element('carColours').children[4].onclick();assert.equal(g.world.colour,'#1f63c6','a blue taxi');assert.equal(g.world.model,'taxi');g.element('model-taxi').onclick();assert.equal(g.world.colour,'#1f63c6','tapping the taxi button while it is the taxi leaves the colour');
+ g=await launch(()=>storage);assert.equal(g.world.model,'taxi');assert.equal(g.world.colour,'#1f63c6','the blue taxi survives a reload');assert.ok(g.element('carColours').children[4].classes.has('on'));
+ g.element('carColours').children[10].onclick();assert.equal(g.world.colour,'rainbow','a rainbow taxi');g.element('carColours').children[11].onclick();assert.equal(g.world.colour,'#5fae36');assert.equal(g.world.skin,'kiwi','the KIWI paint on the taxi, with its door logos');
+ g.element('model-car').onclick();assert.equal(g.world.model,'car');assert.equal(g.world.colour,'#5fae36','the car has whatever paint is chosen');assert.equal(g.world.skin,'kiwi');g.element('carColours').children[0].onclick();assert.equal(g.world.colour,'#14171c');g.element('model-taxi').onclick();assert.equal(g.world.colour,'#f3c531','from another ride, the taxi is painted yellow');assert.equal(g.world.skin,null);assert.ok(g.element('carColours').children[7].classes.has('on'));
+ // a KIWI-painted car that becomes the taxi is yellow; a visit to KIWI paints the taxi KIWI green with the logos
+ save({arrivals:1,colour:'kiwi',...placesDone,taxi:'on',model:'car'});g=await launch(()=>storage);assert.equal(g.world.skin,'kiwi');g.element('model-taxi').onclick();assert.equal(g.world.skin,null);assert.equal(g.world.colour,'#f3c531');g.test.park();assert.equal(g.world.skin,'kiwi','every visit to KIWI puts the KIWI paint on, the taxi too');assert.equal(g.world.colour,'#5fae36');}
+// the same, ending at the kindergarten (the first trip, with its own reward); and the other places in another order
+{save({arrivals:0,...placesDone});let g=await launch(()=>storage);assert.equal(g.world.model,'car','four places are not enough');assert.equal(g.element('model-taxi').hidden,true);
+ g.test.arrive();assert.equal(g.world.model,'taxi');assert.match(g.element('unlock').textContent,/farge på bilen.*taxi/i,'the trip reward and the taxi');assert.match(g.element('again').textContent,/Velg farge/);
+ assert.match(g.spoken.at(-1),/Du fant barnehagen.*velge farge på bilen!.*Og du har besøkt alle stedene! Nå kan du kjøre taxi!/);
+ g.element('again').onclick();assert.equal(g.test.state(),'intro','a new reward leads to the start screen');assert.equal(g.element('model-taxi').hidden,false);
+ g=await launch(()=>storage);assert.equal(g.world.model,'taxi','remembered');
+ save({arrivals:1});g=await launch(()=>storage);for(const [place,call] of [['kiwi',()=>g.test.park()],['ishall',()=>g.test.ishall()],['ludvig',()=>g.test.ludvig()],['rema',()=>g.test.rema()]]){assert.equal(g.world.model,'car','not yet, before '+place);call();}
+ assert.equal(g.world.model,'taxi','all five, in a third order');
+ // a save where everything is done but the taxi was never announced (an old save, say): the trip home says so when there is no trip reward of its own
+ save({arrivals:14,...placesDone});g=await launch(()=>storage);g.test.arrive();assert.match(g.element('unlock').textContent,/^🚕 Ny overraskelse! Du har besøkt alle stedene/);assert.equal(g.element('again').textContent,'Kjør taxien 🚕');assert.match(g.spoken.at(-1),/Nå kan du kjøre taxi/);
+ g.element('again').onclick();assert.equal(g.test.state(),'intro');assert.equal(g.world.model,'taxi');
+ g.test.arrive();assert.equal(g.element('unlock').hidden,true,'and only once');}
+// one place missing keeps it locked; the podium's hint names exactly the places that are missing
+{save({arrivals:1,kiwi:'on',ludvig:'on',ishall:'on'});let g=await launch(()=>storage);let t=house(g).find(i=>i.id==='taxi');
+ assert.equal(t.unlocked,false);assert.equal(t.icon,'❓');assert.equal(t.title,'Hemmelig overraskelse');assert.equal(t.text,'Hint: Besøk alle stedene. Du mangler: Rema 1000.');
+ save({arrivals:0,kiwi:'on'});g=await launch(()=>storage);assert.equal(house(g).find(i=>i.id==='taxi').text,'Hint: Besøk alle stedene. Du mangler: Ludvig, Dalgård ishall, Rema 1000 og barnehagen.');
+ save({arrivals:0,kiwi:'on',ludvig:'on',ishall:'on',rema:'on'});g=await launch(()=>storage);assert.equal(house(g).find(i=>i.id==='taxi').text,'Hint: Besøk alle stedene. Du mangler: barnehagen.');
+ save({arrivals:3,ludvig:'on',ishall:'on',rema:'on'});g=await launch(()=>storage);assert.equal(house(g).find(i=>i.id==='taxi').text,'Hint: Besøk alle stedene. Du mangler: KIWI.');
+ save({arrivals:1,...placesDone});g=await launch(()=>storage);t=house(g).find(i=>i.id==='taxi');assert.equal(t.unlocked,true);assert.equal(t.text,'Du besøkte KIWI, Ludvig, Dalgård ishall, Rema 1000 og barnehagen.');
+ save({arrivals:1,...placesDone,model:'taxi'});g=await launch(()=>storage);const stolen={arrivals:0,...placesDone,model:'taxi'};save(stolen);g=await launch(()=>storage);assert.equal(g.world.model,'car','the taxi cannot be forced through storage without the trip');}
+console.log('Taxi: KIWI, Ludvig, Dalgård ishall, Rema 1000 and the kindergarten in any order, yellow, announced once with the caller\'s own words, remembered; hints name the missing places: OK');
+// The honk: the taxi honks like the car (the voice says "Tut tut! Taxi!" while the sound is not loaded); the pig has no recording, so the voice says "Nøff nøff!"
+{save({arrivals:13,...placesDone,taxi:'on',pig:'on',model:'taxi'});let g=await launch(()=>storage);g.test.start();g.test.honkKey();assert.equal(g.spoken.at(-1),'Tut tut! Taxi!');
+ g.element('model-pig').onclick();g.test.honkKey();assert.equal(g.spoken.at(-1),'Nøff nøff!');}
+// The hover car: everything else unlocked (13 trips, KIWI, Ludvig, the running duck, the taxi and the pig); announced once; switch on the start screen; Z takes it away.
+{const full={arrivals:13,...placesDone,duck:'on',taxi:'on',pig:'on'};
+ for(const [what,change] of [['one trip short',{arrivals:12}],['no KIWI',{kiwi:'off'}],['no Ludvig',{ludvig:'off'}],['no running duck',{duck:'off'}],['no Dalgård ishall',{ishall:'off'}],['no Rema 1000',{rema:'off'}],['no pig',{pig:'off'}]]){
+  save({...full,...change});const g=await launch(()=>storage);assert.equal(g.element('hoverRow').hidden,true,what+': the hover car waits');assert.equal(g.world.hover,false,what);assert.equal(house(g).find(i=>i.id==='hover').unlocked,false);}
+ save({...full,pig:'off'});let g=await launch(()=>storage);g.element('goInside').onclick();assert.equal(g.world.hover,false);
+ const n=g.spoken.length;g.tap({type:'pig'});
+ assert.equal(g.world.hover,true,'finding the pig, the last unlock, switches it on');assert.equal(g.element('hoverRow').hidden,false);assert.equal(g.element('hover').checked,true);
+ assert.match(g.element('toast').textContent,/Du fant grisen.*Svevebil/);assert.equal(g.spoken.length-n,1);assert.match(g.spoken.at(-1),/Du fant grisen.*Wow, du har låst opp alt! Veier\? Der vi skal, trenger vi ikke veier! Nå svever bilen med hjulene under seg\./);
+ g.tap({type:'pig'});assert.equal(g.spoken.length-n,1,'announced once');
+ g.element('hover').onchange({target:{checked:false}});assert.equal(g.world.hover,false,'switched off on the start screen');assert.equal(g.element('hover').checked,false);
+ g=await launch(()=>storage);assert.equal(g.world.hover,false,'and remembered');assert.equal(g.element('hoverRow').hidden,false);assert.equal(g.element('hover').checked,false);
+ g.element('hover').onchange({target:{checked:true}});assert.equal(g.world.hover,true);g=await launch(()=>storage);assert.equal(g.world.hover,true,'on is remembered too');
+ g.key('z');assert.equal(g.test.progress().arrivals,12);assert.equal(g.world.hover,false,'Z: one trip fewer, not everything unlocked');assert.equal(g.element('hoverRow').hidden,true);
+ g.key('x');assert.equal(g.world.hover,true,'X: back again');assert.equal(g.element('hoverRow').hidden,false);assert.doesNotMatch(g.element('toast').textContent,/Svevebil/,'not announced a second time');
+ // a visit that completes everything: the hover car and (if it was missing too) the taxi are announced in the same words
+ save({arrivals:13,kiwi:'on',ludvig:'on',duck:'on',rema:'on',pig:'on'});g=await launch(()=>storage);const m=g.spoken.length;g.test.ishall();
+ assert.equal(g.world.hover,true);assert.equal(g.world.model,'taxi');assert.match(g.element('toast').textContent,/Taxi låst opp.*Svevebil/);assert.equal(g.spoken.length-m,1);assert.match(g.spoken.at(-1),/Dalgård ishall.*kjøre taxi!.*Wow, du har låst opp alt!/);
+ // the last unlock is a trip: the kindergarten says so on its summary
+ save({arrivals:12,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on',taxi:'on',pig:'on'});g=await launch(()=>storage);assert.equal(g.world.hover,false);g.test.arrive();
+ assert.equal(g.world.hover,true);assert.match(g.element('unlock').textContent,/T-rex.*sveve/s);assert.match(g.spoken.at(-1),/T-rex.*Wow, du har låst opp alt!/s);}
+console.log('Hover car: only when every other unlock is there; announced once; switch on the start screen, remembered; Z and X follow the trip count: OK');
+// Inside the house: the button on the start screen, the girl in the balloon afterwards (no announcement), the podium with its 19 places, taps, the pig and the way out.
+{save({arrivals:5,kiwi:'on',ludvig:'on',model:'dog'});let g=await launch(()=>storage);
+ assert.equal(g.element('goInside').hidden,false,'Gå inn on the start screen');assert.equal(g.world.balloonGirl,false,'the girl is not in the balloon before she has been inside');assert.equal(g.inside.created,0,'the house is built when first needed');
+ const toastBefore=g.element('toast').textContent;g.element('goInside').onclick();
+ assert.equal(g.test.state(),'inside');assert.equal(g.element('welcome').hidden,true);assert.equal(g.element('insideHud').hidden,false);assert.equal(g.element('goInside').hidden,true);assert.equal(g.element('unlockInfo').hidden,true);assert.equal(g.inside.created,1);
+ assert.equal(g.world.balloonGirl,true,'she rides in the balloon after the first time inside');assert.equal(g.element('toast').textContent,toastBefore,'and nothing is announced about it');assert.match(g.spoken.at(-1),/^Velkommen inn, Sofia!/);
+ assert.equal(JSON.parse(store.get('sofiatur.fremgang')).inside,'on');
+ const items=g.inside.enters.at(-1).items;assert.equal(g.inside.enters.at(-1).o.pigHidden,true,'the pig is hiding');
+ assert.deepEqual([...items.map(i=>i.id)],['colour','cat','trail','rainbow','dog','duck','rocket','unicorn','bubbles','firetruck','horn','balloon','trex','kiwi','ludvig','duckRunner','taxi','pig','hover'],'19 places in the order of the table');
+ const by=id=>items.find(i=>i.id===id);
+ assert.deepEqual([by('colour').icon,by('colour').title,by('colour').unlocked].map(x=>x),['🎨','Farger på bilen',true]);assert.equal(by('colour').text,'Denne fikk du da du kom fram til barnehagen for første gang.');assert.equal(by('dog').text,'Denne fikk du da du kom fram til barnehagen for femte gang.');
+ assert.deepEqual([by('rocket').icon,by('rocket').title,by('rocket').unlocked],['❓','Hemmelig overraskelse',false]);assert.equal(by('rocket').text,'Hint: Kjør til barnehagen 2 ganger til.');assert.equal(by('unicorn').text,'Hint: Kjør til barnehagen 3 ganger til.');
+ assert.equal(by('trex').text,'Hint: Kjør til barnehagen 8 ganger til.');assert.equal(by('kiwi').text,'Du parkerte ved KIWI på Dalgård.');assert.equal(by('ludvig').text,'Du besøkte Ludvig i Bøckmans veg 102.');
+ assert.equal(by('duckRunner').text,'Hint: Den store anda i Lianvannet vil gjerne hilse på en annen and. Husk tuta!');assert.equal(by('pig').text,'Hint: Noe rosa gjemmer seg her i huset. Se etter en krøllete hale!');
+ assert.equal(by('hover').text,'Hint: Lås opp alt det andre på pallen først. Da skjer det noe fra fremtiden!');assert.equal(by('taxi').text,'Hint: Besøk alle stedene. Du mangler: Dalgård ishall og Rema 1000.');assert.equal(by('bubbles').icon,'❓');
+ g=await launch(()=>storage);assert.equal(g.world.balloonGirl,true,'after a reload too');g.element('goInside').onclick();assert.match(g.spoken.at(-1),/^Velkommen hjem igjen, Sofia!/);
+ save({arrivals:12,...placesDone});g=await launch(()=>storage);assert.equal(house(g).find(i=>i.id==='trex').text,'Hint: Kjør til barnehagen én gang til.','"én gang til" for one more trip');
+ // taps: an item says how it was unlocked (or the hint), the next tap anywhere hides it; a swipe is no tap
+ save({arrivals:2,kiwi:'on'});g=await launch(()=>storage);g.element('goInside').onclick();const sp=g.spoken.length;
+ g.tap({type:'item',id:'cat'});assert.equal(g.element('unlockInfo').hidden,false);assert.deepEqual([g.element('unlockInfoIcon').textContent,g.element('unlockInfoTitle').textContent,g.element('unlockInfoText').textContent],['🐱','Katten','Denne fikk du da du kom fram til barnehagen for andre gang.']);assert.equal(g.spoken.at(-1),'Katten. Denne fikk du da du kom fram til barnehagen for andre gang.');
+ g.tap({type:'item',id:'dog'});assert.deepEqual([g.element('unlockInfoIcon').textContent,g.element('unlockInfoTitle').textContent,g.element('unlockInfoText').textContent],['❓','Hemmelig overraskelse','Hint: Kjør til barnehagen 3 ganger til.']);assert.equal(g.spoken.at(-1),'Hint: Kjør til barnehagen 3 ganger til.');
+ g.tap({type:'floor'});assert.equal(g.element('unlockInfo').hidden,true,'the next tap hides it');g.tap({type:'item',id:'kiwi'});assert.equal(g.element('unlockInfoText').textContent,'Du parkerte ved KIWI på Dalgård.');g.element('unlockInfo').onclick();assert.equal(g.element('unlockInfo').hidden,true,'and a tap on it');
+ const picks=g.inside.picks.length;g.inside.picks.push({type:'item',id:'cat'});g.tap({type:'item',id:'cat'},40);assert.equal(g.element('unlockInfo').hidden,true,'a swipe is no tap');g.inside.picks.length=0;
+ // the pig: tapping it unlocks it (and the pig as a ride), the podium is refreshed, the house hands it out of hiding
+ const before=g.inside.refreshes.length;g.tap({type:'pig'});assert.equal(g.world.model,'pig');assert.match(g.element('toast').textContent,/Du fant grisen! Nå kan du kjøre som en gris/);assert.match(g.spoken.at(-1),/^Nøff nøff! Du fant grisen som gjemte seg!/);
+ assert.ok(g.inside.refreshes.length>before);assert.equal(g.inside.refreshes.at(-1).o.pigHidden,false);assert.equal(g.inside.refreshes.at(-1).items.find(i=>i.id==='pig').unlocked,true);assert.equal(g.inside.refreshes.at(-1).items.find(i=>i.id==='pig').text,'Du fant grisen som gjemte seg bak sofaen.');
+ assert.equal(g.element('model-pig').hidden,false);assert.equal(g.element('modelRow').hidden,false);assert.equal(JSON.parse(store.get('sofiatur.fremgang')).pig,'on');
+ const spokenNow=g.spoken.length;g.tap({type:'pig'});assert.equal(g.spoken.length,spokenNow,'found only once');
+ g.key('x');assert.ok(g.inside.refreshes.length>before+1,'the debug keys refresh the podium while inside');
+ g.tap({type:'door'});assert.equal(g.test.state(),'intro','the door leads out');assert.equal(g.element('insideHud').hidden,true);assert.equal(g.element('goInside').hidden,false);assert.equal(g.element('welcome').hidden,false);
+ g=await launch(()=>storage);assert.equal(g.world.model,'pig','the pig is remembered');g.element('goInside').onclick();assert.equal(g.inside.enters.at(-1).o.pigHidden,false,'and stays out of hiding');
+ g.element('goOut').onclick();assert.equal(g.test.state(),'intro','Gå ut');assert.equal(g.element('insideHud').hidden,true);
+ // tapping the pig out on the rug is a tap on a podium item; the menu's restart leaves the house too; the horn is silent inside; the button is gone while driving
+ g.element('goInside').onclick();g.tap({type:'item',id:'pig'});assert.equal(g.element('unlockInfoTitle').textContent,'Grisen');
+ g.element('menu').close=()=>{};g.element('restart').onclick();assert.equal(g.test.state(),'intro');assert.equal(g.element('insideHud').hidden,true);assert.equal(g.element('goInside').hidden,false);
+ g.test.start();assert.equal(g.element('goInside').hidden,true,'no button while driving');
+ g.element('goInside').onclick();assert.notEqual(g.test.state(),'inside','you cannot go inside while driving');}
+console.log('Inside the house: the button, the girl in the balloon (no announcement), 19 places with texts and hints, taps, the pig, the way out: OK');
+
+// The new models with real three.js: the pig, the car's hinged wheels and taxi, the fire engine's wheels, the girl and the balloon's seat.
+{const globalDocument=globalThis.document;globalThis.document={createElement:()=>({getContext:()=>new Proxy({},{get:(o,p)=>/Gradient$/.test(p)?()=>({addColorStop(){}}):()=>{}}),width:0,height:0})}; // the car's number plate and decals draw on a canvas
+ const seen=o=>{const b=new T.Box3();o.updateWorldMatrix(true,true);o.traverseVisible(m=>{if(m.isMesh)b.expandByObject(m,true);});return b;},size=o=>seen(o).getSize(new T.Vector3()),
+  colours=o=>{const set=new Set();o.traverse(m=>{if(m.isMesh&&m.material.color)set.add(m.material.color.getHexString());});return set;};
+ // The pig: car-sized, pink whatever the colour, the KIWI logos on both flanks, legs that trot, a curly tail that wiggles, a hop on honk.
+ {const logo=new T.MeshBasicMaterial({color:'#8dc63f'}),pig=createPig(T,{logos:{kiwi:logo}}),car=size(createET5(T).car),d=size(pig.group);
+  assert.ok(d.z>4&&d.z<4.9&&d.y>2&&d.y<2.5,`about car size (${d.z.toFixed(2)} × ${d.y.toFixed(2)} m, the car ${car.z.toFixed(2)} m long)`);
+  const before=colours(pig.group);pig.update(.016,5,1,new T.Color('#1f63c6'));assert.deepEqual([...colours(pig.group)].sort(),[...before].sort(),'the colour argument is ignored');assert.ok(before.has('f3a6b8'),'pink');assert.ok(!before.has('1f63c6'));
+  assert.equal(pig.skins.kiwi.length,2,'the KIWI logo on both flanks');assert.ok(pig.skins.kiwi.every(m=>!m.visible&&m.material===logo)&&(m=>m[0]*m[1]<0&&m.every(x=>Math.abs(x)>.9))(pig.skins.kiwi.map(m=>(m.geometry.computeBoundingBox(),m.geometry.boundingBox.getCenter(new T.Vector3()).x))),'one on each side, on the flank');
+  let moved=0;for(let i=0;i<30;i++){pig.update(.03,8,i*.03);}pig.group.traverse(o=>{if(o.isGroup&&o.children.length&&Math.abs(o.rotation.x)>.05)moved++;});assert.ok(moved>=4,'legs and ears move at speed');
+  const y0=pig.group.children[0].position.y;pig.honk();pig.update(.2,0,2);assert.ok(pig.group.children[0].position.y>y0+.05,'honk makes it hop');
+  const t=new T.Box3().setFromObject(pig.group).getSize(new T.Vector3());assert.ok(t.x<2.6,'not wider than a car ('+t.x.toFixed(2)+' m)');}
+ // The car: four hinges (one a wheel), a hidden taxi group, the wheels fold flat and come back exactly.
+ {const e=createET5(T);assert.equal(e.hinges.length,4);assert.equal(e.wheels.length,4);assert.ok(e.hinges.every((h,i)=>e.wheels[i].parent===h&&Math.abs(h.userData.side)===1&&h.parent===e.car),'each wheel hangs on a hinge on the car');
+  assert.equal(e.taxi.visible,false);assert.ok(e.taxi.parent===e.car);assert.ok(e.taxi.children.length>=5,'sign, checker bands, door lettering');
+  const home=e.hinges.map(h=>h.position.clone());e.hover(1,.3);for(const h of e.hinges){assert.ok(Math.abs(Math.abs(h.rotation.z)-Math.PI/2)<1e-9,'the wheel lies flat');assert.ok(Math.abs(h.position.x)<.55&&h.position.y<.2,'under the body');}
+  const flat=new T.Vector3();for(const [i,w] of e.wheels.entries()){w.updateWorldMatrix(true,false);flat.set(1,0,0).transformDirection(w.matrixWorld);assert.ok(Math.abs(flat.y)>.999,'the axle stands upright: wheel '+i);}
+  assert.equal(e.glow.visible,true);assert.ok(e.glow.children.every(d=>d.material.transparent&&d.material.blending===T.AdditiveBlending&&d.material.depthWrite===false&&d.material.opacity>.5));
+  e.hover(0,0);e.hinges.forEach((h,i)=>assert.ok(h.position.distanceTo(home[i])<1e-9&&Math.abs(h.rotation.z)<1e-9,'back exactly where it was'));assert.equal(e.glow.visible,false);
+  e.wheels[0].rotation.x=1;e.hover(1);assert.equal(e.wheels[0].rotation.x,1,'rolling is kept inside the hinge');
+  // the checker band sits mid-door, and moves down to the sills when the KIWI logos take the doors
+  const bands=w=>e.taxi.children.filter(c=>c.geometry?.type==='PlaneGeometry'&&Math.abs(c.geometry.parameters.width-w)<.01).map(c=>c.visible);
+  assert.deepEqual([...bands(2.04)],[true,true]);assert.deepEqual([...bands(1.94)],[false,false]);e.taxi.userData.dress('kiwi');assert.deepEqual([...bands(2.04)],[false,false]);assert.deepEqual([...bands(1.94)],[true,true]);e.taxi.userData.dress(null);assert.deepEqual([...bands(2.04)],[true,true]);}
+ // The fire engine: six hinged wheels that fold flat, a glow under each.
+ {const f=createFireTruck(T);assert.equal(f.hinges.length,6);assert.equal(f.wheels.length,6);f.hover(1,0);assert.ok(f.hinges.every(h=>Math.abs(Math.abs(h.rotation.z)-Math.PI/2)<1e-9),'all six lie flat');
+  f.hover(0,0);assert.ok(f.hinges.every(h=>h.rotation.z===0&&Math.abs(Math.abs(h.position.x)-1)<1e-9&&Math.abs(h.position.y-.48)<1e-9),'and come back');f.update(.1,10,1);assert.ok(f.wheels.every(w=>w.rotation.x<0),'still rolling');}
+ // The girl: about 1.05 m, brown hair, a fringe and two pigtails that swing; she waves with her right arm.
+ {const g=createGirlModel(T),d=size(g.group);assert.ok(d.y>1&&d.y<1.1,'about 1.05 m ('+d.y.toFixed(2)+' m)');assert.ok(colours(g.group).has('6b4226'),'brown hair');assert.ok(colours(g.group).has('e5528f'),'a raspberry top');assert.equal(g.pigtails.length,2);
+  const rest=g.pigtails.map(p=>p.rotation.z);for(let i=0;i<20;i++)g.update(.05,1.4,i*.05);assert.ok(g.pigtails.some((p,i)=>Math.abs(p.rotation.z-rest[i])>.05),'the pigtails swing when she walks');
+  g.update(.05,0,3,1);assert.ok(g.arms[1].rotation.z>2,'her right arm is up when she waves');assert.ok(g.legs.length===2&&g.arms.length===2&&g.head);
+  const b=createBalloon(T);assert.ok(b.seat&&b.seat.isGroup&&b.seat.parent&&b.seat.position.y>.5&&b.seat.position.y<1.2,'the balloon has a seat at its basket');}
+ globalThis.document=globalDocument;}
+console.log('Models: the pig (car-sized, pink, KIWI logos, trots, hops), the car\'s four hinges and taxi group, six hinged fire engine wheels, the girl (1.05 m, brown hair) and the balloon\'s seat: OK');
