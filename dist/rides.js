@@ -206,20 +206,21 @@ export function createBalloon(T,{logos={}}={}){
  const wicker=new T.MeshStandardMaterial({color:'#9a6a3a',roughness:.9}),rope=new T.MeshStandardMaterial({color:'#5a4a3a',roughness:.9});
  const flame=new T.Mesh(new T.ConeGeometry(.16,.6,10,1,true),new T.MeshBasicMaterial({color:'#ffb347',transparent:true,opacity:.85,depthWrite:false,side:T.DoubleSide}));
  const body=new T.Group();group.add(body);
- const G=12,envY=4.1;
+ const G=12,envY=4.85; // the envelope sits high enough (5 October 2026) for a passenger standing in the basket to clear the burner and the skirt
  for(let k=0;k<G;k++){const g=new T.Mesh(new T.SphereGeometry(1.7,3,12,k*Math.PI*2/G,Math.PI*2/G,0,Math.PI*.78),k%2?yellow:paint);g.scale.set(1,1.12,1);g.position.y=envY;g.castShadow=true;body.add(g);}
  const skirt=new T.Mesh(new T.CylinderGeometry(1.08,.42,1.1,12,1,true),paint);skirt.position.y=envY-1.95;skirt.material=paint;body.add(skirt);
- const basket=new T.Mesh(new T.BoxGeometry(.95,.7,.95),wicker);basket.position.y=.85;basket.castShadow=true;body.add(basket);
- for(const [x,z] of [[-.42,-.42],[.42,-.42],[-.42,.42],[.42,.42]]){const r=new T.Mesh(new T.CylinderGeometry(.02,.02,1.45,4),rope);r.position.set(x*.8,1.9,z*.8);r.rotation.set(z*.25,0,-x*.25);body.add(r);}
- flame.position.y=1.75;body.add(flame);
- // Where a passenger stands (5 October 2026, the girl of world.js): at the basket's floor, raised so the shoulders show over the rim of the solid basket box; it bobs with the basket.
- const seat=new T.Group();seat.position.y=.72;body.add(seat);
+ // A roomy basket (1.6 m wide, its floor at .3 m, its rim at 1.2 m) with a rope from each corner to the skirt of the envelope.
+ const basket=new T.Mesh(new T.BoxGeometry(1.6,.9,1.6),wicker);basket.position.y=.75;basket.castShadow=true;body.add(basket);
+ for(const [x,z] of [[-1,-1],[1,-1],[-1,1],[1,1]]){const a=new T.Vector3(x*.72,1.2,z*.72),b=new T.Vector3(x*.7,3.3,z*.7),d=b.clone().sub(a),r=new T.Mesh(new T.CylinderGeometry(.025,.025,d.length(),4),rope);r.position.copy(a).addScaledVector(d,.5);r.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),d.normalize());body.add(r);}
+ flame.position.y=2.5;body.add(flame);
+ // Where a passenger stands (5 October 2026, the girl of world.js): on the basket's floor, inside the solid basket box, so only her waist up shows over the rim; it bobs with the basket.
+ const seat=new T.Group();seat.position.y=.32;body.add(seat);
  const skins=flankLogos(T,body,logos,{cy:envY,cz:0,rx:1.72,ry:1.9,rz:1.72,w:1.5,h:.5,y:envY-.2,z:0});
  let hop=0;
  function update(dt,speed,time,colour){
   if(colour)paint.color.copy(colour);
   body.position.y=.35+Math.sin(time*1.1)*.18;body.rotation.z=Math.sin(time*.7)*.04;body.rotation.x=-.05*Math.min(1,speed/10);
-  hop=Math.max(0,hop-dt);const puff=Math.max(0,Math.sin(time*1.7)-.6)/.4+hop*1.5;flame.scale.set(1,.2+puff,1);flame.visible=puff>.05;flame.position.y=1.75+.3*(.2+puff)/2;
+  hop=Math.max(0,hop-dt);const puff=Math.max(0,Math.sin(time*1.7)-.6)/.4+hop*1.5;flame.scale.set(1,.2+puff,1);flame.visible=puff>.05;flame.position.y=2.5+.3*(.2+puff)/2;
  }
  update(0,0,0);
  return {group,update,skins,honk(){hop=1;},seat};

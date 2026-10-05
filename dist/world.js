@@ -180,7 +180,7 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  const rides={cat:createCat(T,{logos}),dog:createDog(T,{logos}),duck:createRideDuck(T,{logos}),rocket:createRocket(T,{logos}),unicorn:createUnicorn(T,{logos}),firetruck:createFireTruck(T,{logos}),balloon:createBalloon(T,{logos}),trex:createTRex(T,{logos}),pig:createPig(T,{logos})};
  for(const r of Object.values(rides)){r.group.visible=false;car.add(r.group);}
  // An easter egg (5 October 2026): once Sofia has been inside the house, a small girl with brown hair rides in the hot-air balloon's basket (no announcement, not an unlock).
- const balloonGirl=createGirlModel(T);balloonGirl.group.scale.setScalar(.9);balloonGirl.group.position.x=.27;balloonGirl.group.visible=false;rides.balloon.seat.add(balloonGirl.group);
+ const balloonGirl=createGirlModel(T);balloonGirl.group.scale.setScalar(1.75);balloonGirl.group.position.x=.5;balloonGirl.group.visible=false;rides.balloon.seat.add(balloonGirl.group);
  function setBalloonGirl(on){balloonGirl.group.visible=!!on;}
  let model='car',skin=null,rainbow=false;
  function showModel(){const drive=model==='car'||model==='taxi';for(const o of bodywork)if(!skinParts.has(o))o.visible=drive;taxi.visible=model==='taxi';for(const [k,list] of Object.entries(skins))for(const m of list)m.visible=drive&&k===skin;for(const [name,r] of Object.entries(rides)){for(const [k,list] of Object.entries(r.skins))for(const m of list)m.visible=k===skin;r.group.visible=model===name;}}

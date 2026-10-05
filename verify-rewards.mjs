@@ -281,7 +281,7 @@ console.log('The dog, the duck and the rocket: car-sized, painted, KIWI logos on
 // Trips 8 to 13: the unicorn, the fire engine, the hot-air balloon (floating) and the T. rex: their sizes, the KIWI logos,
 // the paint, movement, and honk (the T. rex opens its jaws).
 for(const [name,make,{x,y,z,minY,paints}] of [['unicorn',createUnicorn,{x:[1,2.5],y:[3,4.2],z:[3.5,5.5],minY:[-.05,.2],paints:true}],['firetruck',createFireTruck,{x:[2,2.6],y:[2.4,3],z:[5,6.5],minY:[-.1,.1],paints:true}],
-  ['balloon',createBalloon,{x:[3,4],y:[4.5,6.2],z:[3,4],minY:[.5,1.3],paints:true}],['trex',createTRex,{x:[1.5,2.5],y:[3,4],z:[6,8.5],minY:[-.05,.4],paints:true}]]){
+  ['balloon',createBalloon,{x:[3,4],y:[4.5,7],z:[3,4],minY:[.5,1.3],paints:true}],['trex',createTRex,{x:[1.5,2.5],y:[3,4],z:[6,8.5],minY:[-.05,.4],paints:true}]]){
  const logo=new T.MeshBasicMaterial(),ride=make(T,{logos:{kiwi:logo}});ride.group.updateMatrixWorld(true);
  const box=new T.Box3().setFromObject(ride.group),size=box.getSize(new T.Vector3()),within=(v,[a,b])=>v>=a&&v<=b;
  assert.ok(within(size.x,x)&&within(size.y,y)&&within(size.z,z)&&within(box.min.y,minY),`${name}: size ${size.toArray().map(v=>v.toFixed(1))}, lowest point ${box.min.y.toFixed(2)}`);
@@ -477,6 +477,6 @@ console.log('Inside the house: the button, the girl in the balloon (no announcem
  {const g=createGirlModel(T),d=size(g.group);assert.ok(d.y>1&&d.y<1.1,'about 1.05 m ('+d.y.toFixed(2)+' m)');assert.ok(colours(g.group).has('6b4226'),'brown hair');assert.ok(colours(g.group).has('e5528f'),'a raspberry top');assert.equal(g.pigtails.length,2);
   const rest=g.pigtails.map(p=>p.rotation.z);for(let i=0;i<20;i++)g.update(.05,1.4,i*.05);assert.ok(g.pigtails.some((p,i)=>Math.abs(p.rotation.z-rest[i])>.05),'the pigtails swing when she walks');
   g.update(.05,0,3,1);assert.ok(g.arms[1].rotation.z>2,'her right arm is up when she waves');assert.ok(g.legs.length===2&&g.arms.length===2&&g.head);
-  const b=createBalloon(T);assert.ok(b.seat&&b.seat.isGroup&&b.seat.parent&&b.seat.position.y>.5&&b.seat.position.y<1.2,'the balloon has a seat at its basket');}
+  const b=createBalloon(T);assert.ok(b.seat&&b.seat.isGroup&&b.seat.parent&&b.seat.position.y>.2&&b.seat.position.y<1.2,'the balloon has a seat on its basket floor');}
  globalThis.document=globalDocument;}
 console.log('Models: the pig (car-sized, pink, KIWI logos, trots, hops), the car\'s four hinges and taxi group, six hinged fire engine wheels, the girl (1.05 m, brown hair) and the balloon\'s seat: OK');
