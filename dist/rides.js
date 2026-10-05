@@ -268,11 +268,14 @@ export function createTRex(T,{logos={}}={}){
 
 // ---- The pig (5 October 2026, the reward for finding it hiding in the house): a big round pink pig with a curly tail that wiggles, a snout with two nostrils,
 // floppy ears and four short legs that trot at the car's speed ----
-// It stays pink whatever the colour (the colour argument is ignored); with the KIWI skin it wears the logo on both flanks. honk() makes it hop and wiggle.
+// The body takes the paint colour like the dog and the cat do (pink to begin with, PIG_SKIN); the snout, the tail, the insides of the ears and the hooves are shades
+// of it (a little darker, or a little lighter on a dark paint), so it reads as a pig in any colour; eyes and nostrils stay dark. With the KIWI skin it wears the logo on
+// both flanks. honk() makes it hop and wiggle.
+export const PIG_SKIN='#f3a6b8';
 export function createPig(T,{logos={}}={}){
  const group=new T.Group();group.name='Gris'; // about 4.4 m long and 2.2 m high
  const std=(color,roughness=.7)=>new T.MeshStandardMaterial({color,roughness});
- const pink=std('#f3a6b8'),snoutPink=std('#e98aa2',.6),inner=std('#e47f9a'),nostril=std('#8a3a54',.6),hoof=std('#d9758f',.5),eye=new T.MeshBasicMaterial({color:'#2a1a1e'}),glint=new T.MeshBasicMaterial({color:'#ffffff'});
+ const pink=std(PIG_SKIN),snoutPink=std('#e98aa2',.6),inner=std('#e47f9a'),nostril=std('#8a3a54',.6),hoof=std('#d9758f',.5),eye=new T.MeshBasicMaterial({color:'#2a1a1e'}),glint=new T.MeshBasicMaterial({color:'#ffffff'});
  const sphere=sphereGeo(T),limb=new T.CylinderGeometry(1,.82,1,12),cone=new T.ConeGeometry(1,1,3),barrel=new T.CylinderGeometry(1,1,1,18);
  const body=new T.Group();group.add(body);
  const part=(g,m,[x,y,z],[sx,sy,sz],parent=body)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;parent.add(o);return o;};
@@ -287,10 +290,14 @@ export function createPig(T,{logos={}}={}){
  // The tail: a corkscrew of tube out of the rump, up and back, which wiggles from its root.
  const tail=new T.Group();tail.position.set(0,1.85,1.52);tail.rotation.x=-.4;body.add(tail);
  const curl=new T.CatmullRomCurve3(Array.from({length:30},(_,i)=>{const t=i/29,a=t*Math.PI*2*2.3,r=.14*(.55+.45*t);return new T.Vector3(r*Math.sin(a),r*(1-Math.cos(a)),.62*t);}));
- const spiral=new T.Mesh(new T.TubeGeometry(curl,90,.055,6,false),pink);spiral.castShadow=true;tail.add(spiral);
+ const spiral=new T.Mesh(new T.TubeGeometry(curl,90,.055,6,false),snoutPink);spiral.castShadow=true;tail.add(spiral);
  const skins=flankLogos(T,body,logos,{cy:1.38,cz:.1,rx:1,ry:.95,rz:1.5,w:1.4,h:.45,y:1.45,z:.25});
+ // The paint: the body is the colour, the rest are shades of it (k times darker; on a dark paint, lighter, or they would vanish).
+ const hsl={h:0,s:0,l:0};
+ function dress(c){pink.color.copy(c);c.getHSL(hsl);const dark=hsl.l<.25,s=Math.min(1,hsl.s*1.08),shade=(m,k)=>m.color.setHSL(hsl.h,s,dark?hsl.l+.09*k:hsl.l*(1-.17*k));shade(snoutPink,1);shade(inner,1.5);shade(hoof,2.2);}
  let phase=0,hop=0;
- function update(dt,speed,time){
+ function update(dt,speed,time,colour){
+  if(colour)dress(colour);
   const run=Math.min(1,speed/6),amp=.2+.55*Math.min(1,speed/14);phase+=dt*(1.8+speed*.5);
   const swing=[0,Math.PI,Math.PI,0].map(o=>Math.sin(phase+o)*amp*run);legs.forEach((leg,i)=>{leg.rotation.x=swing[i];}); // a trot: the diagonal pairs of legs go together
   hop=Math.max(0,hop-dt*1.3);const h=Math.sin(Math.PI*Math.min(1,hop));
@@ -300,5 +307,5 @@ export function createPig(T,{logos={}}={}){
   tail.rotation.z=Math.sin(time*(5+3*run+9*h))*(.2+.4*h);tail.rotation.y=Math.sin(time*3.1+1)*(.18+.25*h);
  }
  update(0,0,0);
- return {group,update,skins,honk(){hop=1;}};
+ return {group,update,skins,honk(){hop=1;},tones:{skin:pink,snout:snoutPink}};
 }

@@ -2,17 +2,17 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {createMusic,HORNS} from './dist/music.js';
 
-// The horn's sound effects (3 October 2026): a real recording for each of the nine rides, CC0 from Freesound (docs/sounds.md), played by music.js.
-const RIDES=['car','cat','dog','duck','rocket','unicorn','firetruck','balloon','trex'];
+// The horn's sound effects (3 October 2026): a real recording for each of the ten rides (the pig's added on 5 October 2026), CC0 from Freesound (docs/sounds.md), played by music.js.
+const RIDES=['car','cat','dog','duck','rocket','unicorn','firetruck','balloon','trex','pig'];
 assert.deepEqual(Object.keys(HORNS),RIDES,'one sound for each ride');
 const docs=fs.readFileSync('docs/sounds.md','utf8');
 for(const ride of RIDES){const file='dist/'+HORNS[ride],b=fs.readFileSync(file);
- // MP3: an ID3 tag or an MPEG frame sync at the start; small (the nine together under 250 KB).
+ // MP3: an ID3 tag or an MPEG frame sync at the start; small (the ten together under 250 KB).
  assert.ok(b.slice(0,3).toString()==='ID3'||(b[0]===0xff&&(b[1]&0xe0)===0xe0),file+' is an MP3');assert.ok(b.length>3000&&b.length<45000,file+': '+b.length+' bytes');
  assert.ok(docs.includes('`'+HORNS[ride].slice(7)+'`'),file+' is credited in docs/sounds.md');}
-assert.ok(RIDES.reduce((n,r)=>n+fs.statSync('dist/'+HORNS[r]).size,0)<250000,'all nine under 250 KB');
-assert.equal((docs.match(/https:\/\/freesound\.org\/s\/\d+\//g)||[]).length>=9,true,'each source linked');assert.ok(docs.includes('Creative Commons 0'));
-console.log('Horn sounds: nine MP3 files, small, each credited with its CC0 source: OK');
+assert.ok(RIDES.reduce((n,r)=>n+fs.statSync('dist/'+HORNS[r]).size,0)<250000,'all ten under 250 KB');
+assert.equal((docs.match(/https:\/\/freesound\.org\/s\/\d+\//g)||[]).length>=10,true,'each source linked');assert.ok(docs.includes('Creative Commons 0'));
+console.log('Horn sounds: ten MP3 files, small, each credited with its CC0 source: OK');
 
 // Playing: with Web Audio (a stand-in here) the clips load from the tap; horn() plays the ride's clip, one at a time, and is false while a clip is not
 // loaded (the game then says the word) or failed to load.
@@ -28,8 +28,9 @@ console.log('Horn sounds: nine MP3 files, small, each credited with its CC0 sour
  assert.equal(music.horn('dog'),false,'Not loaded yet: false (the game says "Voff voff!")');
  const flush=()=>new Promise(r=>setTimeout(r,0));await flush();await flush();
  assert.equal(music.horn('dog'),true,'Loaded on first use: the next press plays it');assert.deepEqual(started,['dog']);
- music.preloadHorns();await flush();await flush();assert.equal(new Set(requested).size,9,'the tap on the start button loads them all');assert.ok(resumed>0,'and starts the audio (iOS)');
+ music.preloadHorns();await flush();await flush();assert.equal(new Set(requested).size,10,'the tap on the start button loads them all');assert.ok(resumed>0,'and starts the audio (iOS)');
  assert.equal(music.horn('trex'),true);assert.deepEqual(started,['dog','trex'],'the T. rex roars');assert.deepEqual(stopped,['dog'],'one at a time: the bark stops for the roar');
+ assert.equal(music.horn('pig'),true);assert.deepEqual(started,['dog','trex','pig'],'the pig grunts with its own clip');assert.deepEqual(stopped,['dog','trex']);
  assert.equal(music.horn('cat'),false,'a clip that fails to decode: false (the voice says it)');assert.equal(music.horn('unicorn'),false,'one that fails to download too');
  assert.equal(requested.filter(u=>u.includes('missing')).length,1,'and it is not fetched again on every press');
  delete globalThis.AudioContext;assert.equal(createMusic().horn('car'),false,'Without Web Audio: false');}
@@ -37,6 +38,6 @@ console.log('Horn sounds: loaded from the tap, played one at a time, false while
 
 // The game: the horn plays the ride's sound when the sound is on, says the word while the clip is not there, and the start button loads them.
 {const g=fs.readFileSync('dist/game.js','utf8');
- assert.ok(g.includes("const ride=rideOK(model)?model:'car';if(sound&&!music.horn?.(ride==='taxi'?'car':ride))say(HONK[ride]);"),'honk() plays the ride\'s sound (the taxi the car\'s, the pig has none), the word as fallback');
+ assert.ok(g.includes("const ride=rideOK(model)?model:'car';if(sound&&!music.horn?.(ride==='taxi'?'car':ride))say(HONK[ride]);"),'honk() plays the ride\'s sound (the taxi the car\'s, the pig its own), the word as fallback');
  assert.ok(g.includes("if(sound&&arrivals>=HORN_AT)music.preloadHorns?.();"),'start() loads the horns once the horn is unlocked');}
 console.log('Horn sounds: the game plays them on the horn: OK');

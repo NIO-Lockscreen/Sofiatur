@@ -1,9 +1,9 @@
 // Soothing background music, generated with Web Audio: soft pad chords, a low bass and a
 // music-box melody in F major pentatonic. No audio files for the music; silent where Web Audio is missing.
-// The horn's sound effects (3 October 2026): real recordings, one per ride, instead of the voice saying "Tut tut!" (CC0, from Freesound; sources
+// The horn's sound effects (3 October 2026; the pig's on 5 October): real recordings, one per ride, instead of the voice saying "Tut tut!" (CC0, from Freesound; sources
 // and what was done to them in docs/sounds.md).
 export const HORNS={car:'sounds/horn-car.mp3',cat:'sounds/horn-cat.mp3',dog:'sounds/horn-dog.mp3',duck:'sounds/horn-duck.mp3',rocket:'sounds/horn-rocket.mp3',
- unicorn:'sounds/horn-unicorn.mp3',firetruck:'sounds/horn-firetruck.mp3',balloon:'sounds/horn-balloon.mp3',trex:'sounds/horn-trex.mp3'};
+ unicorn:'sounds/horn-unicorn.mp3',firetruck:'sounds/horn-firetruck.mp3',balloon:'sounds/horn-balloon.mp3',trex:'sounds/horn-trex.mp3',pig:'sounds/horn-pig.mp3'};
 export function createMusic({fetch=globalThis.fetch,horns:files=HORNS}={}){
  const Context=globalThis.AudioContext||globalThis.webkitAudioContext;
  if(!Context)return {play(){},stop(){},duck(){},preloadHorns(){},horn(){return false;}};

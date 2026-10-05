@@ -447,6 +447,27 @@ console.log('Hover car: only when every other unlock is there; announced once; s
  g.element('goInside').onclick();assert.notEqual(g.test.state(),'inside','you cannot go inside while driving');}
 console.log('Inside the house: the button, the girl in the balloon (no announcement), 19 places with texts and hints, taps, the pig, the way out: OK');
 
+// The pig takes the paint like the other rides (5 October 2026): pink to begin with (the Rosa swatch) whether it is chosen or found, then any colour, remembered.
+{save({arrivals:5,kiwi:'on',pig:'on',model:'dog'});let g=await launch(()=>storage);
+ g.element('model-pig').onclick();assert.equal(g.world.model,'pig');assert.equal(g.world.colour,'#ec6aa8','from another ride the pig is pink');assert.ok(g.element('carColours').children[2].classes.has('on'),'and Rosa shows as picked');
+ g.element('carColours').children[4].onclick();assert.equal(g.world.colour,'#1f63c6','a blue pig');assert.equal(g.world.model,'pig');assert.equal(g.world.skin,null);
+ g.element('model-pig').onclick();assert.equal(g.world.colour,'#1f63c6','tapping the pig button while it is the pig leaves the colour');
+ g=await launch(()=>storage);assert.equal(g.world.model,'pig');assert.equal(g.world.colour,'#1f63c6','the blue pig survives a reload');assert.ok(g.element('carColours').children[4].classes.has('on'));
+ g.element('carColours').children[11].onclick();assert.equal(g.world.colour,'#5fae36');assert.equal(g.world.skin,'kiwi','the KIWI paint on the pig, with its flank logos');
+ g.element('carColours').children[10].onclick();assert.equal(g.world.colour,'rainbow','a rainbow pig');
+ g.element('model-dog').onclick();assert.equal(g.world.colour,'rainbow','the other rides have the paint chosen');g.element('model-pig').onclick();assert.equal(g.world.colour,'#ec6aa8','and back to the pig it is pink again');
+ // found in the house from another ride, then recoloured
+ save({arrivals:3,model:'cat',colour:'#1f63c6'});g=await launch(()=>storage);g.element('goInside').onclick();g.tap({type:'pig'});
+ assert.equal(g.world.model,'pig');assert.equal(g.world.colour,'#ec6aa8','a pig found is pink');assert.ok(g.element('carColours').children[2].classes.has('on'));
+ g.element('carColours').children[7].onclick();assert.equal(g.world.colour,'#f3c531','a yellow pig');g=await launch(()=>storage);assert.equal(g.world.colour,'#f3c531');assert.equal(g.world.model,'pig');
+ // found before the first trip: the colour picker is not there yet, so it is pink anyway
+ save({});g=await launch(()=>storage);assert.equal(g.element('rewards').hidden,true);g.element('goInside').onclick();g.tap({type:'pig'});
+ assert.equal(g.world.model,'pig');assert.equal(g.world.colour,'#ec6aa8','a pig found with no trips is pink, not black');assert.equal(g.element('rewards').hidden,false);assert.ok(!g.element('carColours').children[0].classes.has('on'),'black is not shown as picked');
+ g=await launch(()=>storage);assert.equal(g.world.colour,'#ec6aa8','and after a reload');
+ save({pig:'on',model:'pig'});g=await launch(()=>storage);assert.equal(g.world.colour,'#ec6aa8','a saved pig with no colour and no trips');
+ save({kiwi:'on',pig:'on',model:'pig',colour:'kiwi'});g=await launch(()=>storage);assert.equal(g.world.colour,'#5fae36');assert.equal(g.world.skin,'kiwi','KIWI with no trips: green with the logos');}
+console.log('The pig takes the paint: pink when chosen or found (also with no trips), any colour afterwards and remembered, KIWI green with its logos, the rainbow: OK');
+
 // The new models with real three.js: the pig, the car's hinged wheels and taxi, the fire engine's wheels, the girl and the balloon's seat.
 {const globalDocument=globalThis.document;globalThis.document={createElement:()=>({getContext:()=>new Proxy({},{get:(o,p)=>/Gradient$/.test(p)?()=>({addColorStop(){}}):()=>{}}),width:0,height:0})}; // the car's number plate and decals draw on a canvas
  const seen=o=>{const b=new T.Box3();o.updateWorldMatrix(true,true);o.traverseVisible(m=>{if(m.isMesh)b.expandByObject(m,true);});return b;},size=o=>seen(o).getSize(new T.Vector3()),
@@ -454,7 +475,12 @@ console.log('Inside the house: the button, the girl in the balloon (no announcem
  // The pig: car-sized, pink whatever the colour, the KIWI logos on both flanks, legs that trot, a curly tail that wiggles, a hop on honk.
  {const logo=new T.MeshBasicMaterial({color:'#8dc63f'}),pig=createPig(T,{logos:{kiwi:logo}}),car=size(createET5(T).car),d=size(pig.group);
   assert.ok(d.z>4&&d.z<4.9&&d.y>2&&d.y<2.5,`about car size (${d.z.toFixed(2)} × ${d.y.toFixed(2)} m, the car ${car.z.toFixed(2)} m long)`);
-  const before=colours(pig.group);pig.update(.016,5,1,new T.Color('#1f63c6'));assert.deepEqual([...colours(pig.group)].sort(),[...before].sort(),'the colour argument is ignored');assert.ok(before.has('f3a6b8'),'pink');assert.ok(!before.has('1f63c6'));
+  const before=colours(pig.group),lightness=m=>m.color.getHSL({}).l;assert.ok(before.has('f3a6b8'),'pink to begin with');
+  // it takes the paint like the dog and the cat: the body is the colour, the snout, the tail, the ears' insides and the hooves are shades of it, eyes and nostrils stay dark
+  for(const [hex,darker] of [['#1f63c6',true],['#ec6aa8',true],['#eef0ef',true],['#14171c',false]]){pig.update(.016,5,1,new T.Color(hex));const set=colours(pig.group);
+   assert.ok(set.has(hex.slice(1)),'the body is '+hex);assert.ok(!set.has('f3a6b8'),hex+': no pink left');assert.ok(set.has('2a1a1e')&&set.has('8a3a54'),'eyes and nostrils stay dark');
+   assert.ok(darker?lightness(pig.tones.snout)<lightness(pig.tones.skin):lightness(pig.tones.snout)>lightness(pig.tones.skin)+.04,'the snout is a shade of it: '+(darker?'darker':'lighter on a dark paint'));assert.ok(pig.tones.snout.color.getHexString()!==hex.slice(1));}
+  pig.update(.016,5,2,new T.Color('#5fae36'));assert.ok(colours(pig.group).has('5fae36'),'KIWI green');
   assert.equal(pig.skins.kiwi.length,2,'the KIWI logo on both flanks');assert.ok(pig.skins.kiwi.every(m=>!m.visible&&m.material===logo)&&(m=>m[0]*m[1]<0&&m.every(x=>Math.abs(x)>.9))(pig.skins.kiwi.map(m=>(m.geometry.computeBoundingBox(),m.geometry.boundingBox.getCenter(new T.Vector3()).x))),'one on each side, on the flank');
   let moved=0;for(let i=0;i<30;i++){pig.update(.03,8,i*.03);}pig.group.traverse(o=>{if(o.isGroup&&o.children.length&&Math.abs(o.rotation.x)>.05)moved++;});assert.ok(moved>=4,'legs and ears move at speed');
   const y0=pig.group.children[0].position.y;pig.honk();pig.update(.2,0,2);assert.ok(pig.group.children[0].position.y>y0+.05,'honk makes it hop');
@@ -479,4 +505,4 @@ console.log('Inside the house: the button, the girl in the balloon (no announcem
   g.update(.05,0,3,1);assert.ok(g.arms[1].rotation.z>2,'her right arm is up when she waves');assert.ok(g.legs.length===2&&g.arms.length===2&&g.head);
   const b=createBalloon(T);assert.ok(b.seat&&b.seat.isGroup&&b.seat.parent&&b.seat.position.y>.2&&b.seat.position.y<1.2,'the balloon has a seat on its basket floor');}
  globalThis.document=globalDocument;}
-console.log('Models: the pig (car-sized, pink, KIWI logos, trots, hops), the car\'s four hinges and taxi group, six hinged fire engine wheels, the girl (1.05 m, brown hair) and the balloon\'s seat: OK');
+console.log('Models: the pig (car-sized, pink to begin with, takes the paint, KIWI logos, trots, hops), the car\'s four hinges and taxi group, six hinged fire engine wheels, the girl (1.05 m, brown hair) and the balloon\'s seat: OK');
