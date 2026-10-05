@@ -2,6 +2,7 @@
 // a dog, a duck and a rocket. Like the cat (cat-model.js) each takes the car's place and its paint colour, is about the car's size so
 // the camera frames it the same way, has forward −z and the ground at y = 0, and update(dt, speed, time, colour) animates it at the
 // car's speed. With the KIWI skin they wear the KIWI logo on both sides (logos: skin name -> material), as the car and the cat do.
+import {hoverGlow} from './car-model.js';
 
 // A logo bent onto an ellipsoid body (centre cy, cz, radii rx, ry, rz), 2 cm off it, one on each flank: tail to head on the right,
 // head to tail on the left, as on the car's doors.
@@ -176,8 +177,13 @@ export function createFireTruck(T,{logos={}}={}){
  for(const s of [-1,1]){part(grey,[s*.4,2.6,.7],[.07,.1,4.2]);}for(let z=-1.2;z<=2.6;z+=.42)part(grey,[0,2.6,z],[.8,.06,.06]); // the ladder
  const lights=[-1,1].map((s,i)=>part(blue[i],[s*.45,2.4,-2.1],[.5,.2,.3]));
  for(const s of [-1,1])part(lamp,[s*.75,.85,-2.57],[.35,.22,.04]);part(grey,[0,.6,-2.6],[2.1,.25,.12]);
- const wheels=[[-1,-1.8],[1,-1.8],[-1,.6],[1,.6],[-1,1.7],[1,1.7]].map(([s,z])=>{const w=new T.Group();w.position.set(s*1.0,.48,z);body.add(w);
+ // Each wheel hangs on a hinge group (5 October 2026), which the hover mode folds flat under the fire engine; the wheel inside it still rolls.
+ const hinges=[],wheels=[[-1,-1.8],[1,-1.8],[-1,.6],[1,.6],[-1,1.7],[1,1.7]].map(([s,z])=>{const hinge=new T.Group();hinge.position.set(s*1.0,.48,z);hinge.userData.side=s;body.add(hinge);hinges.push(hinge);const w=new T.Group();hinge.add(w);
   part(tyre,[0,0,0],[.5,.3,.5],w,new T.CylinderGeometry(1,1,1,16)).rotation.z=Math.PI/2;part(grey,[s*.16,0,0],[.25,.04,.25],w,new T.CylinderGeometry(1,1,1,12)).rotation.z=Math.PI/2;return w;});
+ // Hover mode (5 October 2026, "Back to the Future"): hover(h, time) with h from 0 to 1 folds the six wheels flat under the fire engine (the tyre's outer face turns
+ // down), each with a cyan glow; h = 0 puts them back exactly. world.js lifts the fire engine with the same blend.
+ const under=hoverGlow(T,hinges.length,2.1);body.add(under.group);
+ function hover(h,time=0){under.show(h,time);hinges.forEach((hinge,i)=>{const side=hinge.userData.side;hinge.rotation.z=-side*h*Math.PI/2;hinge.position.x=side*(1-.4*h);hinge.position.y=.48-.28*h;under.discs[i].position.set(hinge.position.x,hinge.position.y-.14,hinge.position.z);});}
  const skins=flankLogos(T,body,logos,{cy:1.45,cz:.75,rx:1.1,ry:20,rz:20,w:1.4,h:.45,y:2.15,z:.75});
  let flash=0,hop=0,rainbowLights=false;const hsl={h:0,s:0,l:0};
  // The paint is the car's colour (red by default, the standard fire engine); on a pale paint the stripe turns red. The beacons follow the colour chosen.
@@ -190,7 +196,7 @@ export function createFireTruck(T,{logos={}}={}){
   hop=Math.max(0,hop-dt/2);body.position.y=Math.sin(time*9)*.01*Math.min(1,speed/5);
  }
  update(0,0,0);
- return {group,update,skins,beacons,beaconColours:()=>blue.map(m=>'#'+m.emissive.getHexString()),paint:red,stripe:white,honk(){hop=1;}};
+ return {group,update,skins,beacons,beaconColours:()=>blue.map(m=>'#'+m.emissive.getHexString()),paint:red,stripe:white,honk(){hop=1;},hover,hinges,wheels};
 }
 
 // The hot-air balloon: an envelope of gores in the car's colour and yellow, a basket on ropes, floating over the road; the burner puffs.
@@ -206,6 +212,8 @@ export function createBalloon(T,{logos={}}={}){
  const basket=new T.Mesh(new T.BoxGeometry(.95,.7,.95),wicker);basket.position.y=.85;basket.castShadow=true;body.add(basket);
  for(const [x,z] of [[-.42,-.42],[.42,-.42],[-.42,.42],[.42,.42]]){const r=new T.Mesh(new T.CylinderGeometry(.02,.02,1.45,4),rope);r.position.set(x*.8,1.9,z*.8);r.rotation.set(z*.25,0,-x*.25);body.add(r);}
  flame.position.y=1.75;body.add(flame);
+ // Where a passenger stands (5 October 2026, the girl of world.js): at the basket's floor, raised so the shoulders show over the rim of the solid basket box; it bobs with the basket.
+ const seat=new T.Group();seat.position.y=.72;body.add(seat);
  const skins=flankLogos(T,body,logos,{cy:envY,cz:0,rx:1.72,ry:1.9,rz:1.72,w:1.5,h:.5,y:envY-.2,z:0});
  let hop=0;
  function update(dt,speed,time,colour){
@@ -214,7 +222,7 @@ export function createBalloon(T,{logos={}}={}){
   hop=Math.max(0,hop-dt);const puff=Math.max(0,Math.sin(time*1.7)-.6)/.4+hop*1.5;flame.scale.set(1,.2+puff,1);flame.visible=puff>.05;flame.position.y=1.75+.3*(.2+puff)/2;
  }
  update(0,0,0);
- return {group,update,skins,honk(){hop=1;}};
+ return {group,update,skins,honk(){hop=1;},seat};
 }
 
 // The T. rex (the last reward): on two big legs, its tail held out behind, tiny arms, a big head with teeth; it runs at the car's
@@ -255,4 +263,41 @@ export function createTRex(T,{logos={}}={}){
  }
  update(0,0,0);
  return {group,update,skins,jaw,grip,honk(){roar=1;},get carrying(){return held.carrying;},set carrying(v){held.carrying=!!v;}};
+}
+
+// ---- The pig (5 October 2026, the reward for finding it hiding in the house): a big round pink pig with a curly tail that wiggles, a snout with two nostrils,
+// floppy ears and four short legs that trot at the car's speed ----
+// It stays pink whatever the colour (the colour argument is ignored); with the KIWI skin it wears the logo on both flanks. honk() makes it hop and wiggle.
+export function createPig(T,{logos={}}={}){
+ const group=new T.Group();group.name='Gris'; // about 4.4 m long and 2.2 m high
+ const std=(color,roughness=.7)=>new T.MeshStandardMaterial({color,roughness});
+ const pink=std('#f3a6b8'),snoutPink=std('#e98aa2',.6),inner=std('#e47f9a'),nostril=std('#8a3a54',.6),hoof=std('#d9758f',.5),eye=new T.MeshBasicMaterial({color:'#2a1a1e'}),glint=new T.MeshBasicMaterial({color:'#ffffff'});
+ const sphere=sphereGeo(T),limb=new T.CylinderGeometry(1,.82,1,12),cone=new T.ConeGeometry(1,1,3),barrel=new T.CylinderGeometry(1,1,1,18);
+ const body=new T.Group();group.add(body);
+ const part=(g,m,[x,y,z],[sx,sy,sz],parent=body)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;parent.add(o);return o;};
+ const torso=part(sphere,pink,[0,1.38,.1],[1,.95,1.5]);
+ const head=new T.Group();head.position.set(0,1.6,-1.55);body.add(head);
+ part(sphere,pink,[0,0,0],[.8,.74,.72],head);
+ part(barrel,snoutPink,[0,-.12,-.8],[.38,.36,.38],head).rotation.x=Math.PI/2;part(sphere,snoutPink,[0,-.12,-.97],[.38,.38,.14],head);
+ for(const s of [-1,1]){part(sphere,nostril,[s*.14,-.12,-1.1],[.065,.095,.03],head);part(sphere,eye,[s*.42,.2,-.5],[.095,.11,.07],head);part(sphere,glint,[s*.44,.24,-.55],[.03,.03,.02],head);}
+ const ears=[-1,1].map(s=>{const ear=new T.Group();ear.position.set(s*.46,.56,-.12);head.add(ear);part(cone,pink,[0,.27,0],[.38,.56,.08],ear);part(cone,inner,[0,.25,-.02],[.24,.4,.06],ear);ear.rotation.set(-1.2,0,s*.8);return ear;});
+ const legs=[[-.55,-.85],[.55,-.85],[-.55,.95],[.55,.95]].map(([x,z])=>{const hip=new T.Group();hip.position.set(x,1,z);body.add(hip);
+  part(limb,pink,[0,-.5,0],[.24,.97,.24],hip);part(sphere,hoof,[0,-.95,-.04],[.27,.1,.31],hip);return hip;});
+ // The tail: a corkscrew of tube out of the rump, up and back, which wiggles from its root.
+ const tail=new T.Group();tail.position.set(0,1.85,1.52);tail.rotation.x=-.4;body.add(tail);
+ const curl=new T.CatmullRomCurve3(Array.from({length:30},(_,i)=>{const t=i/29,a=t*Math.PI*2*2.3,r=.14*(.55+.45*t);return new T.Vector3(r*Math.sin(a),r*(1-Math.cos(a)),.62*t);}));
+ const spiral=new T.Mesh(new T.TubeGeometry(curl,90,.055,6,false),pink);spiral.castShadow=true;tail.add(spiral);
+ const skins=flankLogos(T,body,logos,{cy:1.38,cz:.1,rx:1,ry:.95,rz:1.5,w:1.4,h:.45,y:1.45,z:.25});
+ let phase=0,hop=0;
+ function update(dt,speed,time){
+  const run=Math.min(1,speed/6),amp=.2+.55*Math.min(1,speed/14);phase+=dt*(1.8+speed*.5);
+  const swing=[0,Math.PI,Math.PI,0].map(o=>Math.sin(phase+o)*amp*run);legs.forEach((leg,i)=>{leg.rotation.x=swing[i];}); // a trot: the diagonal pairs of legs go together
+  hop=Math.max(0,hop-dt*1.3);const h=Math.sin(Math.PI*Math.min(1,hop));
+  body.position.y=Math.abs(Math.sin(phase))*.1*run+h*.55;body.rotation.x=Math.sin(phase+Math.PI/2)*.03*run-h*.12;torso.scale.y=.95+Math.sin(time*2.2)*.012*(1-run);
+  head.rotation.x=-Math.sin(phase+Math.PI/2)*.05*run+Math.sin(time*1.7)*.03*(1-run);head.rotation.y=Math.sin(time*.8)*.2*(1-run);
+  ears.forEach((ear,i)=>{ear.rotation.x=-1.2+(Math.sin(phase*2+i)*.2*run)+h*.5;});
+  tail.rotation.z=Math.sin(time*(5+3*run+9*h))*(.2+.4*h);tail.rotation.y=Math.sin(time*3.1+1)*(.18+.25*h);
+ }
+ update(0,0,0);
+ return {group,update,skins,honk(){hop=1;}};
 }

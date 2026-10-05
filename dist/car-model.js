@@ -1,7 +1,13 @@
 // Original, lightweight ET5 sedan mesh. Proportions and details reference NIO's
 // Norwegian ET5 imagery (2022–25 sedan), not the Touring or newer China facelift.
+// The cyan glow under each folded wheel in hover mode (5 October 2026; also the fire engine's, rides.js): one soft round plane a wheel (additive, no depth write), shown by show(h, time).
+export function hoverGlow(T,count,size){const N=32,px=new Uint8Array(N*N*4); // a soft round glow, made pixel by pixel (no canvas needed)
+ for(let y=0;y<N;y++)for(let x=0;x<N;x++){const r=Math.min(1,Math.hypot(x-N/2+.5,y-N/2+.5)/(N/2)),i=(y*N+x)*4;px[i]=120-90*r;px[i+1]=235-65*r;px[i+2]=255;px[i+3]=255*Math.pow(1-r,1.6);}
+ const tx=new T.DataTexture(px,N,N),group=new T.Group();tx.colorSpace=T.SRGBColorSpace;tx.magFilter=tx.minFilter=T.LinearFilter;tx.needsUpdate=true;group.visible=false;
+ const discs=Array.from({length:count},()=>{const d=new T.Mesh(new T.PlaneGeometry(size,size),new T.MeshBasicMaterial({map:tx,transparent:true,opacity:0,blending:T.AdditiveBlending,depthWrite:false,side:T.DoubleSide}));d.rotation.x=-Math.PI/2;d.renderOrder=3;group.add(d);return d;});
+ return {group,discs,show(h,time){group.visible=h>.01;discs.forEach((d,i)=>{d.material.opacity=h*(.8+.12*Math.sin(time*31+i*1.7)+.06*Math.sin(time*17));});}};}
 export function createET5(T){
- const car=new T.Group();car.name='NIO ET5 · Deep Black';const wheels=[];
+ const car=new T.Group();car.name='NIO ET5 · Deep Black';const wheels=[],hinges=[];
  const paint=new T.MeshPhysicalMaterial({color:'#14171c',metalness:.72,roughness:.24,clearcoat:1,clearcoatRoughness:.16});
  const glass=new T.MeshPhysicalMaterial({color:'#14262d',metalness:.42,roughness:.16,clearcoat:1});
  const rubber=new T.MeshStandardMaterial({color:'#15191c',roughness:.88});
@@ -42,7 +48,8 @@ export function createET5(T){
   box(.16,.12,.07,rubber,side*.80,.57,-2.26);box(.12,.028,.076,white,side*.80,.595,-2.267);
   line([[side*.89,.72,-2.15],[side*.86,.43,-2.21],[side*.69,.36,-2.27]],.034,trim);
   // Split Y-spoke wheels, dark pockets, red brake calipers and raised tyre lip.
-  for(const z of [-1.444,1.444]){const wheel=new T.Group();wheel.position.set(side*.916,.355,z);car.add(wheel);wheels.push(wheel);
+  // Each wheel hangs on a hinge group (5 October 2026), which the hover mode folds flat under the car; the wheel inside it still rolls.
+   for(const z of [-1.444,1.444]){const hinge=new T.Group();hinge.position.set(side*.916,.355,z);hinge.userData.side=side;car.add(hinge);const wheel=new T.Group();hinge.add(wheel);wheels.push(wheel);hinges.push(hinge);
    const tire=mesh(new T.CylinderGeometry(.355,.355,.235,40),rubber,0,0,0,wheel);tire.rotation.z=Math.PI/2;
    const disc=mesh(new T.CylinderGeometry(.254,.254,.242,32),trim,0,0,0,wheel);disc.rotation.z=Math.PI/2;
    const rim=mesh(new T.TorusGeometry(.276,.014,6,40),silver,side*.123,0,0,wheel);rim.rotation.y=Math.PI/2;
@@ -72,5 +79,24 @@ export function createET5(T){
   q.fillStyle='#8dc63f';q.font='900 104px Arial';q.textAlign='center';q.textBaseline='middle';q.fillText('KIWI',210,84);q.fillStyle='#ffffff';q.font='bold 32px Arial';q.fillText('mini',420,62);q.fillText('pris',420,104);
   const tx=new T.CanvasTexture(c);tx.colorSpace=T.SRGBColorSpace;const m=new T.MeshBasicMaterial({map:tx,transparent:true,side:T.FrontSide});
   for(const side of [-1,1]){const o=new T.Mesh(new T.PlaneGeometry(1.25,.39),m);o.position.set(side*.99,.6,.12);o.rotation.y=side*Math.PI/2;o.visible=false;car.add(o);kiwi.push(o);}}
- car.userData={model:'NIO ET5 sedan',length:4.79,width:1.96,wheelbase:2.888};return {car,wheels,paint,skins:{kiwi}};
+ // The yellow cab (5 October 2026, unlocked by visiting KIWI, Ludvig, Dalgård ishall, Rema 1000 and the kindergarten): a lit TAXI sign on the roof, a black-and-white
+ // checker band along both sides and TAXI on the front doors. Hidden until world.js shows it with the taxi. Choosing the taxi paints it yellow (game.js), but it takes
+ // any colour like the car; with the KIWI skin the band moves down to the sills (dress), clear of the shop's logo on the doors.
+ const taxi=new T.Group();taxi.visible=false;car.add(taxi);const midBands=[],lowBands=[];
+ {const canvas=(w,h,draw)=>{const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const tx=new T.CanvasTexture(c);tx.colorSpace=T.SRGBColorSpace;return tx;};
+  const sign=text=>canvas(256,96,(q,w,h)=>{q.fillStyle='#ffd93a';q.fillRect(0,0,w,h);q.fillStyle='#14171c';q.fillRect(0,0,w,8);q.fillRect(0,h-8,w,8);q.font='900 70px Arial';q.textAlign='center';q.textBaseline='middle';q.fillText(text,w/2,h/2+4,w-24);}),
+   checker=(cols,rows)=>canvas(cols*32,rows*32,q=>{for(let i=0;i<cols;i++)for(let j=0;j<rows;j++){q.fillStyle=(i+j)%2?'#101214':'#f7f7f2';q.fillRect(i*32,j*32,32,32);}});
+  const lamp=new T.MeshStandardMaterial({color:'#ffd93a',emissive:'#ffb800',emissiveIntensity:.55,roughness:.5});
+  box(.3,.045,.17,trim,0,1.485,.05,taxi);box(.64,.2,.26,lamp,0,1.6,.05,taxi);
+  for(const front of [0,1]){const o=mesh(new T.PlaneGeometry(.6,.17),new T.MeshBasicMaterial({map:sign('TAXI')}),0,1.6,.05+(front?-1:1)*.1325,taxi);if(front)o.rotation.y=Math.PI;}
+  const mid=checker(16,2),low=checker(36,2);
+  for(const side of [-1,1]){const band=mesh(new T.PlaneGeometry(2.04,.26),new T.MeshBasicMaterial({map:mid}),side*.985,.62,0,taxi),sill=mesh(new T.PlaneGeometry(1.94,.108),new T.MeshBasicMaterial({map:low}),side*.985,.345,0,taxi);
+   band.rotation.y=sill.rotation.y=side*Math.PI/2;sill.visible=false;midBands.push(band);lowBands.push(sill);
+   const door=mesh(new T.PlaneGeometry(.4,.11),new T.MeshBasicMaterial({map:canvas(256,70,(q,w,h)=>{q.fillStyle='#ffd93a';q.fillRect(0,0,w,h);q.fillStyle='#14171c';q.font='900 58px Arial';q.textAlign='center';q.textBaseline='middle';q.fillText('TAXI',w/2,h/2+3,w-12);})}),side*.968,.88,-.58,taxi);door.rotation.y=side*Math.PI/2;}}
+ taxi.userData.dress=skin=>{midBands.forEach(m=>m.visible=skin!=='kiwi');lowBands.forEach(m=>m.visible=skin==='kiwi');};
+ // Hover mode (5 October 2026, "Back to the Future"): hover(h, time) with h from 0 to 1 folds every wheel flat under the car on its hinge (the tyre's outer face
+ // turns down) and lights a cyan glow under each; h = 0 puts the wheels back exactly. world.js lifts the car with the same blend.
+ const lights=hoverGlow(T,hinges.length,1.5),glow=lights.group;car.add(glow);
+ function hover(h,time=0){lights.show(h,time);hinges.forEach((hinge,i)=>{const side=hinge.userData.side;hinge.rotation.z=-side*h*Math.PI/2;hinge.position.x=side*(.916-.45*h);hinge.position.y=.355-.26*h;lights.discs[i].position.set(hinge.position.x,hinge.position.y-.13,hinge.position.z);});}
+ car.userData={model:'NIO ET5 sedan',length:4.79,width:1.96,wheelbase:2.888};return {car,wheels,hinges,paint,skins:{kiwi},taxi,glow,hover};
 }

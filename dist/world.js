@@ -4,7 +4,8 @@ import {roadWidth} from './transit-geometry.js';
 import {createRoadSurface} from './road-surface.js';
 import {createET5} from './car-model.js';
 import {createCat} from './cat-model.js';
-import {createDog,createRideDuck,createRocket,createUnicorn,createFireTruck,createBalloon,createTRex} from './rides.js';
+import {createDog,createRideDuck,createRocket,createUnicorn,createFireTruck,createBalloon,createTRex,createPig} from './rides.js';
+import {createGirlModel} from './girl.js';
 import {createBubbles} from './bubbles.js';
 import {createDuck} from './duck.js';
 import {createLakes,inRing} from './lakes.js';
@@ -170,22 +171,28 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  const labels=[];labels.push(label('⌂  Hjemme',0,0,'#654d3e',10));for(const l of lakes)if(l.label)labels.push(label('≈  '+l.name,...l.label,'#2f6f96',12));for(const p of data.pois)if(['supermarket','school','kindergarten','fuel','bakery','sports_centre'].includes(p.type))labels.push(label(p.name,p.x,p.z,p.type==='kindergarten'?'#c98938':p.type==='sports_centre'?'#2f5f8a':'#3b6955',p.name.length>19?17:13));
  const goalPos=data.nodes[data.goal];const goalRing=new T.Mesh(new T.TorusGeometry(4,.18,6,48),new T.MeshBasicMaterial({color:'#ffe17a'}));goalRing.rotation.x=Math.PI/2;goalRing.position.set(goalPos[0],height(...goalPos)+.7,goalPos[1]);scene.add(goalRing);labels.push(label('⚑  Her er barnehagen!',...goalPos,'#c58b29',14));
  const trafficLights=createTrafficLights({T,scene,height,data});
- const {car,wheels,paint,skins}=createET5(T);scene.add(car);
+ const {car,wheels,paint,skins,taxi,glow,hover:carHover}=createET5(T);scene.add(car);
  // The running cat (the reward for the second trip) rides in the car's group and takes its place: model 'car' or 'cat'.
  // The cat wears the car's skin logos on its flanks (the KIWI logo with the KIWI skin).
  // The dog, the duck and the rocket (rides.js, the rewards for the fifth, sixth and seventh trip) ride in it the same way: model 'dog', 'duck' or 'rocket'.
- const bodywork=[...car.children],skinParts=new Set(Object.values(skins).flat()),logos=Object.fromEntries(Object.entries(skins).map(([k,list])=>[k,list[0].material]));
- const rides={cat:createCat(T,{logos}),dog:createDog(T,{logos}),duck:createRideDuck(T,{logos}),rocket:createRocket(T,{logos}),unicorn:createUnicorn(T,{logos}),firetruck:createFireTruck(T,{logos}),balloon:createBalloon(T,{logos}),trex:createTRex(T,{logos})};
+ // The taxi (5 October 2026) is the car's bodywork with the taxi group on top; the KIWI logos, the taxi group and the hover glow follow rules of their own (showModel).
+ const bodywork=[...car.children],skinParts=new Set([...Object.values(skins).flat(),taxi,glow]),logos=Object.fromEntries(Object.entries(skins).map(([k,list])=>[k,list[0].material]));
+ const rides={cat:createCat(T,{logos}),dog:createDog(T,{logos}),duck:createRideDuck(T,{logos}),rocket:createRocket(T,{logos}),unicorn:createUnicorn(T,{logos}),firetruck:createFireTruck(T,{logos}),balloon:createBalloon(T,{logos}),trex:createTRex(T,{logos}),pig:createPig(T,{logos})};
  for(const r of Object.values(rides)){r.group.visible=false;car.add(r.group);}
+ // An easter egg (5 October 2026): once Sofia has been inside the house, a small girl with brown hair rides in the hot-air balloon's basket (no announcement, not an unlock).
+ const balloonGirl=createGirlModel(T);balloonGirl.group.scale.setScalar(.9);balloonGirl.group.position.x=.27;balloonGirl.group.visible=false;rides.balloon.seat.add(balloonGirl.group);
+ function setBalloonGirl(on){balloonGirl.group.visible=!!on;}
  let model='car',skin=null,rainbow=false;
- function showModel(){for(const o of bodywork)if(!skinParts.has(o))o.visible=model==='car';for(const [k,list] of Object.entries(skins))for(const m of list)m.visible=model==='car'&&k===skin;for(const [name,r] of Object.entries(rides)){for(const [k,list] of Object.entries(r.skins))for(const m of list)m.visible=k===skin;r.group.visible=model===name;}}
- function setCarSkin(name){skin=name||null;car.userData.skin=skin;showModel();paintBeacons();}
+ function showModel(){const drive=model==='car'||model==='taxi';for(const o of bodywork)if(!skinParts.has(o))o.visible=drive;taxi.visible=model==='taxi';for(const [k,list] of Object.entries(skins))for(const m of list)m.visible=drive&&k===skin;for(const [name,r] of Object.entries(rides)){for(const [k,list] of Object.entries(r.skins))for(const m of list)m.visible=k===skin;r.group.visible=model===name;}}
+ function setCarSkin(name){skin=name||null;car.userData.skin=skin;taxi.userData.dress(skin);showModel();paintBeacons();}
  // The fire engine's beacons follow the colour chosen (rides.js BEACONS): KIWI green and white, the rainbow round the rainbow.
  function paintBeacons(){rides.firetruck.beacons(skin==='kiwi'?'kiwi':rainbow?'rainbow':car.userData.colour);}
- function setCarModel(name){model=rides[name]?name:'car';car.userData.body=model;showModel();}
+ function setCarModel(name){model=rides[name]||name==='taxi'?name:'car';car.userData.body=model;showModel();}
  // The horn (the reward for the eleventh trip): a little hop, and the ride's own reaction (the T. rex opens its jaws).
  const holdAt=new T.Vector3(),holdQ=new T.Quaternion();
  let hopT=0;function honk(){hopT=.55;rides[model]?.honk?.();}
+ // Hover mode (5 October 2026, "Back to the Future"): the wheeled rides (the car, the taxi, the fire engine) fold their wheels flat under them and float; hv eases 0 to 1.
+ let hoverOn=false,hv=0;function setHover(on){hoverOn=!!on;}
  // Paint colour (a reward). Black keeps the original deep metallic look; brighter colours are less metallic so they read as colour.
  // 'rainbow' (the reward for the fourth trip) runs through all the colours in a little over three seconds; update() turns it.
  function setCarColour(hex){rainbow=hex==='rainbow';car.userData.colour=hex;paintBeacons();if(rainbow){paint.metalness=.3;paint.roughness=.28;return;}paint.color.set(hex);const c=paint.color,dark=Math.max(c.r,c.g,c.b)<.06;paint.metalness=dark?.72:.38;paint.roughness=dark?.24:.3;}
@@ -216,7 +223,10 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  const carrying=model==='trex'&&boy.isOn();rides.trex.carrying=carrying; // the easter egg: the T. rex carries Ludvig in its mouth
  trail.update(dt,pos,carFacing);boy.update(dt,pos,carFacing,velocity,time,{held:carrying});duckRunner.update(dt,pos,carFacing,velocity,time);bubbles.update(dt,pos,carFacing);trafficLights.update(dt,pos);updateDuck(dt,pos,time);
  if(rainbow)paint.color.setHSL((time*.3)%1,.9,.42);if(rides[model])rides[model].update(dt,Math.abs(velocity),time,paint.color);
- car.position.copy(pos);if(hopT>0){hopT=Math.max(0,hopT-dt);car.position.y+=Math.sin(Math.PI*hopT/.55)*.45;}const yaw=Math.atan2(-carFacing.x,-carFacing.z);rot.setFromEuler(facing.set(Math.atan2(carFacing.y,Math.hypot(carFacing.x,carFacing.z)),yaw,0));car.quaternion.slerp(rot,1-Math.exp(-dt*9));wheels.forEach(w=>w.rotation.x-=velocity*dt/.39);
+ if(model==='balloon'&&balloonGirl.group.visible)balloonGirl.update(dt,0,time,Math.min(1,Math.max(0,Math.sin(time*.5)*1.7-.9))); // she waves now and then
+ const wheeled=model==='car'||model==='taxi'||model==='firetruck';hv=wheeled?hv+((hoverOn?1:0)-hv)*(1-Math.exp(-dt*3)):0;carHover(model==='firetruck'?0:hv,time);rides.firetruck.hover(model==='firetruck'?hv:0,time);
+ car.position.copy(pos);car.position.y+=hv*(.85+Math.sin(time*2.3)*.07); // the contact shadow stays on the ground and shows the height
+ if(hopT>0){hopT=Math.max(0,hopT-dt);car.position.y+=Math.sin(Math.PI*hopT/.55)*.45;}const yaw=Math.atan2(-carFacing.x,-carFacing.z);rot.setFromEuler(facing.set(Math.atan2(carFacing.y,Math.hypot(carFacing.x,carFacing.z)),yaw,0));car.quaternion.slerp(rot,1-Math.exp(-dt*9));wheels.forEach(w=>w.rotation.x-=velocity*dt/.39);
  if(carrying){car.updateMatrixWorld(true);boy.hold(rides.trex.grip.getWorldPosition(holdAt),rides.trex.grip.getWorldQuaternion(holdQ),dt,time);}
  sm.position.set(pos.x,height(pos.x,pos.z)+.25,pos.z);sm.rotation.z=-yaw;turnArrow.position.set(pos.x,pos.y+6.2+Math.sin(time*3)*.22,pos.z);turnArrow.scale.setScalar(4.5+Math.sin(time*3)*.16);if(finished)turnArrow.visible=false;
  const follow=follows[mode]||follows.follow;
@@ -259,5 +269,5 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
   for(const m of buildingMeshes)m.material=seeThrough.material;renderer.compile(scene,camera);renderer.render(scene,camera);for(const m of buildingMeshes)m.material=staticMaterial; // the see-through shader, compiled now
   renderer.setRenderTarget(null);rt.dispose();
   chunks.forEach((c,i)=>{[c.mesh.visible,c.mesh.frustumCulled,c.mesh.castShadow]=keep[i];});}
- resize();window.addEventListener('resize',resize);return {houseStats:houses.stats,height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setViewShift,cameraYaw:()=>orbit.yaw,setTrail:trail.setOn,setBoy:boy.setOn,setDuckRunner:duckRunner.setOn,setBubbles:bubbles.setOn,boy,honk,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();trail.clear();boy.clear();duckRunner.clear();bubbles.clear();}};
+ resize();window.addEventListener('resize',resize);return {houseStats:houses.stats,height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setHover,setBalloonGirl,setViewShift,cameraYaw:()=>orbit.yaw,setTrail:trail.setOn,setBoy:boy.setOn,setDuckRunner:duckRunner.setOn,setBubbles:bubbles.setOn,boy,honk,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();trail.clear();boy.clear();duckRunner.clear();bubbles.clear();}};
 }
