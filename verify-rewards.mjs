@@ -460,8 +460,12 @@ console.log('Hover car: only when every other unlock is there; announced once; s
  assert.ok(g.inside.refreshes.length>before);assert.equal(g.inside.refreshes.at(-1).o.pigHidden,false);assert.equal(g.inside.refreshes.at(-1).items.find(i=>i.id==='pig').unlocked,true);assert.equal(g.inside.refreshes.at(-1).items.find(i=>i.id==='pig').text,'Du fant grisen som gjemte seg bak sofaen.');
  assert.equal(g.element('model-pig').hidden,false);assert.equal(g.element('modelRow').hidden,false);assert.equal(JSON.parse(store.get('sofiatur.fremgang')).pig,'on');
  const spokenNow=g.spoken.length;g.tap({type:'pig'});assert.equal(g.spoken.length,spokenNow,'found only once');
- g.key('x');assert.ok(g.inside.refreshes.length>before+1,'the debug keys refresh the podium while inside');
+ // The debug keys (X, Z) do nothing inside the house (6 October 2026): the podium unlocks only by doing the tasks, not by counting trips.
+ const tripsInHouse=g.test.progress().arrivals,savedInHouse=store.get('sofiatur.fremgang'),refreshedInHouse=g.inside.refreshes.length,toastInHouse=g.element('toast').textContent;
+ for(const k of ['x','x','x','z','X','Z'])g.key(k);
+ assert.equal(g.test.progress().arrivals,tripsInHouse,'X and Z count no trips inside the house');assert.equal(g.inside.refreshes.length,refreshedInHouse,'the podium does not change');assert.equal(store.get('sofiatur.fremgang'),savedInHouse,'nothing is saved');assert.equal(g.element('toast').textContent,toastInHouse,'no debug toast');
  g.tap({type:'door'});assert.equal(g.test.state(),'intro','the door leads out');assert.equal(g.element('insideHud').hidden,true);assert.equal(g.element('goInside').hidden,false);assert.equal(g.element('welcome').hidden,false);
+ g.key('x');assert.equal(g.test.progress().arrivals,tripsInHouse+1,'outside the house the debug keys work as before');g.key('z');assert.equal(g.test.progress().arrivals,tripsInHouse);
  g=await launch(()=>storage);assert.equal(g.world.model,'pig','the pig is remembered');g.element('goInside').onclick();assert.equal(g.inside.enters.at(-1).o.pigHidden,false,'and stays out of hiding');
  g.element('goOut').onclick();assert.equal(g.test.state(),'intro','Gå ut');assert.equal(g.element('insideHud').hidden,true);
  // tapping the pig out on the rug is a tap on a podium item; the menu's restart leaves the house too; the horn is silent inside; the button is gone while driving
