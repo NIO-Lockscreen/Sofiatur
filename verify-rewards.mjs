@@ -460,12 +460,8 @@ console.log('Hover car: only when every other unlock is there; announced once; s
  assert.ok(g.inside.refreshes.length>before);assert.equal(g.inside.refreshes.at(-1).o.pigHidden,false);assert.equal(g.inside.refreshes.at(-1).items.find(i=>i.id==='pig').unlocked,true);assert.equal(g.inside.refreshes.at(-1).items.find(i=>i.id==='pig').text,'Du fant grisen som gjemte seg bak sofaen.');
  assert.equal(g.element('model-pig').hidden,false);assert.equal(g.element('modelRow').hidden,false);assert.equal(JSON.parse(store.get('sofiatur.fremgang')).pig,'on');
  const spokenNow=g.spoken.length;g.tap({type:'pig'});assert.equal(g.spoken.length,spokenNow,'found only once');
- // The debug keys (X, Z) do nothing inside the house (6 October 2026): the podium unlocks only by doing the tasks, not by counting trips.
- const tripsInHouse=g.test.progress().arrivals,savedInHouse=store.get('sofiatur.fremgang'),refreshedInHouse=g.inside.refreshes.length,toastInHouse=g.element('toast').textContent;
- for(const k of ['x','x','x','z','X','Z'])g.key(k);
- assert.equal(g.test.progress().arrivals,tripsInHouse,'X and Z count no trips inside the house');assert.equal(g.inside.refreshes.length,refreshedInHouse,'the podium does not change');assert.equal(store.get('sofiatur.fremgang'),savedInHouse,'nothing is saved');assert.equal(g.element('toast').textContent,toastInHouse,'no debug toast');
+ g.key('x');assert.ok(g.inside.refreshes.length>before+1,'the debug keys refresh the podium while inside');
  g.tap({type:'door'});assert.equal(g.test.state(),'intro','the door leads out');assert.equal(g.element('insideHud').hidden,true);assert.equal(g.element('goInside').hidden,false);assert.equal(g.element('welcome').hidden,false);
- g.key('x');assert.equal(g.test.progress().arrivals,tripsInHouse+1,'outside the house the debug keys work as before');g.key('z');assert.equal(g.test.progress().arrivals,tripsInHouse);
  g=await launch(()=>storage);assert.equal(g.world.model,'pig','the pig is remembered');g.element('goInside').onclick();assert.equal(g.inside.enters.at(-1).o.pigHidden,false,'and stays out of hiding');
  g.element('goOut').onclick();assert.equal(g.test.state(),'intro','Gå ut');assert.equal(g.element('insideHud').hidden,true);
  // tapping the pig out on the rug is a tap on a podium item; the menu's restart leaves the house too; the horn is silent inside; the button is gone while driving
@@ -474,6 +470,37 @@ console.log('Hover car: only when every other unlock is there; announced once; s
  g.test.start();assert.equal(g.element('goInside').hidden,true,'no button while driving');
  g.element('goInside').onclick();assert.notEqual(g.test.state(),'inside','you cannot go inside while driving');}
 console.log('Inside the house: the button, the girl in the balloon (no announcement), 19 places with texts and hints, taps, the pig, the way out: OK');
+// The debug keys inside the house (6 October 2026): X unlocks the next place on the podium without doing the task, in the podium's order (the 13 trips, then the KIWI car,
+// Ludvig, the running duck, the taxi and the pig, which brings the hover car with it); Z locks the last one again. Outside the house they count trips as before.
+{save({});let g=await launch(()=>storage);g.element('goInside').onclick();
+ const IDS=['colour','cat','trail','rainbow','dog','duck','rocket','unicorn','bubbles','firetruck','horn','balloon','trex','kiwi','ludvig','duckRunner','taxi','pig','hover'];
+ const open=()=>[...g.inside.refreshes.at(-1).items.filter(i=>i.unlocked).map(i=>i.id)],saved=()=>JSON.parse(store.get('sofiatur.fremgang')),toast=()=>g.element('toast').textContent;
+ // from nothing: one place at a time, in the order of the podium
+ for(let n=0;n<13;n++){g.key('x');assert.deepEqual(open(),IDS.slice(0,n+1),'trip '+(n+1));}
+ assert.equal(g.test.progress().arrivals,13);assert.equal(g.world.model,'trex');
+ g.key('x');assert.deepEqual(open(),IDS.slice(0,14),'X: the KIWI car');assert.match(toast(),/Hemmelig KIWI-bil låst opp/);assert.equal(g.world.colour,'#5fae36');assert.equal(g.world.skin,'kiwi');assert.equal(saved().kiwi,'on');
+ g.key('x');assert.deepEqual(open(),IDS.slice(0,15),'X: Ludvig');assert.match(toast(),/Ludvig/);assert.equal(g.world.boy,true);
+ g.key('x');assert.deepEqual(open(),IDS.slice(0,16),'X: the running duck');assert.match(toast(),/Anda hørte tuta/);assert.equal(g.world.duckRunner,true);
+ g.key('x');assert.deepEqual(open(),IDS.slice(0,17),'X: the taxi, once both places are visited');assert.match(toast(),/Taxi låst opp/);assert.equal(g.world.model,'taxi');assert.match(g.spoken.at(-1),/kjøre taxi/);assert.equal(saved().ishall,'on');assert.equal(saved().rema,'on');
+ g.key('x');assert.deepEqual(open(),IDS,'X: the pig, and the hover car with it');assert.match(toast(),/Du fant grisen.*Svevebil/);assert.equal(g.world.model,'pig');assert.equal(g.world.hover,true);assert.equal(g.inside.refreshes.at(-1).o.pigHidden,false,'the pig comes out of hiding');
+ g.key('x');assert.deepEqual(open(),IDS);assert.equal(toast(),'🛠 Alt er låst opp');
+ // and back, the last one first
+ g.key('z');assert.deepEqual(open(),IDS.slice(0,17),'Z: the pig goes, and the hover car with it');assert.match(toast(),/Grisen og svevebilen: låst igjen/);assert.equal(g.world.hover,false);assert.equal(g.world.model,'car','the pig was the ride');assert.equal(g.inside.refreshes.at(-1).o.pigHidden,true,'the pig hides again');assert.equal(saved().pig,'off');
+ g.key('z');assert.deepEqual(open(),IDS.slice(0,16),'Z: the taxi');assert.equal(saved().ishall,'off');assert.equal(saved().rema,'off');assert.equal(saved().taxi,'off');
+ g.key('x');assert.deepEqual(open(),IDS.slice(0,17));assert.match(toast(),/Taxi låst opp/,'the taxi is announced again when it is unlocked again');
+ g.key('z');g.key('z');assert.deepEqual(open(),IDS.slice(0,15),'Z: the taxi, then the duck');assert.equal(g.world.duckRunner,false);
+ g.key('z');assert.deepEqual(open(),IDS.slice(0,14),'Z: Ludvig');assert.equal(g.world.boy,false);
+ g.key('z');assert.deepEqual(open(),IDS.slice(0,13),'Z: the KIWI car');assert.equal(g.world.skin,null);
+ for(let n=13;n>0;n--){g.key('z');assert.deepEqual(open(),IDS.slice(0,n-1),'back to trip '+(n-1));}
+ assert.equal(g.test.progress().arrivals,0);assert.deepEqual(open(),[]);g.key('z');assert.equal(toast(),'🛠 Alt er låst');
+ const k=saved();assert.deepEqual([k.kiwi,k.ludvig,k.duck,k.ishall,k.rema,k.taxi,k.pig,k.hoverSeen],Array(8).fill('off'),'everything is locked again, and saved');
+ // outside the house the keys count trips as before, and unlock no secret
+ g.element('goOut').onclick();g.key('x');assert.equal(g.test.progress().arrivals,1);assert.equal(saved().kiwi,'off');g.key('z');assert.equal(g.test.progress().arrivals,0);
+ // a real task done first: X goes on from where the game is (the pig found by hand, then X for the rest)
+ save({arrivals:13,kiwi:'on',ludvig:'on',duck:'on',pig:'on'});g=await launch(()=>storage);g.element('goInside').onclick();
+ g.key('x');assert.ok(g.inside.refreshes.at(-1).items.every(i=>i.unlocked),'the taxi is the only place left, and the hover car comes with it');assert.equal(g.world.model,'taxi');assert.match(toast(),/Taxi låst opp.*Svevebil/);}
+console.log('Debug keys inside the house: X unlocks the podium one place at a time (trips, KIWI, Ludvig, the duck, the taxi, the pig and the hover car), Z locks it again, outside they count trips: OK');
+
 
 // The pig takes the paint like the other rides (5 October 2026): pink to begin with (the Rosa swatch) whether it is chosen or found, then any colour, remembered.
 {save({arrivals:5,kiwi:'on',pig:'on',model:'dog'});let g=await launch(()=>storage);

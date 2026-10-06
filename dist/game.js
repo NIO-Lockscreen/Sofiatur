@@ -330,6 +330,27 @@ function goOutside(){if(state==='inside')reset();}
 // The pig that hides behind the sofa: finding it (a tap on it) unlocks the pig as something to drive as, easy for a five-year-old.
 function findPig(){if(pigUnlocked)return;pigUnlocked=true;model='pig';carColour=PIG_PINK;saveProgress();applyRewards();showRewards();inside?.refresh(podiumItems(),{pigHidden:false});
  const x=newUnlocks();toast('🐷 Du fant grisen! Nå kan du kjøre som en gris'+x.toast);say('Nøff nøff! Du fant grisen som gjemte seg! Nå kan du kjøre som en gris. Du velger hva du kjører som på startskjermen.'+x.say);}
+// The debug keys inside the house (6 October 2026) step through the whole podium in its order, to test every reward: X unlocks the next locked place without doing
+// the task, Z locks the last unlocked one again. The 13 trips count as outside (debugArrivals); the secrets do what the game does when the task is done (the visit, the
+// honk by the lake, finding the pig), so the toasts, the voice and the paint are the real ones. The hover car comes with the pig and goes with it, as in the game.
+function debugPodium(delta){
+ const items=podiumItems(),ids=items.map(i=>i.id);
+ if(delta>0){const next=items.find(i=>!i.unlocked);if(!next){toast('🛠 Alt er låst opp');return;}
+  if(ids.indexOf(next.id)<LAST_REWARD){debugArrivals(1);return;}
+  if(next.id==='taxi'){for(const visit of [!ishallVisited&&parkAtIshall,!remaVisited&&parkAtRema])if(visit)visit();return;} // the last visit completes the taxi
+  ({kiwi:parkAtKiwi,ludvig:parkAtLudvig,duckRunner:duckHeard,pig:findPig})[next.id]?.();return;}
+ const last=[...items].reverse().find(i=>i.unlocked);if(!last){toast('🛠 Alt er låst');return;}
+ if(ids.indexOf(last.id)<LAST_REWARD){debugArrivals(-1);return;}
+ lockSecret(last);}
+function lockSecret({id,title}){
+ if(id==='kiwi'){kiwiUnlocked=false;if(carColour==='kiwi')carColour='#14171c';}
+ else if(id==='ludvig'){ludvigUnlocked=false;if(behind==='ludvig')behind='trail';}
+ else if(id==='duckRunner'){duckUnlocked=false;if(behind==='duck')behind='trail';}
+ else if(id==='taxi'){ishallVisited=remaVisited=false;}
+ else pigUnlocked=false; // the pig, or the hover car that goes with it
+ if(!taxiReady())taxiSeen=false;if(!hoverReady())hoverSeen=false; // announced again when it is unlocked again
+ if(!rideOK(model))model='car';
+ saveProgress();applyRewards();showRewards();toast('🛠 '+(id==='hover'?'Grisen og svevebilen':title)+': låst igjen');}
 // A tap on the house (under 12 px and 600 ms, so a swipe is not one): an item on the podium says how it was unlocked, the pig is found, the door leads out.
 function houseTap(x,y){const hit=inside.pick(x,y);$('unlockInfo').hidden=true;if(!hit)return;
  if(hit.type==='item'){const it=podiumItems().find(i=>i.id===hit.id);if(!it)return;$('unlockInfoIcon').textContent=it.icon;$('unlockInfoTitle').textContent=it.title;$('unlockInfoText').textContent=it.text;$('unlockInfo').hidden=false;say((it.unlocked?it.title+'. ':'')+it.text);}
@@ -410,8 +431,8 @@ function atLake(){
 // By the water the horn button shows (4 October 2026): the car stands at a choice of road there, where the button is otherwise hidden, and in free driving
 // the brake and drift buttons take its corner, so the button moves up above them (style.css, body.at-lake).
 function lakeHorn(){document.body.classList.toggle('at-lake',atLake());}
-function honkAtDuck(){
- if(!atLake())return;
+function honkAtDuck(){if(!atLake())return;duckHeard();}
+function duckHeard(){
  const first=!duckUnlocked,again=!first&&behind!=='duck';if(!first&&!again)return;
  duckUnlocked=true;behind='duck';saveProgress();applyRewards();showRewards();const x=newUnlocks();
  if(first){toast('🦆 Anda hørte tuta · Nå løper en and etter bilen!'+x.toast);say('Kvakk kvakk! Anda hørte tuta! Nå løper en and etter bilen. Du kan slå den av og på hjemme.'+x.say);}
@@ -428,7 +449,7 @@ $('driveMode').onchange=e=>{if(!world)return;freeMode=e.target.value==='free';$(
 $('recoverCar').onclick=()=>{recoverFree();$('menu').close();};
 for(const [id,action] of [['freeLeft','left'],['freeRight','right'],['freeBrake','brake'],['freeDrift','drift']]){const el=$(id);el.addEventListener('pointerdown',e=>{if(state!=='free')return;e.preventDefault();el.setPointerCapture?.(e.pointerId);heldPointers.set(e.pointerId,action);touch.add(action);el.classList.add('held');});const release=e=>{heldPointers.delete(e.pointerId);if(![...heldPointers.values()].includes(action)){touch.delete(action);el.classList.remove('held');}};for(const type of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(type,release);}
 window.addEventListener('keydown',e=>{if($('menu').open)return;
- const letter=(e.key||'').toLowerCase();if(letter==='h'&&!e.repeat&&!/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName||'')){honk();return;}if((letter==='x'||letter==='z')&&!e.repeat&&state!=='inside'&&!/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName||'')){e.preventDefault();debugArrivals(letter==='x'?1:-1);return;} // the debug keys do nothing inside the house (6 October 2026): the podium unlocks only by doing the tasks
+ const letter=(e.key||'').toLowerCase();if(letter==='h'&&!e.repeat&&!/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName||'')){honk();return;}if((letter==='x'||letter==='z')&&!e.repeat&&!/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName||'')){e.preventDefault();(state==='inside'?debugPodium:debugArrivals)(letter==='x'?1:-1);return;}
  const code=e.code||({' ':'Space',a:'KeyA',d:'KeyD',s:'KeyS',q:'KeyQ',Q:'KeyQ'}[e.key]||e.key);
  if(state==='free'){if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','KeyA','KeyD','KeyS','Space'].includes(code)){e.preventDefault();keys.add(code);}if(code==='KeyQ'&&!e.repeat){e.preventDefault();recoverFree();}return;}
  if(e.key===' '&&!e.repeat){e.preventDefault();if(state==='intro')start();}const labels={ArrowLeft:'Venstre',ArrowRight:'Høyre',ArrowUp:'Rett frem',ArrowDown:'Snu'};if(state==='decision'){const match=choices.find(c=>directionInfo(c).label===labels[e.key]);if(match){e.preventDefault();choose(match.id,true);}}else if(state==='driving'&&aheadShown&&!e.repeat){const match=preview.list.find(c=>directionInfo(c,preview.h).label===labels[e.key]);if(match){e.preventDefault();queueChoice(match);}}});
