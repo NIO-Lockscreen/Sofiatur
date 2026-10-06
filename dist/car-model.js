@@ -48,7 +48,7 @@ export function createET5(T){
   box(.16,.12,.07,rubber,side*.80,.57,-2.26);box(.12,.028,.076,white,side*.80,.595,-2.267);
   line([[side*.89,.72,-2.15],[side*.86,.43,-2.21],[side*.69,.36,-2.27]],.034,trim);
   // Split Y-spoke wheels, dark pockets, red brake calipers and raised tyre lip.
-  // Each wheel hangs on a hinge group (5 October 2026), which the hover mode folds flat under the car; the wheel inside it still rolls.
+  // Each wheel hangs on a hinge group (5 October 2026), which the hover mode folds flat at the car's side under its arch; the wheel inside it still rolls.
    for(const z of [-1.444,1.444]){const hinge=new T.Group();hinge.position.set(side*.916,.355,z);hinge.userData.side=side;car.add(hinge);const wheel=new T.Group();hinge.add(wheel);wheels.push(wheel);hinges.push(hinge);
    const tire=mesh(new T.CylinderGeometry(.355,.355,.235,40),rubber,0,0,0,wheel);tire.rotation.z=Math.PI/2;
    const disc=mesh(new T.CylinderGeometry(.254,.254,.242,32),trim,0,0,0,wheel);disc.rotation.z=Math.PI/2;
@@ -94,9 +94,10 @@ export function createET5(T){
    band.rotation.y=sill.rotation.y=side*Math.PI/2;sill.visible=false;midBands.push(band);lowBands.push(sill);
    const door=mesh(new T.PlaneGeometry(.4,.11),new T.MeshBasicMaterial({map:canvas(256,70,(q,w,h)=>{q.fillStyle='#ffd93a';q.fillRect(0,0,w,h);q.fillStyle='#14171c';q.font='900 58px Arial';q.textAlign='center';q.textBaseline='middle';q.fillText('TAXI',w/2,h/2+3,w-12);})}),side*.968,.88,-.58,taxi);door.rotation.y=side*Math.PI/2;}}
  taxi.userData.dress=skin=>{midBands.forEach(m=>m.visible=skin!=='kiwi');lowBands.forEach(m=>m.visible=skin==='kiwi');};
- // Hover mode (5 October 2026, "Back to the Future"): hover(h, time) with h from 0 to 1 folds every wheel flat under the car on its hinge (the tyre's outer face
- // turns down) and lights a cyan glow under each; h = 0 puts the wheels back exactly. world.js lifts the car with the same blend.
+ // Hover mode (5 October 2026, "Back to the Future"; 6 October: like the DeLorean's): hover(h, time) with h from 0 to 1 folds every wheel flat on its hinge (the tyre's
+ // outer face turns down), its middle at the car's side (x ±.95) and low under the wheel arch, so about the outer half of the tyre sticks out past the body and shows from
+ // the side; a cyan glow lights under each. h = 0 puts the wheels back exactly. world.js lifts the car with the same blend.
  const lights=hoverGlow(T,hinges.length,1.5),glow=lights.group;car.add(glow);
- function hover(h,time=0){lights.show(h,time);hinges.forEach((hinge,i)=>{const side=hinge.userData.side;hinge.rotation.z=-side*h*Math.PI/2;hinge.position.x=side*(.916-.45*h);hinge.position.y=.355-.26*h;lights.discs[i].position.set(hinge.position.x,hinge.position.y-.13,hinge.position.z);});}
+ function hover(h,time=0){lights.show(h,time);hinges.forEach((hinge,i)=>{const side=hinge.userData.side;hinge.rotation.z=-side*h*Math.PI/2;hinge.position.x=side*(.916+.034*h);hinge.position.y=.355-.115*h;lights.discs[i].position.set(hinge.position.x,hinge.position.y-.13,hinge.position.z);});}
  car.userData={model:'NIO ET5 sedan',length:4.79,width:1.96,wheelbase:2.888};return {car,wheels,hinges,paint,skins:{kiwi},taxi,glow,hover};
 }

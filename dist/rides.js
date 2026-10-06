@@ -177,13 +177,13 @@ export function createFireTruck(T,{logos={}}={}){
  for(const s of [-1,1]){part(grey,[s*.4,2.6,.7],[.07,.1,4.2]);}for(let z=-1.2;z<=2.6;z+=.42)part(grey,[0,2.6,z],[.8,.06,.06]); // the ladder
  const lights=[-1,1].map((s,i)=>part(blue[i],[s*.45,2.4,-2.1],[.5,.2,.3]));
  for(const s of [-1,1])part(lamp,[s*.75,.85,-2.57],[.35,.22,.04]);part(grey,[0,.6,-2.6],[2.1,.25,.12]);
- // Each wheel hangs on a hinge group (5 October 2026), which the hover mode folds flat under the fire engine; the wheel inside it still rolls.
+ // Each wheel hangs on a hinge group (5 October 2026), which the hover mode folds flat at the fire engine's side, under its body; the wheel inside it still rolls.
  const hinges=[],wheels=[[-1,-1.8],[1,-1.8],[-1,.6],[1,.6],[-1,1.7],[1,1.7]].map(([s,z])=>{const hinge=new T.Group();hinge.position.set(s*1.0,.48,z);hinge.userData.side=s;body.add(hinge);hinges.push(hinge);const w=new T.Group();hinge.add(w);
   part(tyre,[0,0,0],[.5,.3,.5],w,new T.CylinderGeometry(1,1,1,16)).rotation.z=Math.PI/2;part(grey,[s*.16,0,0],[.25,.04,.25],w,new T.CylinderGeometry(1,1,1,12)).rotation.z=Math.PI/2;return w;});
- // Hover mode (5 October 2026, "Back to the Future"): hover(h, time) with h from 0 to 1 folds the six wheels flat under the fire engine (the tyre's outer face turns
- // down), each with a cyan glow; h = 0 puts them back exactly. world.js lifts the fire engine with the same blend.
+ // Hover mode (5 October 2026, "Back to the Future"; 6 October: like the DeLorean's): hover(h, time) with h from 0 to 1 folds the six wheels flat (the tyre's outer face turns
+ // down) at the sides of the fire engine, just under its body, so about the outer half of each tyre sticks out; each has a cyan glow. h = 0 puts them back exactly. world.js lifts the fire engine with the same blend.
  const under=hoverGlow(T,hinges.length,2.1);body.add(under.group);
- function hover(h,time=0){under.show(h,time);hinges.forEach((hinge,i)=>{const side=hinge.userData.side;hinge.rotation.z=-side*h*Math.PI/2;hinge.position.x=side*(1-.4*h);hinge.position.y=.48-.28*h;under.discs[i].position.set(hinge.position.x,hinge.position.y-.14,hinge.position.z);});}
+ function hover(h,time=0){under.show(h,time);hinges.forEach((hinge,i)=>{const side=hinge.userData.side;hinge.rotation.z=-side*h*Math.PI/2;hinge.position.x=side*(1+.05*h);hinge.position.y=.48-.26*h;under.discs[i].position.set(hinge.position.x,hinge.position.y-.14,hinge.position.z);});}
  const skins=flankLogos(T,body,logos,{cy:1.45,cz:.75,rx:1.1,ry:20,rz:20,w:1.4,h:.45,y:2.15,z:.75});
  let flash=0,hop=0,rainbowLights=false;const hsl={h:0,s:0,l:0};
  // The paint is the car's colour (red by default, the standard fire engine); on a pale paint the stripe turns red. The beacons follow the colour chosen.

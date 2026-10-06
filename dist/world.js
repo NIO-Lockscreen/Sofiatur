@@ -191,7 +191,7 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  // The horn (the reward for the eleventh trip): a little hop, and the ride's own reaction (the T. rex opens its jaws).
  const holdAt=new T.Vector3(),holdQ=new T.Quaternion();
  let hopT=0;function honk(){hopT=.55;rides[model]?.honk?.();}
- // Hover mode (5 October 2026, "Back to the Future"): the wheeled rides (the car, the taxi, the fire engine) fold their wheels flat under them and float; hv eases 0 to 1.
+ // Hover mode (5 October 2026, "Back to the Future"): the wheeled rides (the car, the taxi, the fire engine) fold their wheels flat at their sides (like the DeLorean's) and float; hv eases 0 to 1.
  let hoverOn=false,hv=0;function setHover(on){hoverOn=!!on;}
  // Paint colour (a reward). Black keeps the original deep metallic look; brighter colours are less metallic so they read as colour.
  // 'rainbow' (the reward for the fourth trip) runs through all the colours in a little over three seconds; update() turns it.
