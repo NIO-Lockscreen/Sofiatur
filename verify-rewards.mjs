@@ -90,12 +90,36 @@ game.test.arrive();assert.match(game.element('unlock').textContent,/tute/);asser
 game.test.honkKey();assert.equal(game.world.honks,2,'H honks too');
 game.test.arrive();assert.equal(game.world.model,'balloon');assert.match(game.element('unlock').textContent,/luftballong/);game.element('again').onclick();assert.equal(game.element('rewardTeaser').hidden,false);
 game.test.arrive();assert.equal(game.test.progress().arrivals,13);assert.equal(game.world.model,'trex');assert.match(game.element('unlock').textContent,/T-rex/);assert.match(game.element('unlock').textContent,/alle overraskelsene/);
-game.element('again').onclick();for(const m of ['car','cat','dog','duck','rocket','unicorn','firetruck','balloon','trex'])assert.equal(game.element('model-'+m).hidden,false,m+' in the picker');assert.equal(game.element('rewardTeaser').hidden,true,'No teaser once everything is unlocked');
+game.element('again').onclick();for(const m of ['car','cat','dog','duck','rocket','unicorn','firetruck','balloon','trex'])assert.equal(game.element('model-'+m).hidden,false,m+' in the picker');assert.equal(game.element('rewardTeaser').hidden,false,'The thirteen trips are done, but the secrets are not');assert.equal(game.element('rewardTeaser').textContent,'🔎 6 hemmeligheter mangler fortsatt');
 game=await launch(()=>storage);assert.equal(game.world.model,'trex','The T. rex remembered');assert.equal(game.world.bubbles,true,'and the bubbles');
 game.test.arrive();assert.equal(game.element('unlock').hidden,true,'No new reward on later trips');assert.match(game.element('again').textContent,/en gang til/);
 store.set('sofiatur.fremgang',JSON.stringify({arrivals:8,model:'trex',behind:'bubbles'}));game=await launch(()=>storage);assert.equal(game.world.model,'car','The T. rex only after thirteen trips');assert.equal(game.world.bubbles,false,'bubbles only after nine');
 store.set('sofiatur.fremgang',JSON.stringify({arrivals:5,model:'rocket'}));game=await launch(()=>storage);assert.equal(game.world.model,'car','The rocket only after seven trips');
 console.log('Fourth arrival unlocks the rainbow colour, then the dog, duck, rocket, unicorn, soap bubbles, fire engine, horn, hot-air balloon and last the T. rex; everything survives a reload: OK');
+
+// The secrets (6 October 2026): the KIWI car, Ludvig, the running duck, the taxi, the pig and the hover car are found by exploring, not by trips. Once all thirteen
+// trips are made the start card says how many are still missing; the debug keys move between the trip hint and the count.
+{const keep=store.get('sofiatur.fremgang');
+ const teaser=async progress=>{store.set('sofiatur.fremgang',JSON.stringify(progress));const g=await launch(()=>storage);return {g,hidden:g.element('rewardTeaser').hidden,text:g.element('rewardTeaser').textContent};};
+ const base={arrivals:13};
+ let t=await teaser({...base});assert.equal(t.hidden,false);assert.equal(t.text,'🔎 6 hemmeligheter mangler fortsatt','nothing found: all six');
+ t=await teaser({...base,kiwi:'on'});assert.equal(t.text,'🔎 5 hemmeligheter mangler fortsatt','the KIWI car counts');
+ t=await teaser({...base,kiwi:'on',ludvig:'on'});assert.equal(t.text,'🔎 4 hemmeligheter mangler fortsatt','Ludvig counts');
+ t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on'});assert.equal(t.text,'🔎 3 hemmeligheter mangler fortsatt','the running duck counts; the taxi and the hover car are still missing');
+ t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on'});assert.equal(t.text,'🔎 3 hemmeligheter mangler fortsatt','Dalgård ishall alone is not a secret: the taxi waits for Rema 1000');
+ t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on'});assert.equal(t.text,'🔎 2 hemmeligheter mangler fortsatt','the taxi counts (KIWI, Ludvig, Dalgård ishall, Rema 1000 and the kindergarten); the pig and the hover car are missing');
+ t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on',pig:'on'});assert.equal(t.hidden,true,'the pig opens the hover car: all six found, no teaser');
+ t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',pig:'on'});assert.equal(t.text,'🔎 2 hemmeligheter mangler fortsatt','the pig counts, but without the taxi there is no hover car');
+ // Before the thirteenth trip the card keeps its hint about the next trip; the count is for when the trips are done.
+ t=await teaser({arrivals:12,kiwi:'on'});assert.match(t.text,/én gang til/);assert.doesNotMatch(t.text,/hemmelighet/);
+ // The debug keys: one trip fewer shows the hint, one more the count, and the count follows what is found (the visits and the pig, as they happen).
+ t=await teaser({...base});game=t.g;game.key('z');assert.match(game.element('rewardTeaser').textContent,/én gang til/,'Z: 12 trips');game.key('x');assert.equal(game.element('rewardTeaser').textContent,'🔎 6 hemmeligheter mangler fortsatt','X: 13 trips');
+ game.test.park();game.element('again').onclick?.();game.test.ludvig();assert.equal(game.element('rewardTeaser').textContent,'🔎 4 hemmeligheter mangler fortsatt','KIWI and Ludvig visited');
+ game.test.ishall();game.test.rema();assert.equal(game.element('rewardTeaser').textContent,'🔎 3 hemmeligheter mangler fortsatt','the duck is still missing, so the taxi is too');
+ // The T. rex card no longer claims that every surprise is found: it is about the trips.
+ assert.ok(!fs.readFileSync('dist/game.js','utf8').includes('Du har funnet alle overraskelsene!'),'the T. rex says the surprises from the trips');
+ if(keep===undefined)store.delete('sofiatur.fremgang');else store.set('sofiatur.fremgang',keep);}
+console.log('Secrets: counted on the start card once the thirteen trips are made (the KIWI car, Ludvig, the duck, the taxi, the pig, the hover car): OK');
 
 // Rewards that are not unlocked yet cannot be forced through storage.
 store.set('sofiatur.fremgang',JSON.stringify({arrivals:1,colour:'rainbow',model:'cat'}));game=await launch(()=>storage);assert.equal(game.world.colour,'#14171c');assert.equal(game.world.model,'car');assert.equal(game.world.trail,false);
