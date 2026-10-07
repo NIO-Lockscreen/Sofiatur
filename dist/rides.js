@@ -126,34 +126,110 @@ export function createRocket(T,{logos={}}={}){
 // ---- More rewards (3 October 2026, trips 8, 10, 12 and 13): a unicorn, a fire engine, a hot-air balloon and, last of all, a T. rex ----
 // honk() (the horn, the reward for the eleventh trip) makes each one do its own thing: the T. rex opens its jaws.
 
-// The unicorn: a horse in the car's colour with a golden horn, a rainbow mane and a rainbow tail, galloping.
+// The unicorn: a pony-like horse in the car's colour (the coat takes the paint) with a golden spiral horn, a rainbow mane and tail, galloping.
+// Redesigned 7 October 2026 (the first one was a toy of eggs and sticks): a body, a neck and a head each lofted from cross-sections (a deep chest, a tucked belly, a
+// withers and a rump; an arched neck; a pony's head with a big forehead, a small muzzle and a pink nose), big glossy eyes with lashes, upright ears with pink insides,
+// legs with thigh, bending knee, fetlock and golden hoof, a long golden spiral horn with a sparkle, six locks of rainbow mane on each side of the neck with a forelock,
+// and a long wavy tail of six rainbow strands. Forward is −z, the ground is y = 0.
 export function createUnicorn(T,{logos={}}={}){
  const group=new T.Group();group.name='Enhjørning';
- const coat=new T.MeshStandardMaterial({color:'#14171c',roughness:.8}),hoof=new T.MeshStandardMaterial({color:'#d9b347',roughness:.4,metalness:.5});
- const gold=new T.MeshStandardMaterial({color:'#f2c94c',roughness:.3,metalness:.6,emissive:'#5a4310',emissiveIntensity:.3}),eye=new T.MeshBasicMaterial({color:'#24160e'}),pinkNose=new T.MeshStandardMaterial({color:'#e8a4b4',roughness:.7});
- const rainbow=['#ff5a5a','#ffa63d','#ffd94a','#5ccf66','#41a7f4','#8b6cf0'].map(c=>new T.MeshStandardMaterial({color:c,roughness:.6}));
- const sphere=sphereGeo(T),limb=new T.CylinderGeometry(1,.8,1,10);
+ const std=(color,roughness=.7,extra={})=>new T.MeshStandardMaterial({color,roughness,...extra});
+ const coat=std('#14171c',.62),pink=std('#f6a9bd',.7),nose=std('#f4b3c3',.6),blush=std('#f9a8bd',.8),hoof=std('#e8b83a',.35,{metalness:.5});
+ const gold=std('#f4cd55',.3,{metalness:.6,emissive:'#5a4310',emissiveIntensity:.3}),goldDark=std('#d9962b',.35,{metalness:.6,emissive:'#4a3008',emissiveIntensity:.3});
+ const dark=new T.MeshBasicMaterial({color:'#2a2250'}),iris=new T.MeshBasicMaterial({color:'#7a52c8'}),shine=new T.MeshBasicMaterial({color:'#ffffff'}),nostril=new T.MeshBasicMaterial({color:'#a55c75'}),spark=new T.MeshBasicMaterial({color:'#fff3b8'});
+ const rainbow=['#ff5a5a','#ffa63d','#ffd94a','#5ccf66','#41a7f4','#8b6cf0'].map(c=>std(c,.55));
+ const sphere=sphereGeo(T),ball=new T.SphereGeometry(1,10,8),shin=new T.CylinderGeometry(1,.75,1,8),cone=new T.ConeGeometry(1,1,8);
+ const V=(x,y,z)=>new T.Vector3(x,y,z);
  const body=new T.Group();group.add(body);
  const part=(g,m,[x,y,z],[sx,sy,sz],parent=body)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;parent.add(o);return o;};
- part(sphere,coat,[0,1.6,.1],[.62,.66,1.45]);
- const neck=new T.Group();neck.position.set(0,1.95,-1.05);body.add(neck);const n=part(sphere,coat,[0,.45,-.2],[.32,.75,.38],neck);n.rotation.x=.5;
- const head=new T.Group();head.position.set(0,1.05,-.55);neck.add(head);
- part(sphere,coat,[0,0,0],[.3,.32,.38],head);part(sphere,coat,[0,-.12,-.42],[.24,.22,.36],head);part(sphere,pinkNose,[0,-.17,-.7],[.18,.14,.1],head);
- for(const s of [-1,1]){part(sphere,eye,[s*.25,.06,-.14],[.06,.08,.06],head);const ear=part(new T.ConeGeometry(1,1,6),coat,[s*.14,.38,.1],[.08,.26,.08],head);ear.rotation.z=-s*.25;}
- const horn=part(new T.ConeGeometry(1,1,12),gold,[0,.5,-.18],[.07,.6,.07],head);horn.rotation.x=-.45;
- rainbow.forEach((m,i)=>part(sphere,m,[0,1.1-i*.18,.05+i*.08],[.12,.2,.16],neck)); // the mane down the back of the neck
- const legs=[[-.3,-.85],[.3,-.85],[-.3,.95],[.3,.95]].map(([x,z])=>{const hip=new T.Group();hip.position.set(x,1.3,z);body.add(hip);
-  part(limb,coat,[0,-.6,0],[.14,1.2,.14],hip);part(new T.CylinderGeometry(1,1,1,10),hoof,[0,-1.25,0],[.15,.1,.15],hip);return hip;});
- const tail=new T.Group();tail.position.set(0,1.95,1.5);body.add(tail);rainbow.forEach((m,i)=>{const s=part(sphere,m,[0,-.15-i*.17,.25+i*.06],[.13,.22,.13],tail);s.rotation.x=.4;});
- const skins=flankLogos(T,body,logos,{cy:1.6,cz:.1,rx:.62,ry:.66,rz:1.45,w:1.3,h:.4,y:1.62,z:.25});
+ const put=(geo,mat,parent)=>{const o=new T.Mesh(geo,mat);o.castShadow=true;parent.add(o);return o;};
+ // loft(rings): a smooth skin through elliptical rings {c: centre, a and b: the two half axes}, closed at both ends with a fan to the end ring's centre.
+ function loft(rings,n=18){const pos=[],idx=[],m=rings.length;
+  for(const {c,a,b} of rings)for(let k=0;k<n;k++){const f=k/n*Math.PI*2,cs=Math.cos(f),sn=Math.sin(f);pos.push(c.x+a.x*cs+b.x*sn,c.y+a.y*cs+b.y*sn,c.z+a.z*cs+b.z*sn);}
+  for(let i=0;i<m-1;i++)for(let k=0;k<n;k++){const p=i*n+k,q=i*n+(k+1)%n;idx.push(p,p+n,q,q,p+n,q+n);}
+  const P=i=>V(pos[i*3],pos[i*3+1],pos[i*3+2]);
+  if(P(idx[1]).sub(P(idx[0])).cross(P(idx[2]).sub(P(idx[0]))).dot(P(idx[0]).sub(rings[0].c))<0)for(let i=0;i<idx.length;i+=3){const t=idx[i+1];idx[i+1]=idx[i+2];idx[i+2]=t;} // triangles face outwards
+  for(const [i,j] of [[0,1],[m-1,m-2]]){const ci=pos.length/3,ring=rings[i],dir=ring.c.clone().sub(rings[j].c);pos.push(ring.c.x,ring.c.y,ring.c.z);
+   for(let k=0;k<n;k++){const p=i*n+k,q=i*n+(k+1)%n;idx.push(...(P(p).sub(ring.c).cross(P(q).sub(ring.c)).dot(dir)>0?[ci,p,q]:[ci,q,p]));}}
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();return g;}
+ // sweep(points, wide, thick, side): a tapered ribbon or tube along a curve through the points; wide(u) and thick(u) are its half width (along side) and half thickness, u from 0 to 1.
+ function sweep(points,wide,thick,side=V(1,0,0),seg=14,n=10){const curve=new T.CatmullRomCurve3(points.map(p=>V(...p))),rings=[];
+  for(let i=0;i<=seg;i++){const u=i/seg,c=curve.getPointAt(u),t=curve.getTangentAt(u),a=side.clone().addScaledVector(t,-side.dot(t)).normalize(),b=t.clone().cross(a).normalize();rings.push({c,a:a.multiplyScalar(wide(u)),b:b.multiplyScalar(thick(u))});}
+  return loft(rings,n);}
+ const taperTo=(a,b,e=1)=>u=>b+(a-b)*Math.pow(1-u,e); // from a at the root to b at the tip
+ // stations → rings: a Catmull-Rom through the stations, three rings to each step
+ const cr=(p0,p1,p2,p3,t)=>.5*(2*p1+(p2-p0)*t+(2*p0-5*p1+4*p2-p3)*t*t+(3*p1-p0-3*p2+p3)*t*t*t);
+ function station(stations,ring){const out=[],at=j=>stations[Math.max(0,Math.min(stations.length-1,j))];
+  for(let i=0;i<stations.length-1;i++)for(let s=0;s<3;s++){const t=s/3;out.push(ring([0,1,2,3].map(k=>cr(at(i-1)[k],at(i)[k],at(i+1)[k],at(i+2)[k],t))));}
+  out.push(ring(stations.at(-1)));return out;}
+ // ---- The body: z, belly, back, half width. Withers and croup high, the back dips between, the chest is deep and the belly tucks up behind it ----
+ const KZ=.9,bodyRings=station([[-1.34,1.88,2.2,.07],[-1.28,1.62,2.46,.26],[-1.1,1.42,2.62,.45],[-.86,1.34,2.78,.58],[-.46,1.36,2.72,.62],[0,1.43,2.67,.62],[.46,1.52,2.7,.62],[.83,1.6,2.75,.62],[1.15,1.6,2.78,.6],[1.43,1.62,2.7,.52],[1.62,1.72,2.5,.36],[1.73,1.9,2.3,.1]],
+  ([z,lo,hi,w])=>({c:V(0,(lo+hi)/2,z*KZ),a:V(Math.max(.03,w),0,0),b:V(0,Math.max(.05,(hi-lo)/2),0)}));
+ const torso=new T.Mesh(loft(bodyRings,22),coat);torso.castShadow=true;body.add(torso);
+ // where the body's skin is at a given z (to lay the KIWI logo on it): centre height, half height, half width
+ const prof=z=>{for(let i=0;i<bodyRings.length-1;i++){const p=bodyRings[i],q=bodyRings[i+1];if(z>=p.c.z&&z<=q.c.z){const f=(z-p.c.z)/(q.c.z-p.c.z||1);return [p.c.y+(q.c.y-p.c.y)*f,p.b.y+(q.b.y-p.b.y)*f,p.a.x+(q.a.x-p.a.x)*f];}}return [2,.6,.6];};
+ // ---- The legs: a thigh or forearm that tapers to the knee, the cannon with its fetlock, a sloping pastern and a golden hoof, each lofted in one smooth piece; the hind legs have a hock that points back ----
+ const limb=(rows,k=1)=>loft(rows.map(([y,rx,rz,dz=0])=>({c:V(0,y*k,dz),a:V(rx,0,0),b:V(0,0,rz)})),14);
+ const upperF=limb([[.2,.16,.2],[.05,.2,.24],[-.15,.17,.2,.0],[-.35,.125,.14],[-.58,.105,.115]],1.07),upperR=limb([[.22,.2,.27],[.05,.25,.32,.03],[-.15,.2,.25,.02],[-.35,.135,.16],[-.58,.11,.12]],1.07);
+ const lowerG=limb([[.02,.105,.115],[-.1,.08,.088],[-.26,.066,.07],[-.38,.075,.08],[-.46,.092,.1]],1.13),pasternG=limb([[.02,.09,.098],[-.09,.066,.072],[-.17,.078,.084]]);
+ const legs=[[-.4,-.66,0,0],[.4,-.66,Math.PI,0],[-.4,.9,Math.PI+.4,1],[.4,.9,.4,1]].map(([x,z,o,rear])=>{const hip=new T.Group();hip.position.set(x,1.5,z);body.add(hip);
+  put(rear?upperR:upperF,coat,hip);const knee=new T.Group();knee.position.set(0,-.62,0);hip.add(knee);put(lowerG,coat,knee);
+  const fet=new T.Group();fet.position.set(0,-.52,0);knee.add(fet);put(pasternG,coat,fet);
+  part(new T.CylinderGeometry(.092,.135,.2,12),hoof,[0,-.26,0],[1,1,1],fet);return {hip,knee,fet,o,rear};});
+ // ---- The neck: lofted from the shoulders up and forward to the poll, arched, thick at the base and slim at the head ----
+ const neckBase=V(0,2.2,-.56),poll=V(0,3.0,-1.44),neck=new T.Group();neck.position.copy(neckBase);body.add(neck);
+ const nk=new T.CatmullRomCurve3([V(0,0,0),V(0,.38,-.3),V(0,.7,-.62),V(0,.82,-.88)]),rw=taperTo(.4,.24,.9),rn=taperTo(.5,.3,.9),nrm=t=>V(0,-t.z,t.y).normalize(); // nrm: the way the crest faces (up and back)
+ {const rr=[];for(let i=0;i<=14;i++){const u=i/14,c=nk.getPointAt(u);rr.push({c,a:V(rw(u),0,0),b:nrm(nk.getTangentAt(u)).multiplyScalar(rn(u))});}put(loft(rr,18),coat,neck);}
+ // ---- The head, pitched down from the poll: a loft with a big forehead and a small muzzle, a pink nose, big eyes, cheeks with a blush, ears, a smile, the horn ----
+ const head=new T.Group();head.position.copy(poll).sub(neckBase);neck.add(head);const pitch=-.68;
+ put(loft(station([[.2,0,.18,.13],[.12,0,.27,.22],[-.05,0,.3,.265],[-.25,-.02,.29,.26],[-.45,-.08,.22,.19],[-.65,-.12,.16,.14],[-.82,-.14,.125,.115],[-.9,-.15,.11,.1],[-.95,-.15,.06,.05]],
+  ([z,cy,h,w])=>({c:V(0,cy,z),a:V(w,0,0),b:V(0,h,0)})),18),coat,head);
+ part(sphere,nose,[0,-.15,-.86],[.108,.105,.085],head);
+ for(const s of [-1,1]){part(ball,nostril,[s*.05,-.14,-.93],[.024,.032,.016],head);part(sphere,blush,[s*.2,-.1,-.4],[.03,.075,.09],head);
+  part(ball,dark,[s*.225,.03,-.28],[.05,.095,.085],head);part(ball,iris,[s*.25,.03,-.28],[.032,.07,.062],head);part(ball,shine,[s*.268,.07,-.3],[.02,.03,.03],head);part(ball,shine,[s*.262,-.02,-.25],[.012,.016,.016],head);
+  const lash=part(shin,dark,[s*.225,.125,-.18],[.012,.11,.012],head);lash.rotation.set(.7,0,-s*.35);const lash2=part(shin,dark,[s*.235,.115,-.24],[.012,.1,.012],head);lash2.rotation.set(.25,0,-s*.6);
+  const e=new T.Group();e.position.set(s*.15,.24,.0);e.rotation.set(.55,0,-s*.2);head.add(e);part(cone,coat,[0,.14,0],[.14,.31,.07],e);part(cone,pink,[0,.11,-.035],[.09,.23,.035],e);e.userData.s=s;}
+ const smile=new T.TubeGeometry(new T.CatmullRomCurve3([V(.09,-.215,-.9),V(.125,-.23,-.82),V(.145,-.22,-.74)]),8,.006,4,false);for(const s of [-1,1]){const m=new T.Mesh(smile,nostril);m.scale.x=s;head.add(m);}
+ // the horn: a long golden cone with a spiral ridge winding up it, and a sparkle twinkling by its tip
+ const hornLen=.78,hornGeo=new T.ConeGeometry(.08,hornLen,14);hornGeo.translate(0,hornLen/2,0);const horn=new T.Group();horn.position.set(0,.24,-.2);horn.rotation.x=.12;head.add(horn);
+ put(hornGeo,gold,horn);
+ const helix=[];for(let i=0;i<=40;i++){const u=i/40,r=.08*(1-u*.96)+.008,f=u*Math.PI*2*3.2;helix.push(V(Math.cos(f)*r,u*hornLen*.96,Math.sin(f)*r));}
+ horn.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(helix),90,.011,5,false),goldDark));
+ const star=new T.Group();star.position.set(.02,hornLen+.1,-.1);horn.add(star);const oct=new T.OctahedronGeometry(1);
+ for(const sc of [[.15,.035,.035],[.035,.15,.035],[.035,.035,.15]])part(oct,spark,[0,0,0],sc,star);
+ head.rotation.x=pitch;head.scale.setScalar(1.25);
+ // ---- The mane: six locks (one in each colour) follow the neck down each side from the crest, lifting off it toward their ends; a forelock falls between the ears and the horn ----
+ const locks=[];
+ for(let k=0;k<6;k++)for(const s of [-1,1]){const u0=.95-k*.12,pts=[];
+  for(let j=0;j<=7;j++){const f=j/7,u=Math.max(.03,u0-f*.38),c=nk.getPointAt(u),t=nk.getTangentAt(u),ph=(80-52*Math.pow(f,.8))*Math.PI/180,o=1.05+.5*f*f+.03*k,wave=Math.sin(f*5+k)*.025;
+   pts.push(c.clone().addScaledVector(V(s,0,0),rw(u)*Math.cos(ph)*o+wave).addScaledVector(nrm(t),rn(u)*Math.sin(ph)*o));}
+  const g=new T.Group();g.position.copy(pts[0]);neck.add(g);const rel=pts.map(p=>p.clone().sub(pts[0]).toArray());
+  put(sweep(rel,taperTo(.1,.015,.7),taperTo(.04,.012),V(0,.6,-.8),14,8),rainbow[k],g);locks.push({g,k,s});}
+ for(const [i,s] of [[2,-1],[4,1]]){const g=new T.Group();g.position.set(s*.1,.31,-.02);head.add(g);
+  put(sweep([[0,0,0],[s*.012,.02,-.12],[s*.02,-.02,-.26],[s*.02,-.11,-.38],[s*.015,-.19,-.48]],taperTo(.05,.01),taperTo(.03,.008),V(1,0,0),10,8),rainbow[i],g);locks.push({g,k:i,s,fore:true});}
+ // ---- The tail: six strands in the six colours in two linked halves, which stream up behind it and wave ----
+ const tailA=[[0,0,0],[0,.14,.28],[0,.13,.56],[0,-.04,.8]],tailB=[[0,0,0],[0,-.26,.15],[0,-.58,.22]],tail=[];
+ for(let i=0;i<6;i++){const g=new T.Group();g.position.set((i-2.5)*.05,2.3,1.4);g.rotation.y=(i-2.5)*.1;g.userData.fan=(i-2.5)*.09;body.add(g);
+  put(sweep(tailA,taperTo(.08,.065),taperTo(.075,.06),V(1,0,0),12,8),rainbow[i],g);const h=new T.Group();h.position.set(0,-.04,.8);g.add(h);
+  put(sweep(tailB,taperTo(.065,.012,.7),taperTo(.06,.012,.7),V(1,0,0),10,8),rainbow[i],h);tail.push({g,h,i});}
+ // the KIWI logo (a plane bent onto the barrel's skin, 2 cm off it, one on each flank: tail to head on the right, head to tail on the left)
+ const skins={};
+ for(const [name,material] of Object.entries(logos))skins[name]=[-1,1].map(s=>{const g=new T.PlaneGeometry(1.2,.42,16,4),p=g.attributes.position;
+  for(let i=0;i<p.count;i++){const yy=2+p.getY(i),zz=.05-s*p.getX(i),[cy,ry,rx]=prof(zz),e=1-((yy-cy)/ry)**2;p.setXYZ(i,s*(rx*Math.sqrt(Math.max(0,e))+.02),yy,zz);}
+  g.computeVertexNormals();const m=new T.Mesh(g,material);m.name=name+' logo';m.visible=false;body.add(m);return m;});
  let phase=0,hop=0;
  function update(dt,speed,time,colour){
   if(colour)coat.color.copy(colour);
-  const run=Math.min(1,speed/6),amp=.25+.6*Math.min(1,speed/14);phase+=dt*(1.6+speed*.38);
-  [0,.35,Math.PI,Math.PI+.35].forEach((o,i)=>{legs[i].rotation.x=Math.sin(phase+o)*amp*run;});
-  body.position.y=Math.abs(Math.sin(phase))*.18*run;body.rotation.x=Math.sin(phase+Math.PI/2)*.05*run;
-  neck.rotation.x=-Math.sin(phase)*.1*run+Math.sin(time*.8)*.06*(1-run);tail.rotation.x=.3+.6*run+Math.sin(time*3)*.15;tail.rotation.z=Math.sin(time*2.4)*.25;
-  hop=Math.max(0,hop-dt*1.6);head.rotation.x=-.5*Math.sin(Math.PI*hop); // honk: rears its head (a neigh)
+  const run=Math.min(1,speed/6),amp=.3+.55*Math.min(1,speed/14);phase+=dt*(1.7+speed*.4);hop=Math.max(0,hop-dt*1.5);const neigh=Math.sin(Math.PI*Math.min(1,hop)); // honk: rears its head back (a neigh)
+  // a gallop in diagonal pairs: the leg swings, and the knee bends while it swings forward
+  for(const {hip,knee,fet,o,rear} of legs){const a=phase+o,bend=Math.max(0,Math.cos(a))*(.35+.8*amp)*run;
+   hip.rotation.x=(rear?-.25:0)+Math.sin(a)*amp*run;knee.rotation.x=(rear?.45:0)-bend*(rear?1.2:1.3);fet.rotation.x=(rear?.1:.2)-bend*.5;}
+  body.position.y=Math.abs(Math.sin(phase))*.16*run;body.rotation.x=Math.sin(phase+Math.PI/2)*.045*run;torso.scale.y=1+Math.sin(time*2.2)*.008*(1-run);
+  neck.rotation.x=-Math.sin(phase)*.08*run+Math.sin(time*.8)*.05*(1-run)+.25*neigh;head.rotation.x=pitch+Math.sin(phase+1)*.06*run+.75*neigh;head.rotation.y=Math.sin(time*.6)*.12*(1-run);
+  for(const e of head.children)if(e.userData.s){e.rotation.x=.55-.35*run;e.rotation.z=-e.userData.s*.2+Math.sin(time*.9+e.userData.s)*.04+(Math.max(0,Math.sin(time*.37+e.userData.s*2)-.92)*3)*e.userData.s;}
+  for(const {g,k,s,fore} of locks){g.rotation.x=fore?neigh*-.4:-.2*run-.45*neigh+Math.sin(time*3.1+k*.7)*.04;g.rotation.z=fore?0:s*(Math.sin(time*2.3+k)*.04+.08*run);}
+  for(const {g,h,i} of tail){g.rotation.x=g.userData.fan+.1*(1-run)-.32*run+Math.sin(time*2.6+i*.5)*.05;g.rotation.z=Math.sin(time*2.1+i*.45)*(.08+.18*run);h.rotation.x=Math.sin(time*3.4+i*.5-1)*(.14+.12*run)-.1*run;h.rotation.z=Math.sin(time*2.7+i*.4)*.16*(.5+run);}
+  star.scale.setScalar(.85+.3*Math.sin(time*5));star.rotation.z=time*1.2;
  }
  update(0,0,0);
  return {group,update,skins,honk(){hop=1;}};
