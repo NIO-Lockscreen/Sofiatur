@@ -7,7 +7,7 @@ import {createDrivingLines} from './dist/driving-line.js';
 import {createFreeDrive} from './dist/free-drive.js';
 import {createMusic} from './dist/music.js';
 import {createBoy} from './dist/boy.js';
-import {createDuckRunner} from './dist/duck-runner.js';
+import {createDuckRunner,createDucklingRunner} from './dist/duck-runner.js';
 import {createDog,createRideDuck,createRocket,createUnicorn,createFireTruck,createBalloon,createTRex,createPig,BEACONS} from './dist/rides.js';
 import {createBubbles} from './dist/bubbles.js';
 import {createRainbowTrail} from './dist/rainbow-trail.js';
@@ -22,7 +22,7 @@ async function launch(localStorage){
  const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',value:'',checked:false,style:{},children:[],attrs:{},classes:new Set(),classList:{add(){},remove(){},toggle(c,on){on?this.owner.classes.add(c):this.owner.classes.delete(c);}},setAttribute(k,v){this.attrs[k]=v;},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(type,fn){(this.listeners??={})[type]=fn;},close(){this.open=false;},getContext(){return canvasContext}});const el=els.get(id);el.classList.owner=el;return el;};
  const listeners=new Map(),spoken=[],tts={cancel(){},speak:u=>spoken.push(u.text),getVoices:()=>[]},inside={created:0,enters:[],refreshes:[],picks:[]}; // spoken: every text say() speaks; inside: what game.js asks of the house (inside.js, stubbed here)
  const env={T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener:(type,fn)=>listeners.set(type,fn),speechSynthesis:tts},speechSynthesis:tts,SpeechSynthesisUtterance:class{constructor(text){this.text=text;}},createInside:()=>{inside.created++;return {enter:(items,o)=>inside.enters.push({items,o}),refresh:(items,o)=>inside.refreshes.push({items,o}),update(){},pick:()=>inside.picks.length?inside.picks.shift():null};},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),
-  createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on,setBoy:on=>world.boy=on,setDuckRunner:on=>world.duckRunner=on,setBubbles:on=>world.bubbles=on,setHover:on=>world.hover=on,setBalloonGirl:on=>world.balloonGirl=on,honk:()=>world.honks++})};
+  createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on,setBoy:on=>world.boy=on,setDuckRunner:on=>world.duckRunner=on,setDuckling:on=>world.duckling=on,setBubbles:on=>world.bubbles=on,setHover:on=>world.hover=on,setBalloonGirl:on=>world.balloonGirl=on,honk:()=>world.honks++})};
  if(localStorage)Object.defineProperty(env,'localStorage',{get:localStorage});
  const ctx=vm.createContext(env);
  const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},home(){start();current=data.start;state='decision';parkAtHome();},ludvig(){parkAtLudvig();},freeDrive(x,z,v){if(state!=='free'){freeMode=true;start();}free.reset(x,z,0,v);freeVisits();},ishall(){parkAtIshall();},rema(){parkAtRema();},visit(n){start();active={e:{from:data.start,to:{kiwi:kiwiParking,ludvig:ludvigParking,lake:data.lakeside}[n]},line:{at(l,p){if(n==='lake'){const q=data.nodes[data.lakeside];p.set(q[0],100,q[1]);}},tangent(){}},len:0};arrive();},start(){start();},honkKey(){honk();},state:()=>state,snap:()=>snapshot(),stash:()=>stash,progress:()=>({arrivals,carColour,trailOn:behind==='trail',catOn:model==='cat'}),model:()=>model,behind:()=>behind};})()`,ctx);
@@ -265,8 +265,13 @@ console.log('RE-ward also saves, clears and restores the places visited, the tax
  game.tick(6);assert.ok(game.element('body').classes.has('at-lake'),'Parked at the lake, the horn button shows (body.at-lake)');assert.equal(game.element('horn').hidden,false);
  game.element('toast').textContent='';game.test.honkKey();assert.equal(game.world.duckRunner,true,'Honking at the lake, driving as the duck, does');assert.match(game.element('toast').textContent,/Anda hørte tuta/);assert.equal(game.test.behind(),'duck');assert.equal(game.world.boy,false);assert.equal(game.world.trail,false);
  assert.equal(game.element('duckRunnerRow').hidden,false);assert.equal(game.element('duckRunner').checked,true);assert.equal(game.element('rewards').hidden,false);
- game.element('toast').textContent='';game.test.honkKey();game.test.honkKey();assert.equal(game.element('toast').textContent,'','Honking again says nothing more while it already runs');
- game=await launch(()=>storage);assert.equal(game.world.duckRunner,true,'Remembered');assert.equal(game.element('duckRunner').checked,true);
+ assert.equal(game.world.duckling,false,'The first honk brings the small duck only');
+  // The double duck (7 October 2026): with the small duck running after the car, a honk at the lake again, driving as the duck, brings a smaller duck that follows the small one.
+  // It is no unlock: nothing is saved.
+  const savedBefore=store.get('sofiatur.fremgang');game.element('toast').textContent='';game.test.honkKey();assert.equal(game.world.duckling,true,'The next honk: a smaller duck follows the small duck');
+  assert.match(game.element('toast').textContent,/enda mindre and følger etter den lille anda/);assert.match(game.spoken.at(-1),/enda mindre and etter den lille anda/);assert.equal(store.get('sofiatur.fremgang'),savedBefore,'Nothing is saved: it is no unlock');assert.equal(game.world.duckRunner,true);
+  game.element('toast').textContent='';game.test.honkKey();game.test.honkKey();assert.equal(game.element('toast').textContent,'','Honking again says nothing more once both ducks run');
+ game=await launch(()=>storage);assert.equal(game.world.duckRunner,true,'Remembered');assert.equal(game.element('duckRunner').checked,true);assert.equal(game.world.duckling,false,'The smaller duck is not remembered: it is no unlock');
  // An alternative to the trail, Ludvig and the bubbles: one at a time, all may be off, the choice is remembered.
  game.element('trail').onchange({target:{checked:true}});assert.equal(game.world.duckRunner,false,'The trail switches it off');assert.equal(game.element('duckRunner').checked,false);
  game.element('duckRunner').onchange({target:{checked:true}});assert.equal(game.world.duckRunner,true);assert.equal(game.world.trail,false,'and it switches the trail off');
@@ -285,6 +290,20 @@ console.log('RE-ward also saves, clears and restores the places visited, the tax
   duckStore();game=await launch(()=>storage);drive(4);drive(45);game.tick(6);assert.ok(!game.element('body').classes.has('at-lake'),'Driven away from the lake (30 m), the button is as before');game.test.honkKey();assert.equal(game.world.duckRunner,false,'Honking 45 m from it, after the visit, does not count');
   drive(20);game.test.honkKey();assert.equal(game.world.duckRunner,false,'and that visit is spent: back within 30 m but not at the circle, nothing');drive(4);game.test.honkKey();assert.equal(game.world.duckRunner,true,'a new visit, then the horn, does');}}
 console.log('Easter egg: visiting the duck as the duck and honking sets a duck running after the car; it is one of the alternatives behind it: OK');
+// The double duck in more detail (7 October 2026): the smaller duck follows the small one, so it goes with it and comes back with it; it needs the duck as the ride, the lake, the
+// horn and the small duck already running; and it is for this visit to the game only: a reload, a new game (RE-ward) and a rollback take it away.
+{const duckStore=extra=>{store.clear();store.set('sofiatur.fremgang',JSON.stringify({arrivals:11,model:'duck',duck:'on',behind:'duck',...extra}));};let g;
+ duckStore();g=await launch(()=>storage);assert.equal(g.world.duckRunner,true);assert.equal(g.world.duckling,false,'not before the honk');g.test.visit('lake');g.test.honkKey();assert.equal(g.world.duckling,true,'one honk is enough when the small duck already runs');
+ g.element('trail').onchange({target:{checked:true}});assert.equal(g.world.duckRunner,false);assert.equal(g.world.duckling,false,'with the small duck switched off there is nothing to follow');
+ g.element('duckRunner').onchange({target:{checked:true}});assert.equal(g.world.duckling,true,'back with the small duck, for as long as the page is open');
+ duckStore({behind:'none'});g=await launch(()=>storage);g.test.visit('lake');g.test.honkKey();assert.equal(g.world.duckRunner,true);assert.equal(g.world.duckling,false,'the first honk only puts the small duck back');g.test.honkKey();assert.equal(g.world.duckling,true,'and the next brings the smaller one');
+ for(const [what,extra] of [['as the dog',{model:'dog'}],['as the car',{model:'car'}],['before the horn',{arrivals:10}]]){duckStore(extra);g=await launch(()=>storage);g.test.visit('lake');g.test.honkKey();g.test.honkKey();assert.equal(g.world.duckling,false,'No smaller duck '+what);}
+ duckStore();g=await launch(()=>storage);g.test.start();g.test.honkKey();g.test.honkKey();assert.equal(g.world.duckling,false,'Not away from the lake');
+ duckStore();g=await launch(()=>storage);g.test.visit('lake');g.test.honkKey();assert.equal(g.world.duckling,true);g=await launch(()=>storage);assert.equal(g.world.duckling,false,'A reload takes it away');
+ duckStore();g=await launch(()=>storage);g.test.visit('lake');g.test.honkKey();assert.equal(g.world.duckling,true);g.element('reAward').onclick();g.element('reAward').onclick();assert.equal(g.world.duckling,false,'RE-ward: a new game has no smaller duck');
+ g.element('reAwardRollback').onclick();g.element('reAwardRollback').onclick();assert.equal(g.world.duckRunner,true,'the old game is back, with its small duck');assert.equal(g.world.duckling,false,'but not the smaller one: it was never saved');
+ assert.ok(!/ducklingOn/.test(fs.readFileSync('dist/game.js','utf8').match(/function snapshot\(\)\{[^\n]*/)[0]),'it is not part of the saved progress');}
+console.log('The double duck: a smaller duck follows the small duck after a second honk at the lake, as the duck; it is not saved and goes with a reload or a new game: OK');
 // The horn button by the water: shown at a choice of road (hidden elsewhere) and above the free-driving buttons, and only once the horn is unlocked.
 {const css=fs.readFileSync('dist/style.css','utf8');assert.ok(css.includes('body.choosing .horn{visibility:hidden}'),'hidden at a choice of road, as before');
  assert.ok(css.includes('body.choosing.at-lake .horn:not([hidden]){visibility:visible}'),'but shown at the lake');
@@ -334,6 +353,21 @@ console.log('Ludvig runs after the car, round bends, catches up when it stops an
  const box=new T.Box3().setFromObject(duck.model.group);assert.ok(box.max.y-box.min.y>.7&&box.max.y-box.min.y<1.2,'about 0.9 m tall: '+(box.max.y-box.min.y).toFixed(2));
  let meshes=0;duck.model.group.traverse(o=>{if(o.isMesh)meshes++;});assert.ok(meshes<45,'cheap: '+meshes+' meshes');}
 console.log('The running duck follows the car, waddles, beats its wings and flaps them by the parked car: OK');
+// The duckling (7 October 2026): a smaller duck, a yellow duckling about 0.45 m tall, that follows the small duck: the same follower, 1.2 m further behind, driving and standing.
+{const scene=new T.Scene(),duck=createDuckRunner({T,scene}),kid=createDucklingRunner({T,scene}),pos=new T.Vector3(0,100.08,0),facing=new T.Vector3(0,0,-1);
+ assert.equal(kid.group.visible,false,'Hidden until the double duck is found');duck.setOn(true);kid.setOn(true);assert.equal(kid.group.visible,true);
+ for(let i=0;i<200;i++){pos.z-=20*.045;duck.update(.045,pos,facing,20,i*.045);kid.update(.045,pos,facing,20,i*.045);}
+ const d=duck.group.position,k=kid.group.position;assert.ok(k.z-d.z>1&&k.z-d.z<1.4,`The duckling runs 1.2 m behind the small duck (${(k.z-d.z).toFixed(2)} m)`);assert.ok(Math.abs(k.x-d.x)<.05,'on the same track');
+ assert.ok(new T.Vector3(0,0,-1).applyQuaternion(kid.group.quaternion).z<-.99,'running towards the car');
+ for(let i=0;i<160;i++){duck.update(.045,pos,facing,0,9+i*.045);kid.update(.045,pos,facing,0,9+i*.045);}
+ const gd=Math.hypot(d.x-pos.x,d.z-pos.z),gk=Math.hypot(k.x-pos.x,k.z-pos.z);assert.ok(gk>gd+.8&&gk<gd+1.6,`Standing, it stands behind the small duck (${gd.toFixed(2)} m and ${gk.toFixed(2)} m from the car)`);assert.ok(k.x-pos.x>.9,'by the same rear corner');
+ const height=m=>{const b=new T.Box3().setFromObject(m.group);return b.max.y-b.min.y;};
+ assert.ok(height(kid.model)>.3&&height(kid.model)<.6&&height(kid.model)<height(duck.model)*.65,`about half the small duck: ${height(kid.model).toFixed(2)} m against ${height(duck.model).toFixed(2)} m`);
+ let lift=0;for(let i=0;i<40;i++){duck.update(.045,pos,facing,0,20+i*.045);kid.update(.045,pos,facing,0,20+i*.045);lift=Math.max(lift,...kid.model.wings.map(w=>Math.abs(w.rotation.z)));}assert.ok(lift>.3,'it flaps its tiny wings by the parked car');
+ let swing=0,roll=0;for(let i=0;i<30;i++){pos.z-=20*.045;kid.update(.045,pos,facing,20,40+i*.045);swing=Math.max(swing,Math.abs(kid.model.legs[0].rotation.x));roll=Math.max(roll,Math.abs(kid.model.group.children[0].rotation.z));}assert.ok(swing>.6&&roll>.1,'its legs swing and it waddles as it runs');
+ let meshes=0;kid.model.group.traverse(o=>{if(o.isMesh)meshes++;});assert.ok(meshes<40,'cheap: '+meshes+' meshes');
+ pos.x+=300;kid.update(.045,pos,facing,0,60);assert.ok(Math.hypot(k.x-pos.x,k.z-pos.z)<8,'A jump starts it again right behind the car');kid.setOn(false);assert.equal(kid.group.visible,false);}
+console.log('The duckling follows the small duck 1.2 m behind it, driving and standing: OK');
 
 // Debug keys for testing the unlocks: X counts one more trip to the kindergarten, Z one fewer (saved like a real count).
 store.clear();game=await launch(()=>storage);

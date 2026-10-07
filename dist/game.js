@@ -8,6 +8,7 @@ const $=id=>document.getElementById(id);
 let world,data,state='loading',sound=true,current,previous=null,active=null,distance=0,speed=0,travelled=0,turns=0,heading=new T.Vector3(0,0,1),position=new T.Vector3(),choices=[],best=null,totalInitial=0,maxKmh=200,camMode='follow',lastTime=performance.now(),time=0,mapClock=0,leavingHome=false,lastEdge=null,lines=null;
 let roundaboutUndo=null,freeMode=false,free=null,carHeight,showDeadEnds=true,choicesStale=false,musicOn=true,queue=[],preview=null,picked=null,pickedUntil=-9,aheadShown=false,planKey='';
 let arrivals=0,carColour='#14171c',behind='trail',ludvigUnlocked=false,duckUnlocked=false,model='car',newReward=null,homeAt=0; // behind: what follows the car, 'trail' (the rainbow trail), 'ludvig', 'duck' (a running duck) or 'none'
+let ducklingOn=false; // the duckling of the double duck (7 October 2026): an easter egg for this visit to the game only, never saved (see ducklingHeard)
 let ishallVisited=false,remaVisited=false,taxiSeen=false,pigUnlocked=false,beenInside=false,hoverSeen=false,hoverOn=true; // the new unlocks (5 October 2026): places visited, the taxi and the hover car announced, the pig found, Sofia been inside, the hover mode on or off
 const roundaboutKmh=45; // speed round the circle and into it
 // The car speeds up by ACCEL, brakes ahead of a slower stretch (a turn, a junction where it must stop) by DECEL, and by BRAKE at most when a new plan needs it at once.
@@ -293,7 +294,7 @@ function rideOK(m){return m==='taxi'?taxiReady():m==='pig'?pigUnlocked:arrivals>
 function snapshot(){return {arrivals,colour:carColour,trail:behind==='trail'?'on':'off',behind,kiwi:kiwiUnlocked?'on':'off',ludvig:ludvigUnlocked?'on':'off',duck:duckUnlocked?'on':'off',model,ishall:ishallVisited?'on':'off',rema:remaVisited?'on':'off',taxi:taxiSeen?'on':'off',pig:pigUnlocked?'on':'off',inside:beenInside?'on':'off',hoverSeen:hoverSeen?'on':'off',hover:hoverOn?'on':'off'};}
 function saveProgress(){try{localStorage.setItem('sofiatur.fremgang',JSON.stringify(snapshot()));}catch{}}
 // Sets the progress from a saved one (what snapshot() gives): anything missing or wrong is as in a new game. Used when the game starts and by RE-ward (and so by the rollback).
-function applySaved(saved){saved=saved&&typeof saved==='object'?saved:{};carColour='#14171c';arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour))carColour=nearestColour(saved.colour);else if(saved.colour==='kiwi'&&kiwiUnlocked||saved.colour==='rainbow'&&arrivals>=4)carColour=saved.colour;ludvigUnlocked=saved.ludvig==='on';duckUnlocked=saved.duck==='on';ishallVisited=saved.ishall==='on';remaVisited=saved.rema==='on';taxiSeen=saved.taxi==='on';pigUnlocked=saved.pig==='on';beenInside=saved.inside==='on';hoverSeen=saved.hoverSeen==='on';hoverOn=saved.hover!=='off';behind=['trail','ludvig','duck','bubbles','none'].includes(saved.behind)?saved.behind:saved.trail==='off'?'none':'trail';if(behind==='ludvig'&&!ludvigUnlocked||behind==='duck'&&!duckUnlocked||behind==='bubbles'&&arrivals<BUBBLES_AT)behind='trail';model=MODELS.includes(saved.model)&&rideOK(saved.model)?saved.model:'car';}
+function applySaved(saved){saved=saved&&typeof saved==='object'?saved:{};ducklingOn=false;carColour='#14171c';arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour))carColour=nearestColour(saved.colour);else if(saved.colour==='kiwi'&&kiwiUnlocked||saved.colour==='rainbow'&&arrivals>=4)carColour=saved.colour;ludvigUnlocked=saved.ludvig==='on';duckUnlocked=saved.duck==='on';ishallVisited=saved.ishall==='on';remaVisited=saved.rema==='on';taxiSeen=saved.taxi==='on';pigUnlocked=saved.pig==='on';beenInside=saved.inside==='on';hoverSeen=saved.hoverSeen==='on';hoverOn=saved.hover!=='off';behind=['trail','ludvig','duck','bubbles','none'].includes(saved.behind)?saved.behind:saved.trail==='off'?'none':'trail';if(behind==='ludvig'&&!ludvigUnlocked||behind==='duck'&&!duckUnlocked||behind==='bubbles'&&arrivals<BUBBLES_AT)behind='trail';model=MODELS.includes(saved.model)&&rideOK(saved.model)?saved.model:'car';}
 try{applySaved(JSON.parse(localStorage.getItem('sofiatur.fremgang')));}catch{}
 const swatches=carColours.map(([name,hex])=>{const b=document.createElement('button');b.type='button';b.className='swatch';b.title=name;b.setAttribute('aria-label',name);b.style.background=hex;b.onclick=()=>pickColour(hex);return b;});
 const kiwiSwatch=document.createElement('button');kiwiSwatch.type='button';kiwiSwatch.className='swatch kiwi';kiwiSwatch.title='KIWI';kiwiSwatch.setAttribute('aria-label','Hemmelig KIWI-bil');kiwiSwatch.textContent='K';kiwiSwatch.onclick=()=>pickColour('kiwi');
@@ -303,7 +304,7 @@ $('carColours').append(...swatches,rainbowSwatch,kiwiSwatch);
 function pickColour(hex){carColour=hex.toLowerCase();saveProgress();applyRewards();showRewards();}
 function applyRewards(){if(!world)return;const kiwi=carColour==='kiwi'&&kiwiUnlocked,ride=rideOK(model)?model:'car';
  world.setCarColour?.(kiwi?'#5fae36':arrivals>=1&&carColour!=='kiwi'?carColour:ride==='pig'?PIG_PINK:'#14171c'); // a pig found before the first trip (no colour picker yet) is pink
- world.setCarSkin?.(kiwi?'kiwi':null);world.setTrail?.(arrivals>=3&&behind==='trail');world.setBoy?.(ludvigUnlocked&&behind==='ludvig');world.setDuckRunner?.(duckUnlocked&&behind==='duck');world.setBubbles?.(arrivals>=BUBBLES_AT&&behind==='bubbles');$('horn').hidden=arrivals<HORN_AT;world.setCarModel?.(ride);world.setHover?.(hoverReady()&&hoverOn);world.setBalloonGirl?.(beenInside);}
+ world.setCarSkin?.(kiwi?'kiwi':null);world.setTrail?.(arrivals>=3&&behind==='trail');world.setBoy?.(ludvigUnlocked&&behind==='ludvig');world.setDuckRunner?.(duckUnlocked&&behind==='duck');world.setDuckling?.(ducklingOn&&duckUnlocked&&behind==='duck');world.setBubbles?.(arrivals>=BUBBLES_AT&&behind==='bubbles');$('horn').hidden=arrivals<HORN_AT;world.setCarModel?.(ride);world.setHover?.(hoverReady()&&hoverOn);world.setBalloonGirl?.(beenInside);}
 // Before the first trip to the kindergarten, a KIWI unlock shows only black and the KIWI car.
 function showRewards(){$('rewards').hidden=arrivals<1&&!kiwiUnlocked&&!ludvigUnlocked&&!duckUnlocked&&!pigUnlocked;$('trailRow').hidden=arrivals<3;$('trail').checked=behind==='trail';$('ludvigRow').hidden=!ludvigUnlocked;$('ludvig').checked=behind==='ludvig';$('duckRunnerRow').hidden=!duckUnlocked;$('duckRunner').checked=behind==='duck';$('bubblesRow').hidden=arrivals<BUBBLES_AT;$('bubbles').checked=behind==='bubbles';$('modelRow').hidden=arrivals<2&&!taxiReady()&&!pigUnlocked;$('hoverRow').hidden=!hoverReady();$('hover').checked=hoverOn;for(const m of MODELS){$('model-'+m).hidden=!rideOK(m);$('model-'+m).classList.toggle('on',m===model);}
  swatches.forEach((b,i)=>{const on=carColours[i][1]===carColour||i===0&&carColour!=='kiwi'&&arrivals<1&&model!=='pig';b.hidden=arrivals<1&&i>0;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');});
@@ -355,7 +356,7 @@ function debugPodium(delta){
 function lockSecret({id,title}){
  if(id==='kiwi'){kiwiUnlocked=false;if(carColour==='kiwi')carColour='#14171c';}
  else if(id==='ludvig'){ludvigUnlocked=false;if(behind==='ludvig')behind='trail';}
- else if(id==='duckRunner'){duckUnlocked=false;if(behind==='duck')behind='trail';}
+ else if(id==='duckRunner'){duckUnlocked=false;ducklingOn=false;if(behind==='duck')behind='trail';}
  else if(id==='taxi'){ishallVisited=remaVisited=false;}
  else pigUnlocked=false; // the pig, or the hover car that goes with it
  if(!taxiReady())taxiSeen=false;if(!hoverReady())hoverSeen=false; // announced again when it is unlocked again
@@ -475,8 +476,12 @@ function atLake(){
 // the brake and drift buttons take its corner, so the button moves up above them (style.css, body.at-lake).
 function lakeHorn(){document.body.classList.toggle('at-lake',atLake());}
 function honkAtDuck(){if(!atLake())return;duckHeard();}
+// The double duck (7 October 2026): with the small duck already running after the car and the car driving as the duck, a honk at the big duck brings a smaller duck, a
+// duckling, which follows the small one. It is no unlock: it is not saved (a reload, RE-ward and the rollback take it away), it has no place on the podium or the start
+// card, and it is there only while the small duck is behind the car (switch the small duck off and it goes, switch it on and it is back, for as long as the page is open).
+function ducklingHeard(){if(ducklingOn)return;ducklingOn=true;applyRewards();toast('🐥 En enda mindre and følger etter den lille anda!');say('Kvakk kvakk! Nå følger en enda mindre and etter den lille anda!');}
 function duckHeard(){
- const first=!duckUnlocked,again=!first&&behind!=='duck';if(!first&&!again)return;
+ const first=!duckUnlocked,again=!first&&behind!=='duck';if(!first&&!again){ducklingHeard();return;} // the small duck already runs: this honk is the double duck's
  duckUnlocked=true;behind='duck';saveProgress();applyRewards();showRewards();const x=newUnlocks();
  if(first){toast('🦆 Anda hørte tuta · Nå løper en and etter bilen!'+x.toast);say('Kvakk kvakk! Anda hørte tuta! Nå løper en and etter bilen. Du kan slå den av og på hjemme.'+x.say);}
  else{toast('🦆 Anda hørte tuta · Nå løper den etter bilen igjen!'+x.toast);say('Kvakk kvakk! Nå løper anda etter bilen igjen.'+x.say);}

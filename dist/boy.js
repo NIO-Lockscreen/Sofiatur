@@ -48,10 +48,11 @@ export function createBoyModel(T){
 
 // The follower: a track of the car's path (a point every 0.4 m) and the boy that runs along it.
 // createModel: what runs (Ludvig; the running duck of duck-runner.js is the same follower with another model).
-export function createBoy({T,scene,createModel=createBoyModel}){
+// extra: metres further behind than the others keep (the duckling that follows the small duck, 7 October 2026), driving and standing.
+export function createBoy({T,scene,createModel=createBoyModel,extra=0}){
  const model=createModel(T),group=model.group;group.visible=false;scene.add(group);
- const track=[],MAX=160,yaw=new T.Euler(0,0,0,'YXZ');let on=false,behind=6,wave=0,run=0,lastX=null,lastZ=null,hanging=false;
- function clear(){track.length=0;behind=6;wave=0;lastX=lastZ=null;hanging=false;}
+ const track=[],MAX=160,yaw=new T.Euler(0,0,0,'YXZ');let on=false,behind=6+extra,wave=0,run=0,lastX=null,lastZ=null,hanging=false;
+ function clear(){track.length=0;behind=6+extra;wave=0;lastX=lastZ=null;hanging=false;}
  function setOn(value){if(!!value===on)return;on=!!value;group.visible=on;clear();} // already on: he keeps his place (a visit to KIWI applies the rewards again)
  // The point `d` metres back along the track from the car, and the direction there (towards the car).
  function along(d){let rest=d;for(let i=track.length-1;i>0;i--){const a=track[i-1],b=track[i],l=Math.hypot(b.x-a.x,b.z-a.z);if(l>=rest){const f=l>0?rest/l:0;return {x:b.x+(a.x-b.x)*f,y:b.y+(a.y-b.y)*f,z:b.z+(a.z-b.z)*f,dx:(b.x-a.x)/(l||1),dz:(b.z-a.z)/(l||1)};}rest-=l;}
@@ -65,9 +66,9 @@ export function createBoy({T,scene,createModel=createBoyModel}){
   if(held){behind=3.1;wave=0;return;} // in the T. rex's mouth (hold() places him); afterwards he runs on from right behind the car
   hanging=false;
   // Six metres behind while the car drives, three by its rear when it stops; he never falls further back than the track reaches.
-  const want=v>.8?6:3.1;behind+=(want-behind)*Math.min(1,dt*(v>.8?.8:1.6));
+  const want=v>.8?6+extra:3.1+extra;behind+=(want-behind)*Math.min(1,dt*(v>.8?.8:1.6));
   const p=along(Math.min(behind,Math.max(0,track.length*.4-.5)));
-  const stopped=v<.3&&Math.abs(behind-3.1)<.25;wave+=((stopped?1:0)-wave)*Math.min(1,dt*3);
+  const stopped=v<.3&&Math.abs(behind-3.1-extra)<.25;wave+=((stopped?1:0)-wave)*Math.min(1,dt*3);
   // Standing, he steps out beside the car's rear corner (right-hand side, towards the kerb) and turns to the car.
   const side=wave*1.1;group.position.set(p.x-p.dz*side,p.y,p.z+p.dx*side);
   yaw.set(0,Math.atan2(-p.dx,-p.dz)+wave*.6,0);group.quaternion.setFromEuler(yaw);

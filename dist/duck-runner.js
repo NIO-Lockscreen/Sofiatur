@@ -43,4 +43,39 @@ export function createDuckRunnerModel(T){
  return {group,update,legs,wings,head};
 }
 
+// The duckling (7 October 2026): the easter egg that follows the small duck. Driving as the duck with the small duck behind the car, honking at the big duck in
+// Lianvannet again brings a smaller duck, a yellow duckling about 0.45 m tall, which runs after the small duck (the same follower, 1.2 m further behind, also when standing
+// by the parked car). It waddles on two short orange legs and flaps its tiny wings at the parked car. Forward is −z, the ground y = 0.
+export function createDucklingModel(T){
+ const group=new T.Group();group.name='Andunge';
+ const mat=(color,roughness=.8)=>new T.MeshStandardMaterial({color,roughness});
+ const fluff=mat('#ffd94a'),pale=mat('#fff0a0'),wingYellow=mat('#f2c230'),bill=mat('#f08a24',.5),orange=mat('#f08a24',.6),black=new T.MeshBasicMaterial({color:'#1c1f21'}),glint=new T.MeshBasicMaterial({color:'#ffffff'});
+ const sphere=new T.SphereGeometry(1,14,10),limb=new T.CylinderGeometry(1,.85,1,8),box=new T.BoxGeometry(1,1,1);
+ function part(g,m,[x,y,z],[sx,sy,sz],parent){const o=new T.Mesh(g,m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;parent.add(o);return o;}
+ const body=new T.Group();group.add(body);
+ // A round fluffy body with a pale belly and a little tuft of a tail.
+ part(sphere,fluff,[0,.22,.02],[.15,.13,.19],body);part(sphere,pale,[0,.17,-.04],[.11,.07,.14],body);part(sphere,fluff,[0,.28,.2],[.05,.05,.06],body);part(sphere,fluff,[0,.28,-.1],[.115,.11,.11],body);
+ // Tiny wings from the shoulders: an oval that lies along the flank and, flapping, lifts out to the side.
+ const wings=[-1,1].map(s=>{const sh=new T.Group();sh.position.set(s*.13,.27,-.02);body.add(sh);const paddle=part(sphere,wingYellow,[s*.02,-.02,.05],[.025,.035,.1],sh);sh.userData.paddle=paddle;return sh;});
+ // The big round head (a duckling's is large for its body) with a short orange bill, black eyes with a glint, and a small tuft on top.
+ const head=new T.Group();head.position.set(0,.31,-.15);body.add(head);
+ part(sphere,fluff,[0,.1,0],[.105,.1,.105],head);part(sphere,bill,[0,.07,-.115],[.048,.02,.062],head);part(sphere,fluff,[0,.2,.01],[.02,.03,.02],head);
+ for(const s of [-1,1]){part(sphere,black,[s*.065,.13,-.065],[.019,.022,.019],head);part(sphere,glint,[s*.07,.14,-.075],[.007,.007,.007],head);}
+ // Short orange legs with flat feet; they swing.
+ const legs=[-1,1].map(s=>{const hip=new T.Group();hip.position.set(s*.06,.13,.02);body.add(hip);
+  part(limb,orange,[0,-.06,0],[.012,.065,.012],hip);part(box,orange,[0,-.125,-.035],[.05,.01,.075],hip);return hip;});
+ let phase=0;
+ // speed in m/s; wave 0..1 flaps the tiny wings (standing by the parked car).
+ function update(dt,speed,time,wave=0){
+  const run=Math.min(1,speed/2.5);phase+=dt*Math.min(20,6+speed*1.2);
+  const s=Math.sin(phase)*run;legs[0].rotation.x=s;legs[1].rotation.x=-s;
+  body.rotation.z=Math.sin(phase)*.16*run;body.position.y=Math.abs(Math.cos(phase))*.035*run;body.rotation.x=-.1*run;
+  head.rotation.x=.2*run+Math.sin(phase*2)*.07*run;head.rotation.z=-body.rotation.z*.6;head.rotation.y=Math.sin(time*1.1)*.35*(1-run);
+  const spread=Math.min(1,run*.5+wave),beat=Math.sin(wave>.2?time*18:phase*2);
+  wings.forEach((w,i)=>{const side=i?1:-1;w.userData.paddle.scale.set(.025+spread*.05,.035,.1-spread*.02);w.rotation.z=side*spread*(.3+(run*.3+wave*.5)*beat);});
+ }
+ update(0,0,0);
+ return {group,update,legs,wings,head};
+}
 export function createDuckRunner({T,scene}){return createBoy({T,scene,createModel:createDuckRunnerModel});}
+export function createDucklingRunner({T,scene}){return createBoy({T,scene,createModel:createDucklingModel,extra:1.2});}
