@@ -72,7 +72,7 @@ export function createRideDuck(T,{logos={}}={}){
  // legs from the hips, orange webbed feet
  const legs=[-1,1].map(s=>{const hip=new T.Group();hip.position.set(s*.42,.95,.15);body.add(hip);
   part(limb,orange,[0,-.45,0],[.08,.9,.08],hip);const foot=part(new T.ConeGeometry(1,1,3),orange,[0,-.9,-.22],[.32,.44,.06],hip);foot.rotation.x=-Math.PI/2;return hip;});
- const skins=flankLogos(T,body,logos,{cy:1.45,cz:.1,rx:.95,ry:.78,rz:1.55,w:1.3,h:.45,y:1.55,z:.35});
+ const skins=flankLogos(T,body,logos,{cy:1.45,cz:.1,rx:.95,ry:.78,rz:1.55,w:1.05,h:.36,y:1.08,z:.35}); // 7 October 2026: smaller, below the folded wings (they cover the flank above y 1.3) and above the belly
  let phase=0;
  function update(dt,speed,time,colour){
   if(colour)plumage.color.copy(colour);
@@ -110,7 +110,7 @@ export function createRocket(T,{logos={}}={}){
  const flameOuter=new T.Mesh(new T.ConeGeometry(.42,1,16,1,true),new T.MeshBasicMaterial({color:'#ff8a2b',transparent:true,opacity:.75,depthWrite:false,side:T.DoubleSide}));
  const flameInner=new T.Mesh(new T.ConeGeometry(.24,1,12,1,true),new T.MeshBasicMaterial({color:'#fff1a8',transparent:true,opacity:.9,depthWrite:false,side:T.DoubleSide}));
  for(const f of [flameOuter,flameInner]){f.rotation.x=Math.PI/2;f.position.set(0,Y,L/2+.45);f.renderOrder=3;body.add(f);}
- const skins=flankLogos(T,body,logos,{cy:Y,cz:0,rx:R,ry:R,rz:L*.9,w:1.35,h:.42,y:Y-.32,z:.2});
+ const skins=flankLogos(T,body,logos,{cy:Y,cz:0,rx:R,ry:R,rz:40,w:1.35,h:.42,y:Y-.32,z:.2}); // 7 October 2026: bent on the cylinder (rz long), so the ends of the logo do not sink into it
  function update(dt,speed,time,colour){
   if(colour)paint.color.copy(colour);
   const go=Math.min(1,speed/30),flick=.85+.15*Math.sin(time*37)+.08*Math.sin(time*23);
@@ -184,7 +184,7 @@ export function createFireTruck(T,{logos={}}={}){
  // down) at the sides of the fire engine, just under its body, so about the outer half of each tyre sticks out; each has a cyan glow. h = 0 puts them back exactly. world.js lifts the fire engine with the same blend.
  const under=hoverGlow(T,hinges.length,2.1);body.add(under.group);
  function hover(h,time=0){under.show(h,time);hinges.forEach((hinge,i)=>{const side=hinge.userData.side;hinge.rotation.z=-side*h*Math.PI/2;hinge.position.x=side*(1+.05*h);hinge.position.y=.48-.26*h;under.discs[i].position.set(hinge.position.x,hinge.position.y-.14,hinge.position.z);});}
- const skins=flankLogos(T,body,logos,{cy:1.45,cz:.75,rx:1.1,ry:20,rz:20,w:1.4,h:.45,y:2.15,z:.75});
+ const skins=flankLogos(T,body,logos,{cy:1.45,cz:.75,rx:1.15,ry:20,rz:20,w:1.4,h:.45,y:1.6,z:.75}); // 7 October 2026: on the locker doors (their faces are at 1.125), not behind them
  let flash=0,hop=0,rainbowLights=false;const hsl={h:0,s:0,l:0};
  // The paint is the car's colour (red by default, the standard fire engine); on a pale paint the stripe turns red. The beacons follow the colour chosen.
  function beacons(key){rainbowLights=key==='rainbow';const pair=BEACONS[key]||BEACONS[String(key).toLowerCase()]||['#2a6bff','#2a6bff'];pair.forEach((c,i)=>{blue[i].color.set(c);blue[i].emissive.set(c);});}

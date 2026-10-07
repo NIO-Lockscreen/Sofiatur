@@ -76,3 +76,8 @@ body.at-lake:has(#freeControls:not([hidden])) .horn:not([hidden]){display:grid!i
 /* With the hint showing on a wide screen the card is a little tighter still (an iPad in landscape, 1024×768, has no room to scroll in). */
 @media(min-width:701px){.welcome:has(#secretHint:not([hidden])) .reward-teaser{padding:7px 12px;font-size:12.5px;line-height:1.35}
  .welcome:has(#secretHint:not([hidden])) .trail-row{margin:3px 0 0}.welcome:has(#secretHint:not([hidden])) .model-choice{padding:3px 9px}}
+/* The horn on the start screen (7 October 2026), left of "Gå inn": to try each ride's horn while choosing what to drive as. It is the drive screen's button (.horn) in
+   another place; on a phone it sits beside "Gå inn" under the header, as that one does. */
+.horn-home{right:176px;bottom:50px;z-index:32}
+@media(max-height:500px){.horn-home{bottom:28px;width:60px;height:60px}}
+@media(max-width:700px){.horn-home{right:142px;top:68px;bottom:auto;width:52px;height:52px}}

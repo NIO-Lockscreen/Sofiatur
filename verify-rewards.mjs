@@ -333,6 +333,15 @@ for(const [name,make,{x,y,z,minY,paints}] of [['unicorn',createUnicorn,{x:[1,2.5
  for(let i=0;i<60;i++){pos.z-=10*.05;b.update(.05,pos,facing);}assert.ok(b.mesh.count>15,'Soap bubbles are blown ('+b.mesh.count+')');assert.ok(b.bubbles.every(q=>q.y>pos.y),'and rise above the car');
  assert.ok(b.bubbles.reduce((a,q)=>a+q.z,0)/b.bubbles.length>pos.z+1,'behind it');for(let i=0;i<120;i++)b.update(.05,pos,facing);assert.ok(b.bubbles.every(q=>q.age<=q.life),'and pop');b.setOn(false);assert.equal(b.mesh.visible,false);}
 console.log('Unicorn, fire engine, hot-air balloon and T. rex: sizes, logos, paint, movement, honk; soap bubbles blown, rising and popping: OK');
+// The KIWI logo must not hide under another part of its ride (7 October 2026: the fire engine's locker doors, the duck's folded wings and, at the ends, the rocket's body
+// covered it): from outside, a ray along the middle of each logo meets the logo first, at five points along it.
+for(const [name,make] of [['cat',createCat],['dog',createDog],['duck',createRideDuck],['rocket',createRocket],['unicorn',createUnicorn],['firetruck',createFireTruck],['balloon',createBalloon],['trex',createTRex],['pig',createPig]]){
+ const ride=make(T,{logos:{kiwi:new T.MeshBasicMaterial()}});ride.update?.(0,0,0,new T.Color('#c62828'));ride.group.updateMatrixWorld(true);
+ ride.skins.kiwi.forEach(m=>m.visible=true);const parts=[];ride.group.traverse(o=>{if(o.isMesh)parts.push(o);});const ray=new T.Raycaster(),at=new T.Vector3();
+ for(const logo of ride.skins.kiwi){const pos=logo.geometry.attributes.position;for(const i of [2,5,8,11,14]){at.fromBufferAttribute(pos,2*17+i).applyMatrix4(logo.matrixWorld);
+  const inward=new T.Vector3(-Math.sign(at.x),0,0);ray.set(at.clone().addScaledVector(inward,-3),inward);
+  assert.equal(ray.intersectObjects(parts,false)[0]?.object,logo,`${name}: the KIWI logo is visible (point ${i} at x ${at.x.toFixed(2)}, y ${at.y.toFixed(2)}, z ${at.z.toFixed(2)})`);}}}
+console.log('The KIWI logo is visible on every ride: nothing else of the ride lies over it: OK');
 // The fire engine takes the colour chosen, and its beacons a pair of colours for each: red is the standard fire engine with blue lights, KIWI green
 // and white, every colour of the picker its own pair; on the white paint the stripe turns red; the rainbow sends the beacons round the rainbow.
 {const truck=createFireTruck(T),colours=fs.readFileSync('dist/game.js','utf8').match(/const carColours=(\[.*?\]\]);/)[1],palette=JSON.parse(colours.replace(/'/g,'"'));
@@ -513,6 +522,19 @@ console.log('Inside the house: the button, the girl in the balloon (no announcem
  save({arrivals:13,kiwi:'on',ludvig:'on',duck:'on',pig:'on'});g=await launch(()=>storage);g.element('goInside').onclick();
  g.key('x');assert.ok(g.inside.refreshes.at(-1).items.every(i=>i.unlocked),'the taxi is the only place left, and the hover car comes with it');assert.equal(g.world.model,'taxi');assert.match(toast(),/Taxi låst opp.*Svevebil/);}
 console.log('Debug keys inside the house: X unlocks the podium one place at a time (trips, KIWI, Ludvig, the duck, the taxi, the pig and the hover car), Z locks it again, outside they count trips: OK');
+
+// The horn on the start screen (7 October 2026): once the horn is unlocked (eleven trips) its button stands on the start screen beside "Gå inn", so each ride's horn can be
+// tried while choosing what to drive as. It is gone while driving and in the house, and back at home.
+{save({arrivals:10});let g=await launch(()=>storage);assert.equal(g.element('hornHome').hidden,true,'locked: no horn button');g.key('h');assert.equal(g.world.honks,0,'and H does nothing');
+ save({arrivals:11,model:'dog'});g=await launch(()=>storage);assert.equal(g.element('hornHome').hidden,false,'the horn button is on the start screen');
+ g.element('hornHome').onclick();assert.equal(g.world.honks,1,'it honks: the ride hops');assert.equal(g.spoken.at(-1),'Voff voff!','as the dog (the word, as the recordings are not loaded in this test)');
+ g.element('model-cat').onclick();g.element('hornHome').onclick();assert.equal(g.spoken.at(-1),'Mjau!','the next ride has its own');g.key('h');assert.equal(g.world.honks,3,'H does too');
+ g.element('sound').onclick();const spoken=g.spoken.length;g.element('hornHome').onclick();assert.equal(g.world.honks,4);assert.equal(g.spoken.length,spoken,'with the sound off it hops and says nothing');g.element('sound').onclick();
+ g.element('goInside').onclick();assert.equal(g.element('hornHome').hidden,true,'not in the house');g.key('h');assert.equal(g.world.honks,4,'and no honk there');g.element('goOut').onclick();assert.equal(g.element('hornHome').hidden,false,'back at home it is back');
+ g.test.start();assert.equal(g.element('hornHome').hidden,true,'not while driving (the drive screen has its own button)');
+ save({arrivals:10});g=await launch(()=>storage);g.key('x');assert.equal(g.element('hornHome').hidden,false,'X: 11 trips, the button appears');g.key('z');assert.equal(g.element('hornHome').hidden,true,'Z: 10 trips, it is gone');
+ assert.ok(fs.readFileSync('dist/game.js','utf8').includes('applyRewards();reset();if(sound&&arrivals>=HORN_AT)music.preloadHorns?.();'),'the recordings are fetched when the game loads, so the first press on the start screen plays one and not the voice');}
+console.log('Horn on the start screen: a button beside "Gå inn" once the horn is unlocked, every ride sounds, H too, silent with the sound off, gone while driving and in the house: OK');
 
 
 // The pig takes the paint like the other rides (5 October 2026): pink to begin with (the Rosa swatch) whether it is chosen or found, then any colour, remembered.
