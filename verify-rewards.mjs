@@ -116,10 +116,23 @@ console.log('Fourth arrival unlocks the rainbow colour, then the dog, duck, rock
  t=await teaser({...base});game=t.g;game.key('z');assert.match(game.element('rewardTeaser').textContent,/én gang til/,'Z: 12 trips');game.key('x');assert.equal(game.element('rewardTeaser').textContent,'🔎 6 hemmeligheter mangler fortsatt','X: 13 trips');
  game.test.park();game.element('again').onclick?.();game.test.ludvig();assert.equal(game.element('rewardTeaser').textContent,'🔎 4 hemmeligheter mangler fortsatt','KIWI and Ludvig visited');
  game.test.ishall();game.test.rema();assert.equal(game.element('rewardTeaser').textContent,'🔎 3 hemmeligheter mangler fortsatt','the duck is still missing, so the taxi is too');
+ // The hint under the count (7 October 2026): one missing secret at a time, a riddle that never says what to do, the next one each time Sofia comes home.
+ const HINTS=['En hemmelig bil gjemmer seg hos en grønn butikk i nabolaget.','En venn bor like ved barnehagen, litt bortgjemt. Han savner deg!','Ved et vann bor en kjempestor and. Den liker å høre fra en av sine egne.','Taxien kommer til dem som har vært på mange andre steder enn barnehagen.','Noe rosa gjemmer seg inne i huset ditt. Se etter en krøllete hale!','Noe fra fremtiden venter helt til slutt.'];
+ const hintOf=g=>g.element('secretHint').hidden?null:g.element('secretHint').textContent,home=g=>{g.element('goInside').onclick();g.element('goOut').onclick();};
+ t=await teaser({...base});assert.equal(hintOf(t.g),'💡 '+HINTS[0],'the first missing secret gets the first hint');
+ const seen=[];for(let n=0;n<6;n++){seen.push(hintOf(t.g));home(t.g);}
+ assert.deepEqual([...seen],HINTS.map(h=>'💡 '+h),'each time Sofia comes home the next missing secret has its hint');assert.equal(hintOf(t.g),'💡 '+HINTS[0],'and then it starts again');
+ for(const h of HINTS)assert.doesNotMatch(h,/parker|besøk|tut|honk|trykk|kjør til/i,'a hint says where or who, never what to do: '+h);
+ const stable=hintOf(t.g);t.g.element('carColours').children[1].onclick();assert.equal(hintOf(t.g),stable,'a tap on the start card does not change the hint');
+ t=await teaser({...base,kiwi:'on',ludvig:'on'});assert.equal(hintOf(t.g),'💡 '+HINTS[2],'only the missing ones have hints: the duck first');home(t.g);assert.equal(hintOf(t.g),'💡 '+HINTS[3]);
+ t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on'});assert.equal(hintOf(t.g),'💡 '+HINTS[4],'the taxi found: the pig is next');home(t.g);assert.equal(hintOf(t.g),'💡 '+HINTS[5],'and the hover car last');
+ t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on',pig:'on'});assert.equal(hintOf(t.g),null,'all six found: no hint');
+ t=await teaser({arrivals:12});assert.equal(hintOf(t.g),null,'no hint before the thirteenth trip: the card hints at the next trip');
+ t=await teaser({arrivals:13});game=t.g;game.key('z');assert.equal(hintOf(game),null,'Z: back to 12 trips, no hint');game.key('x');assert.equal(hintOf(game),'💡 '+HINTS[0],'X: 13 trips, the hint is there');
  // The T. rex card no longer claims that every surprise is found: it is about the trips.
  assert.ok(!fs.readFileSync('dist/game.js','utf8').includes('Du har funnet alle overraskelsene!'),'the T. rex says the surprises from the trips');
  if(keep===undefined)store.delete('sofiatur.fremgang');else store.set('sofiatur.fremgang',keep);}
-console.log('Secrets: counted on the start card once the thirteen trips are made (the KIWI car, Ludvig, the duck, the taxi, the pig, the hover car): OK');
+console.log('Secrets: counted on the start card once the thirteen trips are made (the KIWI car, Ludvig, the duck, the taxi, the pig, the hover car), with a riddle-hint for one of the missing at a time: OK');
 
 // Rewards that are not unlocked yet cannot be forced through storage.
 store.set('sofiatur.fremgang',JSON.stringify({arrivals:1,colour:'rainbow',model:'cat'}));game=await launch(()=>storage);assert.equal(game.world.colour,'#14171c');assert.equal(game.world.model,'car');assert.equal(game.world.trail,false);

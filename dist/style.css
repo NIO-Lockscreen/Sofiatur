@@ -62,11 +62,17 @@ body.at-lake:has(#freeControls:not([hidden])) .horn:not([hidden]){display:grid!i
 @media(max-height:500px){.go-inside{bottom:30px}.go-out{top:70px}.inside-title{padding:4px 14px;bottom:26px}.unlock-info{bottom:74px;padding:10px 16px}.info-icon{font-size:32px}.unlock-info p{font-size:14px}}
 /* With the taxi, the pig or the hover switch on the start card (5 October 2026) the card was 60 px too tall for an iPad in landscape (1024×768): on a wide screen it
    drops the little heading and tightens up while they show. On a phone the card stops short of "Gå inn", which sits under the header. */
-@media(min-width:701px){.welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])){padding:24px 30px 26px}
- .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])) .eyebrow{display:none}
- .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])) h1{margin:0}
- .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])) .route-line{margin:12px 0 14px}
- .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])) .rewards{padding:9px 13px 10px;margin:-6px 0 14px}
- .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])) .model-row{gap:5px;margin-top:8px}
- .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])) .model-choice{padding:4px 9px}
- .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden])) .trail-row{margin:5px 0 0}}
+@media(min-width:701px){.welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden]),#secretHint:not([hidden])){padding:24px 30px 26px}
+ .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden]),#secretHint:not([hidden])) .eyebrow{display:none}
+ .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden]),#secretHint:not([hidden])) h1{margin:0}
+ .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden]),#secretHint:not([hidden])) .route-line{margin:12px 0 14px}
+ .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden]),#secretHint:not([hidden])) .rewards{padding:9px 13px 10px;margin:-6px 0 14px}
+ .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden]),#secretHint:not([hidden])) .model-row{gap:5px;margin-top:8px}
+ .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden]),#secretHint:not([hidden])) .model-choice{padding:4px 9px}
+ .welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden]),#secretHint:not([hidden])) .trail-row{margin:5px 0 0}}
+/* The hint under the count of the secrets (7 October 2026): it sits right under it, in a cooler tint. */
+.secret-hint{margin:-10px 0 16px;background:#e5f2ec;color:#2f564c}
+@media(max-height:650px) and (min-width:701px){.secret-hint{margin:-6px 0 10px}}
+/* With the hint showing on a wide screen the card is a little tighter still (an iPad in landscape, 1024×768, has no room to scroll in). */
+@media(min-width:701px){.welcome:has(#secretHint:not([hidden])) .reward-teaser{padding:7px 12px;font-size:12.5px;line-height:1.35}
+ .welcome:has(#secretHint:not([hidden])) .trail-row{margin:3px 0 0}.welcome:has(#secretHint:not([hidden])) .model-choice{padding:3px 9px}}
