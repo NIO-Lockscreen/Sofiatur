@@ -46,34 +46,45 @@ export function createBoyModel(T){
  return {group,update,dangle,legs,arms,head};
 }
 
-// The follower: a track of the car's path (a point every 0.4 m) and the boy that runs along it.
+// The follower: a track of the car's path (a point every 0.2 m, with the path length at each) and the boy that runs along it.
 // createModel: what runs (Ludvig; the running duck of duck-runner.js is the same follower with another model).
 // extra: metres further behind than the others keep (the duckling that follows the small duck, 7 October 2026), driving and standing.
+// Smooth (11 October 2026): he is placed by path length measured from the car itself, not from the last stored point (that moved him in 0.4 m hops, the spacing then: he stood
+// still for a few frames and then jumped, up to 25 cm in y on a steep road); he faces along the path 1 m either side of him, not along the stored segment he stands
+// on (a step in yaw at every point in a bend), and his height is the track's averaged over 1 m, so a step in the road is a short ramp. All of it is in metres, not frames.
 export function createBoy({T,scene,createModel=createBoyModel,extra=0}){
  const model=createModel(T),group=model.group;group.visible=false;scene.add(group);
- const track=[],MAX=160,yaw=new T.Euler(0,0,0,'YXZ');let on=false,behind=6+extra,wave=0,run=0,lastX=null,lastZ=null,hanging=false;
- function clear(){track.length=0;behind=6+extra;wave=0;lastX=lastZ=null;hanging=false;}
+ const track=[],MAX=160,yaw=new T.Euler(0,0,0,'YXZ'),H={x:0,y:0,z:0,s:0},P={x:0,y:0,z:0},a={x:0,y:0,z:0},b={x:0,y:0,z:0};let on=false,behind=6+extra,wave=0,run=0,lastX=null,lastZ=null,hanging=false,dx=0,dz=-1,turned=null;
+ function clear(){track.length=0;behind=6+extra;wave=0;lastX=lastZ=null;hanging=false;turned=null;}
+ const stamp=(x,y,z)=>({x,y,z,s:track.length?track.at(-1).s+Math.hypot(x-track.at(-1).x,z-track.at(-1).z):0}); // a track point with its path length
  function setOn(value){if(!!value===on)return;on=!!value;group.visible=on;clear();} // already on: he keeps his place (a visit to KIWI applies the rewards again)
- // The point `d` metres back along the track from the car, and the direction there (towards the car).
- function along(d){let rest=d;for(let i=track.length-1;i>0;i--){const a=track[i-1],b=track[i],l=Math.hypot(b.x-a.x,b.z-a.z);if(l>=rest){const f=l>0?rest/l:0;return {x:b.x+(a.x-b.x)*f,y:b.y+(a.y-b.y)*f,z:b.z+(a.z-b.z)*f,dx:(b.x-a.x)/(l||1),dz:(b.z-a.z)/(l||1)};}rest-=l;}
-  const a=track[0],b=track[1]||track[0],l=Math.hypot(b.x-a.x,b.z-a.z)||1;return {x:a.x,y:a.y,z:a.z,dx:(b.x-a.x)/l,dz:(b.z-a.z)/l};}
+ // The point `s` metres of path length along the track (the car itself, the live end of it, is at H.s): between the two stored points around it, the last stretch ending at the car.
+ function onTrack(s,o){let i=track.length-1,e=H,p=track[i];while(p.s>s&&i>0){e=p;p=track[--i];}const l=e.s-p.s,f=l>1e-6?Math.min(1,Math.max(0,(s-p.s)/l)):1;
+  o.x=p.x+(e.x-p.x)*f;o.y=p.y+(e.y-p.y)*f;o.z=p.z+(e.z-p.z)*f;return o;}
  // pos: the car (its ground is 8 cm under pos.y), facing: its direction, speed in m/s.
  function update(dt,pos,facing,speed,time,{held=false}={}){
   if(!on)return;const v=Math.abs(speed),gap=lastX===null?Infinity:Math.hypot(pos.x-lastX,pos.z-lastZ);
   if(gap>12)clear(); // the car was moved (a new trip, recovery): start again right behind it
-  if(!track.length){const h=Math.hypot(facing.x,facing.z)||1;for(let k=12;k>=0;k--)track.push({x:pos.x-facing.x/h*k*.5,y:pos.y-.08,z:pos.z-facing.z/h*k*.5});}
-  if(gap>.4||lastX===null){track.push({x:pos.x,y:pos.y-.08,z:pos.z});lastX=pos.x;lastZ=pos.z;if(track.length>MAX)track.shift();}
+  if(!track.length){const h=Math.hypot(facing.x,facing.z)||1;dx=facing.x/h;dz=facing.z/h;for(let k=Math.ceil((6+extra)*2);k>0;k--)track.push(stamp(pos.x-dx*k*.5,pos.y-.08,pos.z-dz*k*.5));} // a straight track as long as he stays behind, so the duckling does not wait for the car to lay down 1.2 m more
+  if(gap>.2||lastX===null){track.push(stamp(pos.x,pos.y-.08,pos.z));lastX=pos.x;lastZ=pos.z;if(track.length>MAX)track.shift();}
+  const end=track.at(-1);H.x=pos.x;H.y=pos.y-.08;H.z=pos.z;H.s=end.s+Math.hypot(pos.x-end.x,pos.z-end.z); // the car right now, not where the last point was left
   if(held){behind=3.1;wave=0;return;} // in the T. rex's mouth (hold() places him); afterwards he runs on from right behind the car
   hanging=false;
   // Six metres behind while the car drives, three by its rear when it stops; he never falls further back than the track reaches.
-  const want=v>.8?6+extra:3.1+extra;behind+=(want-behind)*Math.min(1,dt*(v>.8?.8:1.6));
-  const p=along(Math.min(behind,Math.max(0,track.length*.4-.5)));
-  const stopped=v<.3&&Math.abs(behind-3.1-extra)<.25;wave+=((stopped?1:0)-wave)*Math.min(1,dt*3);
+  const want=v>.8?6+extra:3.1+extra;behind+=(want-behind)*(1-Math.exp(-dt*(v>.8?.8:1.6)));
+  const s=H.s-Math.min(behind,H.s-track[0].s),p=onTrack(s,P);
+  // Facing: along the path from 1 m behind him to 1 m ahead (towards the car). Where the path folds (the car reverses) the chord is too short to tell: he keeps his heading.
+  onTrack(s-1,a);onTrack(s+1,b);const fx=b.x-a.x,fz=b.z-a.z,l=Math.hypot(fx,fz);if(l>.25){dx=fx/l;dz=fz/l;}
+  // Height: the track averaged over 1 m (a triangle, five points 25 cm apart), so a 10 cm step in the road is a ramp of a metre and not a hop in one frame.
+  let y=0;for(let k=-2;k<=2;k++)y+=onTrack(s+k*.25,a).y*(3-Math.abs(k));
+  const stopped=v<.3&&Math.abs(behind-3.1-extra)<.25;wave+=((stopped?1:0)-wave)*(1-Math.exp(-dt*3));
   // Standing, he steps out beside the car's rear corner (right-hand side, towards the kerb) and turns to the car.
-  const side=wave*1.1;group.position.set(p.x-p.dz*side,p.y,p.z+p.dx*side);
-  yaw.set(0,Math.atan2(-p.dx,-p.dz)+wave*.6,0);group.quaternion.setFromEuler(yaw);
+  const side=wave*1.1;group.position.set(p.x-dz*side,y/9,p.z+dx*side);
+  // He turns at most 10 rad/s: a bend never asks for that much, but where the path folds (the car reverses, a three-point turn) his heading is the opposite one from one frame to the next.
+  const to=Math.atan2(-dx,-dz);if(turned===null)turned=to;let d=to-turned;d-=Math.round(d/(2*Math.PI))*2*Math.PI;turned+=Math.max(-dt*10,Math.min(dt*10,d));
+  yaw.set(0,turned+wave*.6,0);group.quaternion.setFromEuler(yaw);
   // Running pace: the car's speed while it drives, a jog while he catches up.
-  run+=((v>.8?v:Math.abs(want-behind)>.3?2.2:0)-run)*Math.min(1,dt*4);model.update(dt,run,time,wave);
+  run+=((v>.8?v:Math.abs(want-behind)>.3?2.2:0)-run)*(1-Math.exp(-dt*4));model.update(dt,run,time,wave);
  }
  // An easter egg (3 October 2026): driving as the T. rex with Ludvig running after it, the T. rex carries him by the back of his shirt in the
  // right corner of its mouth, its head turned a little to the right, so he dangles beside its face where the chase camera sees him, facing out,

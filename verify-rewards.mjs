@@ -368,6 +368,81 @@ console.log('The running duck follows the car, waddles, beats its wings and flap
  let meshes=0;kid.model.group.traverse(o=>{if(o.isMesh)meshes++;});assert.ok(meshes<40,'cheap: '+meshes+' meshes');
  pos.x+=300;kid.update(.045,pos,facing,0,60);assert.ok(Math.hypot(k.x-pos.x,k.z-pos.z)<8,'A jump starts it again right behind the car');kid.setOn(false);assert.equal(kid.group.visible,false);}
 console.log('The duckling follows the small duck 1.2 m behind it, driving and standing: OK');
+// Smooth followers (11 October 2026): "the things behind the car stutter". The follower measured its distance from the last point of its track (one every 0.4 m of
+// travel), not from the car, so at a slow pace it stood still for a few frames and hopped 0.4 m (and in y, 25 cm on a steep road); it faced along the stored segment it
+// stood on (a step of yaw at every point in a bend); and a step in the road reached it in one frame. Measured as the car drives a path at a constant speed, frame by
+// frame, at 22, 30 and 60 fps: nothing in the follower's distance behind the car, yaw or height may change from one frame to the next except what the path itself does.
+{const makers={Ludvig:[scene=>createBoy({T,scene}),6],'the small duck':[scene=>createDuckRunner({T,scene}),6],'the duckling':[scene=>createDucklingRunner({T,scene}),7.2]};
+ const straight=y=>s=>({x:0,y:y(s),z:-s,hx:0,hz:-1}),circle=R=>s=>({x:R*(1-Math.cos(s/R)),y:100,z:-R*Math.sin(s/R),hx:Math.sin(s/R),hz:-Math.cos(s/R)});
+ // The car drives `path(s)` (s: metres travelled) at v m/s; rows hold the follower's distance behind the car (D), yaw (unwrapped), height above the car's ground (y) and position.
+ const sim=(make,fps,v,path,{seconds=12,skip=4,jitter=false}={})=>{const scene=new T.Scene(),f=make(scene),pos=new T.Vector3(),face=new T.Vector3(),rows=[];f.setOn(true);let s=0,turn=0,last=null,seed=7,time=0;
+  for(let i=0;i<seconds*fps;i++){seed=(seed*16807)%2147483647;const dt=jitter?(.4+1.2*seed/2147483647)/fps:1/fps; // jitter: frames of 0.4 to 1.6 times the usual length, as a busy tablet gives them
+   s+=v*dt;time+=dt;const p=path(s);pos.set(p.x,p.y+.08,p.z);face.set(p.hx,0,p.hz);f.update(dt,pos,face,v,time);
+   let yaw=new T.Euler().setFromQuaternion(f.group.quaternion,'YXZ').y;if(last!==null){const d=yaw+turn-last;if(d>Math.PI)turn-=2*Math.PI;if(d<-Math.PI)turn+=2*Math.PI;}yaw+=turn;last=yaw;
+   rows.push({s,D:Math.hypot(f.group.position.x-pos.x,f.group.position.z-pos.z),yaw,y:f.group.position.y,ground:p.y,x:f.group.position.x,z:f.group.position.z,car:pos.clone()});}
+  return rows.slice(skip*fps);};
+ const step=(rows,k)=>Math.max(...rows.map((r,i)=>i?Math.abs(r[k]-rows[i-1][k]):0)),jerk=(rows,k)=>Math.max(...rows.map((r,i)=>i>1?Math.abs(r[k]-2*rows[i-1][k]+rows[i-2][k]):0));
+ const deg=Math.PI/180,rates=[22.2,30,60];
+ for(const [name,[make,want]] of Object.entries(makers)){
+  // A straight road at a constant speed: the distance behind the car stays what it is, from one frame to the next, at a slow pace and at the speeds where the old
+  // track points came every second frame (24 m/s at 60 fps is 0.4 m a frame: the worst case, a hop of 0.4 m every other frame).
+  for(const v of [5,14,24])for(const fps of rates){const rows=sim(make,fps,v,straight(()=>100));
+   assert.ok(step(rows,'D')<.005,`${name} ${v} m/s ${fps} fps: the distance behind the car changes by at most ${(step(rows,'D')*100).toFixed(1)} cm from one frame to the next`);
+   assert.ok(rows.every(r=>Math.abs(r.D-want)<.02),`${name} ${v} m/s ${fps} fps: ${want} m behind the car in every frame (${Math.min(...rows.map(r=>r.D)).toFixed(2)} to ${Math.max(...rows.map(r=>r.D)).toFixed(2)} m)`);}
+  // Frames of uneven length (0.4 to 1.6 times the usual): the car moves by speed times the frame's time, and so does he; no frame is longer or shorter for him.
+  {const rows=sim(make,60,14,straight(()=>100),{jitter:true}),bend=sim(make,60,14,circle(65),{jitter:true});
+   assert.ok(step(rows,'D')<.005&&step(bend,'D')<.01,`${name}: uneven frames do not move him against the car (${(step(rows,'D')*100).toFixed(2)} cm on the straight, ${(step(bend,'D')*100).toFixed(2)} cm in a bend)`);}
+  // A bend at the lateral acceleration the car is held to (3 m/s2, a radius of at least 8 m): his yaw turns evenly, with no step at the points of the track.
+  for(const v of [5,14])for(const fps of rates){const R=Math.max(8,v*v/3),rows=sim(make,fps,v,circle(R),{skip:4});
+   assert.ok(jerk(rows,'yaw')<.3*deg,`${name} ${v} m/s ${fps} fps, bend of ${R.toFixed(0)} m: yaw changes evenly (largest change of the turn from one frame to the next ${(jerk(rows,'yaw')/deg).toFixed(2)} degrees)`);
+   const rate=(rows.at(-1).yaw-rows[0].yaw)/((rows.length-1)/fps);assert.ok(Math.abs(Math.abs(rate)-v/R)<.02*v/R,`${name}: turns with the car, ${Math.abs(rate).toFixed(3)} rad/s against ${(v/R).toFixed(3)}`);
+   assert.ok(step(rows,'D')<.01,`${name} ${v} m/s ${fps} fps, in the bend: distance behind the car steady (${(step(rows,'D')*100).toFixed(2)} cm)`);}
+  // A steep road (15 %): he stands on the road 6 m back, not up to 6 cm off it as the 0.4 m hops made him on a slope.
+  for(const fps of rates){const rows=sim(make,fps,5,straight(s=>100+.15*s));
+   assert.ok(rows.every(r=>Math.abs(r.y-(r.ground-.15*want))<.01),`${name} ${fps} fps on a 15 % hill: on the road ${want} m back (off by at most ${(Math.max(...rows.map(r=>Math.abs(r.y-(r.ground-.15*want))))*100).toFixed(1)} cm)`);
+   assert.ok(jerk(rows,'y')<.003,`${name} ${fps} fps on a 15 % hill: height changes evenly (${(jerk(rows,'y')*100).toFixed(2)} cm)`);}
+ }
+ // The road's own steps, "mini collisions with the road": the drawn road has steps of a few centimetres (patches, junction wedges) where the car's height jumps in
+ // a frame. The follower, 6 m behind, used to replay each of them in one frame, and with the hops on top (see above) a good deal more; now a step is a ramp of about a metre.
+ {const step8=s=>100+(Math.floor(s/7)%2)*.08,want6=6;
+  for(const fps of rates){const car=sim(scene=>createBoy({T,scene}),fps,14,straight(step8),{seconds:14,skip:3}),carStep=jerk(car.map(r=>({g:r.ground})),'g'),rows=car;
+   assert.ok(carStep>.07,`the road really steps ${(carStep*100).toFixed(0)} cm between two frames at ${fps} fps`);
+   assert.ok(step(rows,'y')<.6*.08,`Ludvig ${fps} fps: a ${(.08*100).toFixed(0)} cm step in the road is a ramp, at most ${(step(rows,'y')*100).toFixed(1)} cm in a frame (the car's own: ${(carStep*100).toFixed(0)} cm)`);
+   const clear=rows.filter(r=>[7,14,21,28,35,42,49,56,63,70,77,84,91,98,105,112,119,126,133,140,147,154,161,168,175,182,189,196].every(k=>Math.abs(r.s-want6-k)>.7));
+   assert.ok(clear.length>rows.length/2&&clear.every(r=>Math.abs(r.y-step8(r.s-want6))<.005),'and between the steps he stands on the road under him, 6 m back');}
+  // Washboard: 1 cm bumps every 0.5 m of road (at a pace where the frames sample them: 5 m/s). The car has them (they are the road) but the follower, whose height is
+  // the track's averaged over a metre, hardly does: he used to have them all, 0.9 cm of the 1.0.
+  for(const fps of rates){const rows=sim(scene=>createBoy({T,scene}),fps,5,straight(s=>100+.01*Math.sin(s*2*Math.PI/.5)),{seconds:10,skip:3}),swing=Math.max(...rows.map(r=>Math.abs(r.y-100)));
+   assert.ok(swing<.003,`Ludvig ${fps} fps on a washboard road: the 1 cm bumps are ${(swing*100).toFixed(2)} cm on him`);}}
+ // The same bend at 30, 60 and 120 fps puts the follower in the same place relative to the car at the same point of the road (the track is in metres, not frames).
+ {const at=fps=>{const rows=sim(scene=>createBoy({T,scene}),fps,10,circle(33),{seconds:10,skip:0});
+   return [91,93,95,97,99].map(m=>{const r=rows[Math.round(m/10*fps)-1],c=r.car,h=new T.Vector3(Math.sin(r.s/33),0,-Math.cos(r.s/33));assert.ok(Math.abs(r.s-m)<1e-6,'the same point of the road at every frame rate');
+    return {back:(r.x-c.x)*h.x+(r.z-c.z)*h.z,side:(r.x-c.x)*-h.z+(r.z-c.z)*h.x,yaw:r.yaw+r.s/33};});};
+  const a=at(30),b=at(60),c=at(120);let worst=0,worstYaw=0;
+  for(const [x,y] of [[a,b],[b,c]])x.forEach((p,i)=>{worst=Math.max(worst,Math.abs(p.back-y[i].back),Math.abs(p.side-y[i].side));worstYaw=Math.max(worstYaw,Math.abs(p.yaw-y[i].yaw));});
+  assert.ok(worst<.03&&worstYaw<.5*deg,`The same bend at 30, 60 and 120 fps: the same place behind the car within ${(worst*100).toFixed(1)} cm and ${(worstYaw/deg).toFixed(2)} degrees`);}
+ // A three-point turn: where the car reverses the track folds back on itself and his heading is the opposite one; he turns round (10 rad/s at most) and does not pop through 180 degrees.
+ {const scene=new T.Scene(),f=createBoy({T,scene}),pos=new T.Vector3(0,100.08,0),face=new T.Vector3(0,0,-1);f.setOn(true);let z=0,t=0,prev=null,worst=0;
+  for(const [v,m] of [[5,20],[-3,8],[5,20]])for(let i=0;i<Math.round(Math.abs(m/v)*60);i++){z-=v/60;t+=1/60;pos.z=z;f.update(1/60,pos,face,v,t);const q=new T.Vector3(0,0,-1).applyQuaternion(f.group.quaternion),ang=Math.atan2(q.x,-q.z);
+   if(prev!==null)worst=Math.max(worst,Math.abs(Math.atan2(Math.sin(ang-prev),Math.cos(ang-prev))));prev=ang;}
+  assert.ok(worst<=10/60*1.01,`Reversing and driving on again, he turns at most ${(worst*60/deg).toFixed(0)} degrees a second (a pop of 180 degrees before)`);}
+ // From the first frame: the duckling used to wait for the car to lay down 1.2 m more track before it set off.
+ {const rows=sim(scene=>createDucklingRunner({T,scene}),60,14,straight(()=>100),{seconds:3,skip:0});assert.ok(rows.every(r=>Math.abs(r.D-7.2)<.02),'The duckling keeps its 7.2 m from the first frame, it does not stand and wait for the track');}
+ // The rainbow trail starts at the rear bumper itself (it used to start at the last point laid down, up to 0.6 m behind it, and jumped forward at every new point)
+ // and the soap bubbles keep their own tint (the instance slots move up when a bubble pops, and the tints used to move with them).
+ for(const [v,fps] of [[5,60],[14,60],[24,60],[10,30]]){const scene=new T.Scene(),trail=createRainbowTrail({T,scene}),pos=new T.Vector3(0,100,0),face=new T.Vector3(0,0,-1);trail.setOn(true);let worst=0;
+  for(let i=0;i<fps*6;i++){pos.z-=v/fps;trail.update(1/fps,pos,face);if(i<fps)continue;const g=trail.mesh.geometry,newest=(g.drawRange.count/42)*14,z=g.attributes.position.array[newest*3+2];worst=Math.max(worst,Math.abs(z-(pos.z+2.35)));}
+  assert.ok(worst<.005,`The rainbow trail starts at the bumper at ${v} m/s, ${fps} fps (${(worst*100).toFixed(1)} cm off)`);}
+ // On a steep road the band lies on the road under the bumper, not under the car's middle: on a 19 % downhill that road is 45 cm higher, and the band lay buried in it.
+ for(const slope of [-.19,0,.19]){const scene=new T.Scene(),trail=createRainbowTrail({T,scene}),pos=new T.Vector3(),face=new T.Vector3(0,slope,-1).normalize(),ground=z=>100+slope*-z;trail.setOn(true);let low=9;
+  for(let i=0;i<240;i++){const z=-i/60*10;pos.set(0,ground(z)+.08,z);trail.update(1/60,pos,face);if(i<60)continue;const g=trail.mesh.geometry,p=g.attributes.position.array;
+   for(let k=0;k<=g.drawRange.count/42;k++)for(const e of [0,13]){const o=(k*14+e)*3;low=Math.min(low,p[o+1]-ground(p[o+2]));}}
+  assert.ok(low>.2,`The rainbow trail on a ${slope*100} % road stays ${(low*100).toFixed(0)} cm above the road (hover 30 cm), it is not buried`);}
+ {const scene=new T.Scene(),b=createBubbles({T,scene}),pos=new T.Vector3(0,100,0),face=new T.Vector3(0,0,-1),col=new T.Color(),seen=new Map();b.setOn(true);let changed=0;const tints=new Set();
+  for(let i=0;i<240;i++){pos.z-=10/60;b.update(1/60,pos,face);b.bubbles.forEach((q,j)=>{b.mesh.getColorAt(b.bubbles.length-1-j,col);const hex=col.getHexString();tints.add(hex);if(seen.has(q)&&seen.get(q)!==hex)changed++;seen.set(q,hex);});}
+  assert.equal(changed,0,'A bubble keeps its own tint when others pop or are blown');assert.ok(tints.size>=4,'and they are tinted differently ('+tints.size+' tints)');}
+}
+console.log('Followers move smoothly: no hops in the distance behind the car, no steps of yaw in a bend, steps in the road are ramps, the same at any frame rate; the rainbow trail starts at the bumper and the bubbles keep their tints: OK');
 
 // Debug keys for testing the unlocks: X counts one more trip to the kindergarten, Z one fewer (saved like a real count).
 store.clear();game=await launch(()=>storage);
