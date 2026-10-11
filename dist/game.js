@@ -265,7 +265,7 @@ $('music').value=musicOn?'on':'off';$('deadEnds').value=showDeadEnds?'on':'off';
 const MODELS=['car','cat','dog','duck','rocket','unicorn','firetruck','balloon','trex','taxi','pig'],MODEL_AT={car:0,cat:2,dog:5,duck:6,rocket:7,unicorn:8,firetruck:10,balloon:12,trex:13};
 // Trips 8 to 13 (3 October 2026): the unicorn, soap bubbles behind the car (ninth), the fire engine, the horn (eleventh), the hot-air balloon and last the T. rex.
 const BUBBLES_AT=9,HORN_AT=11,LAST_REWARD=13;
-const carColours=[['Svart','#14171c'],['Rød','#c62828'],['Rosa','#ec6aa8'],['Lilla','#7b4cc2'],['Blå','#1f63c6'],['Turkis','#17a2a0'],['Grønn','#3b9a43'],['Gul','#f3c531'],['Oransje','#f07b22'],['Hvit','#eef0ef']];
+const carColours=[['Svart','#14171c'],['Rød','#c62828'],['Rosa','#ec6aa8'],['Lilla','#7b4cc2'],['Blå','#1f63c6'],['Turkis','#17a2a0'],['Grønn','#3b9a43'],['Gul','#f3c531'],['Oransje','#f07b22'],['Hvit','#eef0ef'],['Grå','#9a9186']];
 // A secret: parking at KIWI Dalgård unlocks a KIWI-green car with the shop's logo on the doors (colour 'kiwi').
 const kiwiParking='kiwi-parkering';let kiwiUnlocked=false;
 // Dalgårdvegen ends at Dalgård ishall and the sports grounds; the car park beside the hall is a place to drive to.
@@ -299,7 +299,7 @@ try{applySaved(JSON.parse(localStorage.getItem('sofiatur.fremgang')));}catch{}
 const swatches=carColours.map(([name,hex])=>{const b=document.createElement('button');b.type='button';b.className='swatch';b.title=name;b.setAttribute('aria-label',name);b.style.background=hex;b.onclick=()=>pickColour(hex);return b;});
 const kiwiSwatch=document.createElement('button');kiwiSwatch.type='button';kiwiSwatch.className='swatch kiwi';kiwiSwatch.title='KIWI';kiwiSwatch.setAttribute('aria-label','Hemmelig KIWI-bil');kiwiSwatch.textContent='K';kiwiSwatch.onclick=()=>pickColour('kiwi');
 const rainbowSwatch=document.createElement('button');rainbowSwatch.type='button';rainbowSwatch.className='swatch rainbow';rainbowSwatch.title='Regnbue';rainbowSwatch.setAttribute('aria-label','Regnbuebil som skifter farge');rainbowSwatch.onclick=()=>pickColour('rainbow');
-// The ten colours, then the rainbow and KIWI (the free colour wheel was taken out on 3 October 2026, the user's wish).
+// The eleven colours (the grey was added on 11 October 2026 for the duck), then the rainbow and KIWI (the free colour wheel was taken out on 3 October 2026, the user's wish).
 $('carColours').append(...swatches,rainbowSwatch,kiwiSwatch);
 function pickColour(hex){carColour=hex.toLowerCase();saveProgress();applyRewards();showRewards();}
 function applyRewards(){if(!world)return;const kiwi=carColour==='kiwi'&&kiwiUnlocked,ride=rideOK(model)?model:'car';
@@ -410,7 +410,7 @@ function debugArrivals(delta){const before=arrivals;arrivals=Math.max(0,arrivals
  const unlocked=['','farge på bilen','katt','regnbuespor','regnbuebil','hund','and','rakett','enhjørning','såpebobler','brannbil','tuting','luftballong','T-rex'][arrivals]??'alt låst opp';toast(`🛠 Turer til barnehagen: ${arrivals}${unlocked?' · '+unlocked:''}${x.toast}`);}
 // Unlocks that follow from others (5 October 2026): the taxi once all five places are visited, the hover car once everything else is unlocked.
 // Each is announced once; the caller appends the words to its own toast and speech (say() cancels earlier speech, so never call it twice in a row).
-const TAXI_YELLOW='#f3c531',PIG_PINK='#ec6aa8',DUCK_PLUMAGE='#14171c'; // the "Gul", "Rosa" and "Svart" swatches: choosing the taxi paints the car yellow, finding or choosing the pig paints it pink, choosing the duck gives it its own black plumage (11 October 2026), and the colour can still be changed
+const TAXI_YELLOW='#f3c531',PIG_PINK='#ec6aa8',DUCK_PLUMAGE='#9a9186'; // the "Gul", "Rosa" and "Grå" swatches: choosing the taxi paints the car yellow, finding or choosing the pig paints it pink, choosing the duck gives it the small duck's dark grey, the "Grå" swatch (11 October 2026), and the colour can still be changed
 function newUnlocks(){let t='',s='',taxi=false,hover=false;
  if(taxiReady()&&!taxiSeen){taxiSeen=taxi=true;model='taxi';carColour=TAXI_YELLOW;t+=' · 🚕 Taxi låst opp!';s+=' Og du har besøkt alle stedene! Nå kan du kjøre taxi!';}
  if(hoverReady()&&!hoverSeen){hoverSeen=hover=true;hoverOn=true;t+=' · ⚡ Svevebil!';s+=' Wow, du har låst opp alt! Veier? Der vi skal, trenger vi ikke veier! Nå svever bilen med hjulene under seg.';}

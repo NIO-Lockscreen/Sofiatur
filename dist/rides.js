@@ -55,7 +55,7 @@ export function createDog(T,{logos={}}={}){
 // ---- The duck: a mallard on orange webbed feet, waddling, its body in the car's colour, the green head and yellow bill as a drake's ----
 export function createRideDuck(T,{logos={}}={}){
  const group=new T.Group();group.name='And';group.scale.setScalar(.85); // about 3 m tall with its head up, 4 m long
- const plumage=new T.MeshStandardMaterial({color:'#14171c',roughness:.75}),chestnut=new T.MeshStandardMaterial({color:'#6e3a26',roughness:.75});
+ const plumage=new T.MeshStandardMaterial({color:'#9a9186',roughness:.75}),chestnut=new T.MeshStandardMaterial({color:'#6e3a26',roughness:.75});
  const green=new T.MeshStandardMaterial({color:'#17643a',roughness:.35,metalness:.25}),white=new T.MeshStandardMaterial({color:'#f3f0e6',roughness:.7});
  const bill=new T.MeshStandardMaterial({color:'#e5b52b',roughness:.5}),orange=new T.MeshStandardMaterial({color:'#f08a24',roughness:.6}),tongue=new T.MeshStandardMaterial({color:'#e0786a',roughness:.6}),inside=new T.MeshStandardMaterial({color:'#b5524a',roughness:.7}),black=new T.MeshStandardMaterial({color:'#1c1f21',roughness:.6}),blue=new T.MeshStandardMaterial({color:'#3055b5',roughness:.4,metalness:.2});
  const sphere=sphereGeo(T),limb=new T.CylinderGeometry(1,1,1,8);
@@ -243,7 +243,7 @@ export function createUnicorn(T,{logos={}}={}){
 // The fire engine's beacons, two colours for each colour of game.js's picker (3 October 2026, the user: red is the standard fire engine, with blue
 // lights; KIWI has green and white lights). 'rainbow' sends them round the rainbow; any other colour gets blue.
 export const BEACONS={'#14171c':['#2a6bff','#ff2b2b'],'#c62828':['#2a6bff','#2a6bff'],'#ec6aa8':['#b04cff','#ffffff'],'#7b4cc2':['#ff5fb8','#ffd23a'],'#1f63c6':['#ff2b2b','#ffffff'],
- '#17a2a0':['#ffd23a','#ff5fb8'],'#3b9a43':['#ffd23a','#ffffff'],'#f3c531':['#ff8a00','#ff8a00'],'#f07b22':['#ffd23a','#2a6bff'],'#eef0ef':['#ff2b2b','#2a6bff'],kiwi:['#39d353','#ffffff']};
+ '#17a2a0':['#ffd23a','#ff5fb8'],'#3b9a43':['#ffd23a','#ffffff'],'#f3c531':['#ff8a00','#ff8a00'],'#f07b22':['#ffd23a','#2a6bff'],'#eef0ef':['#ff2b2b','#2a6bff'],'#9a9186':['#ff8a00','#2a6bff'],kiwi:['#39d353','#ffffff']};
 export function createFireTruck(T,{logos={}}={}){
  const group=new T.Group();group.name='Brannbil';
  const red=new T.MeshStandardMaterial({color:'#c62828',roughness:.45,metalness:.2}),white=new T.MeshStandardMaterial({color:'#f2f1ec',roughness:.5});
