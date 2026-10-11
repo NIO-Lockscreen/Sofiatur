@@ -16,7 +16,7 @@ const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'')
 const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,enter(e,turn=0){current=e.to;previous=e.from;active=null;state='decision';maxKmh=200;position.copy(point(current));heading.copy(endDirection(e,false)).applyAxisAngle(new T.Vector3(0,1,0),turn);showDecision();},getActive:()=>active};})()`,ctx);
 function frame(){now+=45;const q=callbacks.splice(0);q.forEach(cb=>cb(now));}
 for(let i=0;i<12;i++){await Promise.resolve();frame();}await init;
-// Blindveier are on by default (29 September 2026); a roundabout only skips exits that lead nowhere when they are off.
+// Blindveier are off by default (11 October 2026); a roundabout only skips exits that lead nowhere when they are off. Set explicitly so the test does not depend on the default.
 element('deadEnds').onchange({target:{value:'off'}});
 const ringNodes=new Set(data.edges.filter(e=>e.roundabout).map(e=>e.from));
 const entries=data.edges.filter(e=>!e.roundabout&&ringNodes.has(e.to)&&!ringNodes.has(e.from));

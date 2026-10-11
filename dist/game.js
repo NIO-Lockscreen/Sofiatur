@@ -6,7 +6,7 @@ import {createMusic} from './music.js';
 import {createInside} from './inside.js';
 const $=id=>document.getElementById(id);
 let world,data,state='loading',sound=true,current,previous=null,active=null,distance=0,speed=0,travelled=0,turns=0,heading=new T.Vector3(0,0,1),position=new T.Vector3(),choices=[],best=null,totalInitial=0,maxKmh=200,camMode='follow',lastTime=performance.now(),time=0,mapClock=0,leavingHome=false,lastEdge=null,lines=null;
-let roundaboutUndo=null,freeMode=false,free=null,carHeight,showDeadEnds=true,choicesStale=false,musicOn=true,queue=[],preview=null,picked=null,pickedUntil=-9,aheadShown=false,planKey='';
+let roundaboutUndo=null,freeMode=false,free=null,carHeight,showDeadEnds=false,choicesStale=false,musicOn=true,queue=[],preview=null,picked=null,pickedUntil=-9,aheadShown=false,planKey='';
 let arrivals=0,carColour='#14171c',behind='trail',ludvigUnlocked=false,duckUnlocked=false,model='car',newReward=null,homeAt=0; // behind: what follows the car, 'trail' (the rainbow trail), 'ludvig', 'duck' (a running duck) or 'none'
 let ducklingOn=false; // the duckling of the double duck (7 October 2026): an easter egg for this visit to the game only, never saved (see ducklingHeard)
 let ishallVisited=false,remaVisited=false,taxiSeen=false,pigUnlocked=false,beenInside=false,hoverSeen=false,hoverOn=true; // the new unlocks (5 October 2026): places visited, the taxi and the hover car announced, the pig found, Sofia been inside, the hover mode on or off
@@ -253,8 +253,8 @@ $('fullscreen').hidden=!(document.fullscreenEnabled||document.webkitFullscreenEn
 for(const type of ['fullscreenchange','webkitfullscreenchange'])document.addEventListener(type,showFullscreen);
 $('settings').onclick=openMenu;$('sound').onclick=()=>{sound=!sound;$('sound').classList.toggle('active',!sound);$('sound').setAttribute('aria-label',sound?'Slå av lyden':'Slå på lyden');if(!sound&&'speechSynthesis'in window)speechSynthesis.cancel();if(sound&&musicOn)music.play();else music.stop();if(sound)say('Hei Sofia!');};
 // Music and blindvei choices are remembered on this device (browser storage may be unavailable, e.g. in private mode).
-function saveSettings(){try{localStorage.setItem('sofiatur.innstillinger',JSON.stringify({v:2,music:musicOn?'on':'off',deadEnds:showDeadEnds?'on':'off',ahead:chooseAhead?'on':'off'}));}catch{}}
-try{const saved=JSON.parse(localStorage.getItem('sofiatur.innstillinger'))||{};musicOn=saved.music!=='off';showDeadEnds=saved.v===2?saved.deadEnds==='on':true;chooseAhead=saved.ahead==='on';}catch{} // blindveier are on unless chosen off since 29 September 2026 (v:2); older saved values do not count
+function saveSettings(){try{localStorage.setItem('sofiatur.innstillinger',JSON.stringify({v:3,music:musicOn?'on':'off',deadEnds:showDeadEnds?'on':'off',ahead:chooseAhead?'on':'off'}));}catch{}}
+try{const saved=JSON.parse(localStorage.getItem('sofiatur.innstillinger'))||{};musicOn=saved.music!=='off';showDeadEnds=saved.v===3&&saved.deadEnds==='on';chooseAhead=saved.ahead==='on';}catch{} // blindveier are off unless chosen on since 11 October 2026 (v:3); older saved values do not count
 $('music').value=musicOn?'on':'off';$('deadEnds').value=showDeadEnds?'on':'off';$('chooseAhead').value=chooseAhead?'on':'off';
 // Rewards: after the first trip to the kindergarten Sofia can pick the car's colour on the start screen, after the second
 // the car can be a running cat, after the third it gets a rainbow trail, after the fourth the rainbow colour, after the fifth, sixth and seventh

@@ -13,7 +13,7 @@ const ctx=vm.createContext(env);const source=fs.readFileSync('dist/game.js','utf
 const read=()=>tools.get('read_drive_state').execute(),act=(name,input)=>tools.get(name).execute(input);
 function step(n=1){for(let i=0;i<n;i++){now+=45;const q=raf.splice(0);q.forEach(cb=>cb(now));}}
 const recommended=list=>list.find(c=>c.recommended)?.id??list[0].id;
-// Blindveier are on by default (29 September 2026); the queue below is tested with them off, as the car then only stops at real choices.
+// Blindveier are off by default (11 October 2026); the queue below is tested with them off, as the car then only stops at real choices. Set explicitly so the test does not depend on the default.
 element('deadEnds').onchange({target:{value:'off'}});
 
 // Choosing ahead is a menu option, off by default: then no arrows show while driving and the car stops at the junction.

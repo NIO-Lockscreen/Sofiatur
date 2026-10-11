@@ -16,8 +16,8 @@ const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'')
 const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={read:gameState,enter(e){current=e?e.to:data.start;previous=e?e.arrivalFrom??e.from:null;active=null;state='decision';maxKmh=200;position.copy(point(current));heading.copy(e?endDirection(e,false):endDirection(optimal.get(current)));showDecision();return state==='driving'?[active.e]:choices;},drive(e){current=e.from;previous=null;active=null;state='decision';position.copy(point(current));heading.copy(endDirection(e));choices=[];choose(e.id,false);},active:()=>active};})()`,ctx);
 function frame(){now+=45;const q=callbacks.splice(0);q.forEach(cb=>cb(now));}
 for(let i=0;i<12;i++){await Promise.resolve();frame();}await init;
-// Blindveier are on by default (29 September 2026); everything up to "Setting on" below is about the setting off.
-assert.equal(element('deadEnds').value,'on','Blindveier are offered by default');element('deadEnds').onchange({target:{value:'off'}});
+// Blindveier are off by default (11 October 2026), and everything up to "Setting on" below is about that default.
+assert.equal(element('deadEnds').value,'off','Blindveier are hidden by default');
 
 // Independent check: from the chosen road, the kindergarten or home is reachable without driving back through the junction.
 const adjacency=new Map();for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);}

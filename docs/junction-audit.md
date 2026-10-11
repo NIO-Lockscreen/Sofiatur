@@ -8,7 +8,7 @@ side-by-side images (aerial | game) are kept outside it.
 **Method.** For each junction a north-up crop of about 140 m was stitched from the aerial tiles and set beside a top-down render of
 the same square from the real renderer, then the roads that meet, one-way pairs, islands, widths and the choices the game offers
 were compared. The choices are the ones the game asks for when the car arrives on the route's road, read from `gameState().choices`
-with a VM harness like the one in `verify-dead-ends.mjs` (Blindveier on, the default). NVDB was used as a second, independent
+with a VM harness like the one in `verify-dead-ends.mjs` (Blindveier on, set explicitly; it was the default when the audit was made and is off by default since 11 October 2026). NVDB was used as a second, independent
 witness for the road network: its car roads (`Enkel bilveg`, `Kanalisert veg`, `Rundkjøring`) were laid over the game's graph.
 Result: every public street of the region is in the game's graph, and the game has no street that NVDB lacks, except the
 traced kindergarten lane and the parking places the game adds on purpose. One-way status agrees on every NVDB one-way

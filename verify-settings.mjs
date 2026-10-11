@@ -21,25 +21,27 @@ async function launch(localStorage){
 const store=new Map(),storage={getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,String(v))};
 const vetle=data.edges.find(e=>e.from==='1223193460'&&e.to==='1223193479'); // Kystadhaugen: straight on is a blindvei
 
-// Defaults: music on, blindveier on (since 29 September 2026), choosing ahead off.
-let game=await launch(()=>storage);assert.deepEqual({...game.test.settings()},{musicOn:true,showDeadEnds:true,chooseAhead:false});
-assert.equal(game.element('music').value,'on');assert.equal(game.element('deadEnds').value,'on');assert.equal(game.element('chooseAhead').value,'off');
-assert.ok(game.test.enter(vetle).some(c=>c.name==='Kystadhaugen'),'Blindveier are offered by default');
-game.element('music').onchange({target:{value:'off'}});game.element('deadEnds').onchange({target:{value:'off'}});game.element('chooseAhead').onchange({target:{value:'on'}});
+// Defaults: music on, blindveier off (since 11 October 2026), choosing ahead off.
+let game=await launch(()=>storage);assert.deepEqual({...game.test.settings()},{musicOn:true,showDeadEnds:false,chooseAhead:false});
+assert.equal(game.element('music').value,'on');assert.equal(game.element('deadEnds').value,'off');assert.equal(game.element('chooseAhead').value,'off');
+assert.ok(!game.test.enter(vetle).some(c=>c.name==='Kystadhaugen'),'Blindveier are not offered by default');
+game.element('music').onchange({target:{value:'off'}});game.element('deadEnds').onchange({target:{value:'on'}});game.element('chooseAhead').onchange({target:{value:'on'}});
 
 // After a reload the choices are back, in the menu and in the game.
-game=await launch(()=>storage);assert.deepEqual({...game.test.settings()},{musicOn:false,showDeadEnds:false,chooseAhead:true});
-assert.equal(game.element('music').value,'off');assert.equal(game.element('deadEnds').value,'off');assert.equal(game.element('chooseAhead').value,'on');
-assert.ok(!game.test.enter(vetle).some(c=>c.name==='Kystadhaugen'),'Saved blindvei setting off skips the dead end');
-game.element('deadEnds').onchange({target:{value:'on'}});game=await launch(()=>storage);assert.equal(game.test.settings().showDeadEnds,true);
+game=await launch(()=>storage);assert.deepEqual({...game.test.settings()},{musicOn:false,showDeadEnds:true,chooseAhead:true});
+assert.equal(game.element('music').value,'off');assert.equal(game.element('deadEnds').value,'on');assert.equal(game.element('chooseAhead').value,'on');
+assert.ok(game.test.enter(vetle).some(c=>c.name==='Kystadhaugen'),'Saved blindvei setting on offers the dead end');
+game.element('deadEnds').onchange({target:{value:'off'}});game=await launch(()=>storage);assert.equal(game.test.settings().showDeadEnds,false);
 console.log('Music, blindvei and choosing-ahead settings survive a reload: OK');
 
-// A value saved before the default changed (no version) does not count for blindveier: they are on. Music and choosing ahead are kept.
-store.set('sofiatur.innstillinger',JSON.stringify({music:'off',deadEnds:'off',ahead:'on'}));game=await launch(()=>storage);
-assert.deepEqual({...game.test.settings()},{musicOn:false,showDeadEnds:true,chooseAhead:true});assert.equal(game.element('deadEnds').value,'on');
-console.log('Blindveier saved off before they became the default are on again; other settings kept: OK');
+// A value saved before the default changed (no version, or v:2) does not count for blindveier: they are off. Music and choosing ahead are kept.
+for(const old of [{music:'off',deadEnds:'on',ahead:'on'},{v:2,music:'off',deadEnds:'on',ahead:'on'}]){
+ store.set('sofiatur.innstillinger',JSON.stringify(old));game=await launch(()=>storage);
+ assert.deepEqual({...game.test.settings()},{musicOn:false,showDeadEnds:false,chooseAhead:true});assert.equal(game.element('deadEnds').value,'off');
+}
+console.log('Blindveier saved on before they became off by default are off again; other settings kept: OK');
 
 // Blocked storage (e.g. private browsing) or a damaged entry falls back to the defaults.
-game=await launch(()=>{throw new Error('SecurityError');});assert.deepEqual({...game.test.settings()},{musicOn:true,showDeadEnds:true,chooseAhead:false});game.element('music').onchange({target:{value:'off'}});
-store.set('sofiatur.innstillinger','{not json');game=await launch(()=>storage);assert.deepEqual({...game.test.settings()},{musicOn:true,showDeadEnds:true,chooseAhead:false});
+game=await launch(()=>{throw new Error('SecurityError');});assert.deepEqual({...game.test.settings()},{musicOn:true,showDeadEnds:false,chooseAhead:false});game.element('music').onchange({target:{value:'off'}});
+store.set('sofiatur.innstillinger','{not json');game=await launch(()=>storage);assert.deepEqual({...game.test.settings()},{musicOn:true,showDeadEnds:false,chooseAhead:false});
 console.log('Blocked or damaged storage falls back to defaults: OK');
