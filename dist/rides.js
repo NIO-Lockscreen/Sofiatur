@@ -128,7 +128,7 @@ export function createRocket(T,{logos={}}={}){
 }
 
 // ---- More rewards (3 October 2026, trips 8, 10, 12 and 13): a unicorn, a fire engine, a hot-air balloon and, last of all, a T. rex ----
-// honk() (the horn, the reward for the eleventh trip) makes each one do its own thing: the T. rex opens its jaws.
+// honk() (the horn, the reward for the fourth trip) makes each one do its own thing: the T. rex opens its jaws.
 
 // The unicorn: a pony-like horse in the car's colour (the coat takes the paint) with a golden spiral horn, a rainbow mane and tail, galloping.
 // Redesigned 7 October 2026 (the first one was a toy of eggs and sticks): a body, a neck and a head each lofted from cross-sections (a deep chest, a tucked belly, a

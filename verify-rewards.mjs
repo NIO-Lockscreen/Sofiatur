@@ -43,7 +43,7 @@ assert.equal(game.world.colour,'#14171c');assert.equal(game.world.trail,false);
 // First arrival: the colour picker unlocks and the button leads to the start screen, where it is shown.
 game.test.arrive();assert.equal(game.test.progress().arrivals,1);assert.equal(game.element('unlock').hidden,false);assert.match(game.element('unlock').textContent,/farge/);
 game.element('again').onclick();assert.equal(game.element('welcome').hidden,false);assert.equal(game.element('rewards').hidden,false);assert.equal(game.element('trailRow').hidden,true);
-const swatches=game.element('carColours').children;assert.equal(swatches.length,13);assert.equal(swatches[11].hidden,true,'The rainbow colour waits for the fourth trip');assert.equal(swatches[12].hidden,true,'The KIWI car is a secret until parked at KIWI');assert.ok(swatches[0].classes.has('on'),'Black is picked to begin with');
+const swatches=game.element('carColours').children;assert.equal(swatches.length,13);assert.equal(swatches[11].hidden,true,'The rainbow colour waits for the eleventh trip');assert.equal(swatches[12].hidden,true,'The KIWI car is a secret until parked at KIWI');assert.ok(swatches[0].classes.has('on'),'Black is picked to begin with');
 swatches[3].onclick();assert.equal(game.world.colour,'#7b4cc2');assert.ok(swatches[3].classes.has('on')&&!swatches[0].classes.has('on'));assert.equal(game.world.trail,false,'No trail yet');
 swatches[3].onclick();
 assert.ok(!fs.readFileSync('dist/index.html','utf8').includes('type="color"'),'No free colour wheel, only the ten colours (and the rainbow and KIWI)');
@@ -52,7 +52,7 @@ console.log('First arrival unlocks the colour picker on the start screen: OK');
 {const keep=store.get('sofiatur.fremgang');store.set('sofiatur.fremgang',JSON.stringify({arrivals:1,colour:'#12AB34'}));const g=await launch(()=>storage);assert.equal(g.world.colour,'#3b9a43','a green from the wheel is green');
  assert.ok(g.element('carColours').children[6].classes.has('on'),'and shows as picked');store.set('sofiatur.fremgang',keep);}
 
-// The order since 30 September 2026: 1 colour picker, 2 running cat, 3 rainbow trail, 4 rainbow colour.
+// The order since 30 September 2026: 1 colour picker, 2 running cat, 3 rainbow trail, 4 the horn, 11 the rainbow colour (the horn and the rainbow colour swapped places on 11 October 2026).
 // After a reload the colour is kept; the second arrival turns the car into a running cat, with a switch back to the car on
 // the start screen; the choice is kept after a reload.
 game=await launch(()=>storage);assert.equal(game.world.colour,'#7b4cc2');assert.equal(game.element('rewards').hidden,false);assert.match(game.element('rewardTeaser').textContent,/én gang til/);
@@ -65,29 +65,30 @@ console.log('Second arrival turns the car into a running cat; the switch survive
 
 // Third arrival: the rainbow trail (on by default), with its switch on the start screen, remembered after a reload.
 game.test.arrive();assert.equal(game.test.progress().arrivals,3);assert.equal(game.world.trail,true);assert.match(game.element('unlock').textContent,/regnbuespor/);assert.equal(game.world.boy,false,'Ludvig waits for a visit');assert.equal(game.element('ludvigRow').hidden,true);
-game.element('again').onclick();assert.equal(game.element('trailRow').hidden,false);assert.equal(game.element('trail').checked,true);assert.equal(game.element('carColours').children[11].hidden,true,'The rainbow colour waits for the fourth trip');
+game.element('again').onclick();assert.equal(game.element('trailRow').hidden,false);assert.equal(game.element('trail').checked,true);assert.equal(game.element('carColours').children[11].hidden,true,'The rainbow colour waits for the eleventh trip');
 game.element('trail').onchange({target:{checked:false}});assert.equal(game.world.trail,false);
 game=await launch(()=>storage);assert.equal(game.world.trail,false,'Trail switch is remembered');assert.equal(game.element('trail').checked,false);game.element('trail').onchange({target:{checked:true}});
 console.log('Third arrival unlocks the rainbow trail; the trail switch survives a reload: OK');
 
-// Fourth arrival: the rainbow colour that changes all the time, picked at once and kept after a reload; a colour can still be picked.
-game.test.arrive();assert.equal(game.test.progress().arrivals,4);assert.equal(game.world.colour,'rainbow');assert.match(game.element('unlock').textContent,/regnbuebil/);assert.match(game.element('again').textContent,/regnbuebilen/);
-game.element('again').onclick();let rainbowButton=game.element('carColours').children[11];assert.equal(rainbowButton.hidden,false);assert.ok(rainbowButton.classes.has('on'));assert.equal(game.element('rewardTeaser').hidden,false,'More surprises after the fourth trip');
-game.element('carColours').children[1].onclick();assert.equal(game.world.colour,'#c62828');rainbowButton.onclick();assert.equal(game.world.colour,'rainbow');
-game=await launch(()=>storage);assert.equal(game.world.colour,'rainbow','Rainbow colour remembered');assert.equal(game.world.model,'cat','A rainbow cat');assert.equal(game.world.trail,true);
+// Fourth arrival (11 October 2026, swapped with the rainbow colour, which was the fourth): the horn, with its button on the start screen; the colour is left as it is and the rainbow waits for the eleventh trip.
+game.test.arrive();assert.equal(game.test.progress().arrivals,4);assert.equal(game.world.colour,'#7b4cc2','the colour is left as it was');assert.match(game.element('unlock').textContent,/tute/);assert.equal(game.element('horn').hidden,false,'The horn button');assert.match(game.element('again').textContent,/tute/);
+game.element('again').onclick();assert.equal(game.element('carColours').children[11].hidden,true,'The rainbow colour still waits');assert.equal(game.element('rewardTeaser').hidden,false,'More surprises after the fourth trip');game.test.start();game.element('horn').onclick();assert.equal(game.world.honks,1,'Honking makes the ride react');
+game.test.honkKey();assert.equal(game.world.honks,2,'H honks too');
+game=await launch(()=>storage);assert.equal(game.world.colour,'#7b4cc2','Colour remembered');assert.equal(game.world.model,'cat','A purple cat');assert.equal(game.world.trail,true);assert.equal(game.element('horn').hidden,false,'The horn is remembered');
 // Fifth, sixth and seventh arrival (3 October 2026): the dog, the duck and the rocket, each chosen at once and kept after a reload; then no more.
 game.test.arrive();assert.equal(game.test.progress().arrivals,5);assert.equal(game.world.model,'dog');assert.match(game.element('unlock').textContent,/hund/);assert.match(game.element('again').textContent,/hunden/);
 game.element('again').onclick();assert.equal(game.element('model-dog').hidden,false);assert.ok(game.element('model-dog').classes.has('on'));assert.equal(game.element('model-duck').hidden,true);assert.equal(game.element('rewardTeaser').hidden,false);
 game.test.arrive();assert.equal(game.world.model,'duck');assert.match(game.element('unlock').textContent,/and/);game.element('again').onclick();assert.equal(game.element('model-duck').hidden,false);assert.equal(game.element('model-rocket').hidden,true);
 game.test.arrive();assert.equal(game.world.model,'rocket');assert.match(game.element('unlock').textContent,/rakett/);game.element('again').onclick();assert.equal(game.element('model-rocket').hidden,false);assert.equal(game.element('rewardTeaser').hidden,false,'More to come after the seventh trip');
-game.element('model-dog').onclick();assert.equal(game.world.model,'dog');game=await launch(()=>storage);assert.equal(game.world.model,'dog','The dog remembered');assert.equal(game.world.colour,'rainbow','a rainbow dog');
+game.element('model-dog').onclick();assert.equal(game.world.model,'dog');game=await launch(()=>storage);assert.equal(game.world.model,'dog','The dog remembered');assert.equal(game.world.colour,'#7b4cc2','a purple dog');
 // Trips 8 to 13 (3 October 2026): the unicorn, soap bubbles (an alternative behind the car), the fire engine, the horn, the hot-air balloon and last the T. rex.
 game.test.arrive();assert.equal(game.test.progress().arrivals,8);assert.equal(game.world.model,'unicorn');assert.match(game.element('unlock').textContent,/enhjørning/);game.element('again').onclick();assert.equal(game.element('model-unicorn').hidden,false);assert.equal(game.element('bubblesRow').hidden,true);
 game.test.arrive();assert.match(game.element('unlock').textContent,/såpebobler/);assert.equal(game.world.bubbles,true,'Bubbles on at once');assert.equal(game.world.trail,false,'instead of the trail');game.element('again').onclick();assert.equal(game.element('bubblesRow').hidden,false);assert.equal(game.element('bubbles').checked,true);
 game.element('trail').onchange({target:{checked:true}});assert.equal(game.world.trail,true);assert.equal(game.world.bubbles,false,'The trail switches the bubbles off');game.element('bubbles').onchange({target:{checked:true}});assert.equal(game.world.bubbles,true);assert.equal(game.world.trail,false);
-game.test.arrive();assert.equal(game.world.model,'firetruck');assert.equal(game.world.colour,'#c62828','The fire engine comes red, the standard one');assert.match(game.element('unlock').textContent,/brannbil/);assert.equal(game.element('horn').hidden,true,'The horn waits for the eleventh trip');
-game.test.arrive();assert.match(game.element('unlock').textContent,/tute/);assert.equal(game.element('horn').hidden,false,'The horn button');game.element('again').onclick();game.test.start();game.element('horn').onclick();assert.equal(game.world.honks,1,'Honking makes the ride react');
-game.test.honkKey();assert.equal(game.world.honks,2,'H honks too');
+game.test.arrive();assert.equal(game.world.model,'firetruck');assert.equal(game.world.colour,'#c62828','The fire engine comes red, the standard one');assert.match(game.element('unlock').textContent,/brannbil/);assert.equal(game.element('horn').hidden,false,'The horn has been there since the fourth trip');
+game.test.arrive();assert.equal(game.test.progress().arrivals,11);assert.equal(game.world.colour,'rainbow','The rainbow colour that changes all the time, picked at once');assert.match(game.element('unlock').textContent,/regnbuebil/);assert.match(game.element('again').textContent,/regnbuebilen/);
+game.element('again').onclick();{const rainbowButton=game.element('carColours').children[11];assert.equal(rainbowButton.hidden,false);assert.ok(rainbowButton.classes.has('on'));game.element('carColours').children[1].onclick();assert.equal(game.world.colour,'#c62828','a colour can still be picked');rainbowButton.onclick();assert.equal(game.world.colour,'rainbow');}
+game=await launch(()=>storage);assert.equal(game.world.colour,'rainbow','Rainbow colour remembered');
 game.test.arrive();assert.equal(game.world.model,'balloon');assert.match(game.element('unlock').textContent,/luftballong/);game.element('again').onclick();assert.equal(game.element('rewardTeaser').hidden,false);
 game.test.arrive();assert.equal(game.test.progress().arrivals,13);assert.equal(game.world.model,'trex');assert.match(game.element('unlock').textContent,/T-rex/);assert.match(game.element('unlock').textContent,/alle overraskelsene/);
 game.element('again').onclick();for(const m of ['car','cat','dog','duck','rocket','unicorn','firetruck','balloon','trex'])assert.equal(game.element('model-'+m).hidden,false,m+' in the picker');assert.equal(game.element('rewardTeaser').hidden,false,'The thirteen trips are done, but the secrets are not');assert.equal(game.element('rewardTeaser').textContent,'🔎 6 hemmeligheter mangler fortsatt');
@@ -96,7 +97,7 @@ game.test.arrive();assert.equal(game.element('unlock').hidden,true,'No new rewar
 game.element('again').onclick();assert.equal(game.test.state(),'intro','Without a new reward too, "Kjør en gang til" goes to the start screen');assert.equal(game.element('welcome').hidden,false);assert.equal(game.element('rewards').hidden,false,'with the car to choose');assert.equal(game.element('driveHud').hidden,true,'and no drive screen');
 store.set('sofiatur.fremgang',JSON.stringify({arrivals:8,model:'trex',behind:'bubbles'}));game=await launch(()=>storage);assert.equal(game.world.model,'car','The T. rex only after thirteen trips');assert.equal(game.world.bubbles,false,'bubbles only after nine');
 store.set('sofiatur.fremgang',JSON.stringify({arrivals:5,model:'rocket'}));game=await launch(()=>storage);assert.equal(game.world.model,'car','The rocket only after seven trips');
-console.log('Fourth arrival unlocks the rainbow colour, then the dog, duck, rocket, unicorn, soap bubbles, fire engine, horn, hot-air balloon and last the T. rex; everything survives a reload: OK');
+console.log('Fourth arrival unlocks the horn, then the dog, duck, rocket, unicorn, soap bubbles, fire engine, the rainbow colour (eleventh), hot-air balloon and last the T. rex; everything survives a reload: OK');
 
 // The secrets (6 October 2026): the KIWI car, Ludvig, the running duck, the taxi, the pig and the hover car are found by exploring, not by trips. Once all thirteen
 // trips are made the start card says how many are still missing; the debug keys move between the trip hint and the count.
@@ -256,7 +257,7 @@ console.log('RE-ward: saves everything unlocked and starts over, the rollback br
  // what counts as something to save: a place visited or the pig do, having been inside alone does not (it is no unlock)
  for(const [progress,can] of [[{ishall:'on'},true],[{rema:'on'},true],[{pig:'on'},true],[{inside:'on'},false]]){store.clear();store.set('sofiatur.fremgang',JSON.stringify(progress));g=await launch(()=>storage);assert.equal(g.element('reAward').disabled,!can,JSON.stringify(progress)+(can?' can be saved':' has nothing to save'));}}
 console.log('RE-ward also saves, clears and restores the places visited, the taxi, the pig, the hover car and the house: OK');
-// The easter egg (4 October 2026): visit the big duck in Lianvannet driving as the duck, honk, and a duck runs after the car. It takes the horn (the eleventh
+// The easter egg (4 October 2026): visit the big duck in Lianvannet driving as the duck, honk, and a duck runs after the car. It takes the horn (the fourth
 // trip), the duck (the sixth), a visit to the lake and a honk by the water. It is one more alternative behind the car on the start screen.
 {const duckStore=extra=>{store.clear();store.set('sofiatur.fremgang',JSON.stringify({arrivals:11,model:'duck',...extra}));};
  duckStore();let game=await launch(()=>storage);assert.equal(game.world.duckRunner,false,'No duck behind the car to begin with');assert.equal(game.element('duckRunnerRow').hidden,true);
@@ -281,7 +282,7 @@ console.log('RE-ward also saves, clears and restores the places visited, the tax
  // Every honk at the lake puts it back behind the car.
  game.test.visit('lake');game.element('toast').textContent='';game.test.honkKey();assert.equal(game.world.duckRunner,true,'It is back behind the car');assert.match(game.element('toast').textContent,/igjen/);
  // Not driving as the duck, without the horn, or with the duck not unlocked in storage: nothing.
- for(const [what,extra] of [['as the dog',{model:'dog'}],['as the car',{model:'car'}],['as the T. rex',{arrivals:13,model:'trex'}],['before the horn',{arrivals:10}]]){duckStore(extra);game=await launch(()=>storage);game.test.visit('lake');game.test.honkKey();game.test.honkKey();assert.equal(game.world.duckRunner,false,'No duck '+what);assert.equal(game.element('duckRunnerRow').hidden,true);}
+ for(const [what,extra] of [['as the dog',{model:'dog'}],['as the car',{model:'car'}],['as the T. rex',{arrivals:13,model:'trex'}],['before the duck is unlocked',{arrivals:5}]]){duckStore(extra);game=await launch(()=>storage);game.test.visit('lake');game.test.honkKey();game.test.honkKey();assert.equal(game.world.duckRunner,false,'No duck '+what);assert.equal(game.element('duckRunnerRow').hidden,true);}
  duckStore({behind:'duck'});game=await launch(()=>storage);assert.equal(game.world.duckRunner,false,'It cannot be forced through storage');assert.equal(game.test.behind(),'trail');
  // Free driving: a visit (within 8 m of the turning circle), the horn within 30 m of it; further away, or without a visit, nothing.
  {duckStore();game=await launch(()=>storage);const node=data.nodes[data.lakeside],drive=(dx,v=12)=>game.test.freeDrive(node[0]+dx,node[1],v);
@@ -297,7 +298,7 @@ console.log('Easter egg: visiting the duck as the duck and honking sets a duck r
  g.element('trail').onchange({target:{checked:true}});assert.equal(g.world.duckRunner,false);assert.equal(g.world.duckling,false,'with the small duck switched off there is nothing to follow');
  g.element('duckRunner').onchange({target:{checked:true}});assert.equal(g.world.duckling,true,'back with the small duck, for as long as the page is open');
  duckStore({behind:'none'});g=await launch(()=>storage);g.test.visit('lake');g.test.honkKey();assert.equal(g.world.duckRunner,true);assert.equal(g.world.duckling,false,'the first honk only puts the small duck back');g.test.honkKey();assert.equal(g.world.duckling,true,'and the next brings the smaller one');
- for(const [what,extra] of [['as the dog',{model:'dog'}],['as the car',{model:'car'}],['before the horn',{arrivals:10}]]){duckStore(extra);g=await launch(()=>storage);g.test.visit('lake');g.test.honkKey();g.test.honkKey();assert.equal(g.world.duckling,false,'No smaller duck '+what);}
+ for(const [what,extra] of [['as the dog',{model:'dog'}],['as the car',{model:'car'}],['before the duck is unlocked',{arrivals:5}]]){duckStore(extra);g=await launch(()=>storage);g.test.visit('lake');g.test.honkKey();g.test.honkKey();assert.equal(g.world.duckling,false,'No smaller duck '+what);}
  duckStore();g=await launch(()=>storage);g.test.start();g.test.honkKey();g.test.honkKey();assert.equal(g.world.duckling,false,'Not away from the lake');
  duckStore();g=await launch(()=>storage);g.test.visit('lake');g.test.honkKey();assert.equal(g.world.duckling,true);g=await launch(()=>storage);assert.equal(g.world.duckling,false,'A reload takes it away');
  duckStore();g=await launch(()=>storage);g.test.visit('lake');g.test.honkKey();assert.equal(g.world.duckling,true);g.element('reAward').onclick();g.element('reAward').onclick();assert.equal(g.world.duckling,false,'RE-ward: a new game has no smaller duck');
@@ -371,15 +372,19 @@ console.log('The duckling follows the small duck 1.2 m behind it, driving and st
 
 // Debug keys for testing the unlocks: X counts one more trip to the kindergarten, Z one fewer (saved like a real count).
 store.clear();game=await launch(()=>storage);
-for(let i=0;i<4;i++)game.key('x');assert.equal(game.test.progress().arrivals,4);assert.equal(game.world.colour,'rainbow');assert.equal(game.world.trail,true);assert.equal(game.world.model,'cat');
-assert.equal(game.element('modelRow').hidden,false);assert.equal(game.element('carColours').children[11].hidden,false);assert.match(game.element('toast').textContent,/4 · regnbuebil/);
+for(let i=0;i<4;i++)game.key('x');assert.equal(game.test.progress().arrivals,4);assert.equal(game.world.colour,'#14171c','the rainbow colour is not the fourth any more');assert.equal(game.world.trail,true);assert.equal(game.world.model,'cat');
+assert.equal(game.element('modelRow').hidden,false);assert.equal(game.element('horn').hidden,false,'the horn is the fourth');assert.equal(game.element('carColours').children[11].hidden,true);assert.match(game.element('toast').textContent,/4 · tuting/);
 game.key('X');assert.equal(game.test.progress().arrivals,5);game.key('z');
-game.key('z');assert.equal(game.test.progress().arrivals,3);assert.equal(game.world.colour,'#14171c','Rainbow colour locked again below 4');assert.equal(game.element('carColours').children[11].hidden,true);assert.equal(game.world.model,'cat');
+game.key('z');assert.equal(game.test.progress().arrivals,3);assert.equal(game.element('horn').hidden,true,'The horn locked again below 4');assert.equal(game.world.model,'cat');
 game.key('Z');assert.equal(game.test.progress().arrivals,2);assert.equal(game.world.trail,false,'Trail locked again below 3');assert.equal(game.element('trailRow').hidden,true);assert.equal(game.world.model,'cat');
 game=await launch(()=>storage);assert.equal(game.test.progress().arrivals,2,'The count is saved');
 game.key('z');assert.equal(game.world.model,'car','Cat locked again below 2');assert.equal(game.element('modelRow').hidden,true);
 for(let i=0;i<4;i++)game.key('z');assert.equal(game.test.progress().arrivals,0,'Never below 0');assert.equal(game.element('rewards').hidden,true);
 game.key('x',{tagName:'INPUT'});assert.equal(game.test.progress().arrivals,0,'Not while typing in a field');
+// The rainbow colour is the eleventh (it was the fourth until 11 October 2026): picked at once on the way up, locked and taken off on the way down.
+store.clear();game=await launch(()=>storage);for(let i=0;i<10;i++)game.key('x');assert.equal(game.test.progress().arrivals,10);assert.equal(game.element('carColours').children[11].hidden,true,'the rainbow waits at ten');assert.notEqual(game.world.colour,'rainbow');
+game.key('x');assert.equal(game.test.progress().arrivals,11);assert.equal(game.world.colour,'rainbow');assert.equal(game.element('carColours').children[11].hidden,false);assert.match(game.element('toast').textContent,/11 · regnbuebil/);
+game.key('z');assert.equal(game.test.progress().arrivals,10);assert.equal(game.world.colour,'#14171c','Rainbow colour locked again below 11');assert.equal(game.element('carColours').children[11].hidden,true);
 console.log('Debug keys: X and Z count trips up and down, unlocking and locking the rewards: OK');
 
 // The cat wears the KIWI logo on both flanks with the KIWI skin (world.js shows it): hidden to begin with, one on each side,
@@ -597,7 +602,7 @@ console.log('Hover car: only when every other unlock is there; announced once; s
  assert.equal(g.world.balloonGirl,true,'she rides in the balloon after the first time inside');assert.equal(g.element('toast').textContent,toastBefore,'and nothing is announced about it');assert.match(g.spoken.at(-1),/^Velkommen inn, Sofia!/);
  assert.equal(JSON.parse(store.get('sofiatur.fremgang')).inside,'on');
  const items=g.inside.enters.at(-1).items;assert.equal(g.inside.enters.at(-1).o.pigHidden,true,'the pig is hiding');
- assert.deepEqual([...items.map(i=>i.id)],['colour','cat','trail','rainbow','dog','duck','rocket','unicorn','bubbles','firetruck','horn','balloon','trex','kiwi','ludvig','duckRunner','taxi','pig','hover'],'19 places in the order of the table');
+ assert.deepEqual([...items.map(i=>i.id)],['colour','cat','trail','horn','dog','duck','rocket','unicorn','bubbles','firetruck','rainbow','balloon','trex','kiwi','ludvig','duckRunner','taxi','pig','hover'],'19 places in the order of the table');
  const by=id=>items.find(i=>i.id===id);
  assert.deepEqual([by('colour').icon,by('colour').title,by('colour').unlocked].map(x=>x),['🎨','Farger på bilen',true]);assert.equal(by('colour').text,'Denne fikk du da du kom fram til barnehagen for første gang.');assert.equal(by('dog').text,'Denne fikk du da du kom fram til barnehagen for femte gang.');
  assert.deepEqual([by('rocket').icon,by('rocket').title,by('rocket').unlocked],['❓','Hemmelig overraskelse',false]);assert.equal(by('rocket').text,'Hint: Kjør til barnehagen 2 ganger til.');assert.equal(by('unicorn').text,'Hint: Kjør til barnehagen 3 ganger til.');
@@ -630,7 +635,7 @@ console.log('Inside the house: the button, the girl in the balloon (no announcem
 // The debug keys inside the house (6 October 2026): X unlocks the next place on the podium without doing the task, in the podium's order (the 13 trips, then the KIWI car,
 // Ludvig, the running duck, the taxi and the pig, which brings the hover car with it); Z locks the last one again. Outside the house they count trips as before.
 {save({});let g=await launch(()=>storage);g.element('goInside').onclick();
- const IDS=['colour','cat','trail','rainbow','dog','duck','rocket','unicorn','bubbles','firetruck','horn','balloon','trex','kiwi','ludvig','duckRunner','taxi','pig','hover'];
+ const IDS=['colour','cat','trail','horn','dog','duck','rocket','unicorn','bubbles','firetruck','rainbow','balloon','trex','kiwi','ludvig','duckRunner','taxi','pig','hover'];
  const open=()=>[...g.inside.refreshes.at(-1).items.filter(i=>i.unlocked).map(i=>i.id)],saved=()=>JSON.parse(store.get('sofiatur.fremgang')),toast=()=>g.element('toast').textContent;
  // from nothing: one place at a time, in the order of the podium
  for(let n=0;n<13;n++){g.key('x');assert.deepEqual(open(),IDS.slice(0,n+1),'trip '+(n+1));}
@@ -658,16 +663,16 @@ console.log('Inside the house: the button, the girl in the balloon (no announcem
  g.key('x');assert.ok(g.inside.refreshes.at(-1).items.every(i=>i.unlocked),'the taxi is the only place left, and the hover car comes with it');assert.equal(g.world.model,'taxi');assert.match(toast(),/Taxi låst opp.*Svevebil/);}
 console.log('Debug keys inside the house: X unlocks the podium one place at a time (trips, KIWI, Ludvig, the duck, the taxi, the pig and the hover car), Z locks it again, outside they count trips: OK');
 
-// The horn on the start screen (7 October 2026): once the horn is unlocked (eleven trips) its button stands on the start screen beside "Gå inn", so each ride's horn can be
+// The horn on the start screen (7 October 2026): once the horn is unlocked (four trips since 11 October 2026, before: eleven) its button stands on the start screen beside "Gå inn", so each ride's horn can be
 // tried while choosing what to drive as. It is gone while driving and in the house, and back at home.
-{save({arrivals:10});let g=await launch(()=>storage);assert.equal(g.element('hornHome').hidden,true,'locked: no horn button');g.key('h');assert.equal(g.world.honks,0,'and H does nothing');
- save({arrivals:11,model:'dog'});g=await launch(()=>storage);assert.equal(g.element('hornHome').hidden,false,'the horn button is on the start screen');
+{save({arrivals:3});let g=await launch(()=>storage);assert.equal(g.element('hornHome').hidden,true,'locked: no horn button');g.key('h');assert.equal(g.world.honks,0,'and H does nothing');
+ save({arrivals:5,model:'dog'});g=await launch(()=>storage);assert.equal(g.element('hornHome').hidden,false,'the horn button is on the start screen');
  g.element('hornHome').onclick();assert.equal(g.world.honks,1,'it honks: the ride hops');assert.equal(g.spoken.at(-1),'Voff voff!','as the dog (the word, as the recordings are not loaded in this test)');
  g.element('model-cat').onclick();g.element('hornHome').onclick();assert.equal(g.spoken.at(-1),'Mjau!','the next ride has its own');g.key('h');assert.equal(g.world.honks,3,'H does too');
  g.element('sound').onclick();const spoken=g.spoken.length;g.element('hornHome').onclick();assert.equal(g.world.honks,4);assert.equal(g.spoken.length,spoken,'with the sound off it hops and says nothing');g.element('sound').onclick();
  g.element('goInside').onclick();assert.equal(g.element('hornHome').hidden,true,'not in the house');g.key('h');assert.equal(g.world.honks,4,'and no honk there');g.element('goOut').onclick();assert.equal(g.element('hornHome').hidden,false,'back at home it is back');
  g.test.start();assert.equal(g.element('hornHome').hidden,true,'not while driving (the drive screen has its own button)');
- save({arrivals:10});g=await launch(()=>storage);g.key('x');assert.equal(g.element('hornHome').hidden,false,'X: 11 trips, the button appears');g.key('z');assert.equal(g.element('hornHome').hidden,true,'Z: 10 trips, it is gone');
+ save({arrivals:3});g=await launch(()=>storage);g.key('x');assert.equal(g.element('hornHome').hidden,false,'X: 4 trips, the button appears');g.key('z');assert.equal(g.element('hornHome').hidden,true,'Z: 3 trips, it is gone');
  assert.ok(fs.readFileSync('dist/game.js','utf8').includes('applyRewards();reset();if(sound&&arrivals>=HORN_AT)music.preloadHorns?.();'),'the recordings are fetched when the game loads, so the first press on the start screen plays one and not the voice');}
 console.log('Horn on the start screen: a button beside "Gå inn" once the horn is unlocked, every ride sounds, H too, silent with the sound off, gone while driving and in the house: OK');
 

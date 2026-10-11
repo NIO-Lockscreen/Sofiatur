@@ -11,7 +11,7 @@ import {createBoyModel} from './boy.js';
 import {createDuckRunnerModel} from './duck-runner.js';
 
 // The three steps of the podium, from the front (low) to the back (high): item ids in order, the height of the step's top, its middle z and its width. 1 m is a slot.
-export const STEPS=[{ids:['colour','cat','trail','rainbow','dog','duck','rocket'],top:.35,z:-.5,w:8.6},{ids:['unicorn','bubbles','firetruck','horn','balloon','trex'],top:.7,z:-1.7,w:7.4},{ids:['kiwi','ludvig','duckRunner','taxi','pig','hover'],top:1.05,z:-2.9,w:7.4}];
+export const STEPS=[{ids:['colour','cat','trail','horn','dog','duck','rocket'],top:.35,z:-.5,w:8.6},{ids:['unicorn','bubbles','firetruck','rainbow','balloon','trex'],top:.7,z:-1.7,w:7.4},{ids:['kiwi','ludvig','duckRunner','taxi','pig','hover'],top:1.05,z:-2.9,w:7.4}];
 const SLOT=1.2,TARGET=1,ROOM={x:4.5,front:3,back:-3.5,height:3.6}; // slot spacing; the size a model is fitted to (m); the room's half width, front and back edges, wall height
 // What each model is dressed in on the podium (the colour its ride would take; the cars and the rainbow have their own; the pig is always pig-pink).
 const PAINT={pig:PIG_SKIN,cat:'#e07b39',dog:'#b9824a',duck:'#8a7a68',rocket:'#d94a4a',unicorn:'#f4efff',firetruck:'#c62828',balloon:'#e5528f',trex:'#4caf50'};
