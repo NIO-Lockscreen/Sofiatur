@@ -410,7 +410,7 @@ function debugArrivals(delta){const before=arrivals;arrivals=Math.max(0,arrivals
  const unlocked=['','farge på bilen','katt','regnbuespor','regnbuebil','hund','and','rakett','enhjørning','såpebobler','brannbil','tuting','luftballong','T-rex'][arrivals]??'alt låst opp';toast(`🛠 Turer til barnehagen: ${arrivals}${unlocked?' · '+unlocked:''}${x.toast}`);}
 // Unlocks that follow from others (5 October 2026): the taxi once all five places are visited, the hover car once everything else is unlocked.
 // Each is announced once; the caller appends the words to its own toast and speech (say() cancels earlier speech, so never call it twice in a row).
-const TAXI_YELLOW='#f3c531',PIG_PINK='#ec6aa8'; // the "Gul" and "Rosa" swatches: choosing the taxi paints the car yellow, finding or choosing the pig paints it pink, and the colour can still be changed
+const TAXI_YELLOW='#f3c531',PIG_PINK='#ec6aa8',DUCK_PLUMAGE='#14171c'; // the "Gul", "Rosa" and "Svart" swatches: choosing the taxi paints the car yellow, finding or choosing the pig paints it pink, choosing the duck gives it its own black plumage (11 October 2026), and the colour can still be changed
 function newUnlocks(){let t='',s='',taxi=false,hover=false;
  if(taxiReady()&&!taxiSeen){taxiSeen=taxi=true;model='taxi';carColour=TAXI_YELLOW;t+=' · 🚕 Taxi låst opp!';s+=' Og du har besøkt alle stedene! Nå kan du kjøre taxi!';}
  if(hoverReady()&&!hoverSeen){hoverSeen=hover=true;hoverOn=true;t+=' · ⚡ Svevebil!';s+=' Wow, du har låst opp alt! Veier? Der vi skal, trenger vi ikke veier! Nå svever bilen med hjulene under seg.';}
@@ -487,7 +487,7 @@ function duckHeard(){
  else{toast('🦆 Anda hørte tuta · Nå løper den etter bilen igjen!'+x.toast);say('Kvakk kvakk! Nå løper anda etter bilen igjen.'+x.say);}
 }
 // What the car is (the start screen's "Kjør som" row): the unlocked ones of car, cat, dog, duck and rocket.
-for(const m of MODELS)$('model-'+m).onclick=()=>{if(m==='taxi'&&model!=='taxi')carColour=TAXI_YELLOW;if(m==='pig'&&model!=='pig')carColour=PIG_PINK;model=m;saveProgress();applyRewards();showRewards();};
+for(const m of MODELS)$('model-'+m).onclick=()=>{if(m==='taxi'&&model!=='taxi')carColour=TAXI_YELLOW;if(m==='pig'&&model!=='pig')carColour=PIG_PINK;if(m==='duck'&&model!=='duck')carColour=DUCK_PLUMAGE;model=m;saveProgress();applyRewards();showRewards();};
 $('music').onchange=e=>{musicOn=e.target.value==='on';saveSettings();if(musicOn&&sound)music.play();else music.stop();};
 $('cameraMode').onchange=e=>camMode=e.target.value;$('start').onclick=start;// Arriving at the kindergarten and starting over both lead to the start screen, with the car to choose (4 October 2026; before, "Kjør en gang til" started at once
 // unless a new reward had come, and "Begynn turen på nytt" started at once in free driving).
