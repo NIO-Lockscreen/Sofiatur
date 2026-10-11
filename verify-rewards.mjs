@@ -472,7 +472,7 @@ console.log('The fire engine takes the colour; its beacons follow it (red: blue,
  const pos=new T.Vector3(0,.08,0),facing=new T.Vector3(0,0,-1),at=new T.Vector3(),q=new T.Quaternion(),col=new T.Color('#14171c');let time=0;
  const step=(speed,dt=.045)=>{time+=dt;rex.update(dt,speed,time,col);rex.group.updateMatrixWorld(true);boy.update(dt,pos,facing,speed,time,{held:true});boy.hold(rex.grip.getWorldPosition(at),rex.grip.getWorldQuaternion(q),dt,time);};
  assert.equal(rex.grip.parent,rex.head,'the grip is on the head (the upper jaw), not on the lower jaw that drops in a roar');
- const solids=[];rex.group.traverse(o=>{if(o.isMesh&&o.geometry.type==='BufferGeometry'){o.material=o.material.clone();o.material.side=T.DoubleSide;solids.push(o);}});
+ const solids=[];rex.group.traverse(o=>{if(o.isMesh&&o.geometry.type==='BufferGeometry'&&!o.userData.open){o.material=o.material.clone();o.material.side=T.DoubleSide;solids.push(o);}});
  const rc=new T.Raycaster(),dir=new T.Vector3(.577,.5774,.5776).normalize(),w=new T.Vector3();
  const clip=()=>{boy.group.updateMatrixWorld(true);let n=0,inside=0;boy.group.traverse(o=>{if(!o.isMesh)return;const p=o.geometry.attributes.position;for(let i=0;i<p.count;i+=3){w.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);n++;for(const s of solids){rc.set(w,dir);if(rc.intersectObject(s,false).length%2===1){inside++;break;}}}});return inside/n;};
  for(let i=0;i<80;i++)step(0);const standing=clip();for(let i=0;i<60;i++)step(9);const running=clip();for(let i=0;i<60;i++)step(0);

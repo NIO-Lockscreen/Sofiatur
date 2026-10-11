@@ -332,16 +332,22 @@ function loftTools(T){
 export function createTRex(T,{logos={}}={}){
  const group=new T.Group();group.name='T-rex';
  const std=(color,roughness=.8,extra={})=>new T.MeshStandardMaterial({color,roughness,...extra});
- const skin=std('#14171c'),ridge=std('#0b0d10'),belly=std('#e6dcb0',.85),tooth=std('#fbf8ec',.45),claw=std('#efe6c8',.5),mouth=std('#b13a45',.7),tongue=std('#e47585',.6);
+ const skin=std('#14171c'),ridge=std('#0b0d10'),belly=std('#e6dcb0',.85,{side:T.DoubleSide}),tooth=std('#fbf8ec',.45),claw=std('#efe6c8',.5),mouth=std('#b13a45',.7),tongue=std('#e47585',.6);
  const eye=new T.MeshBasicMaterial({color:'#f2c230'}),pupil=new T.MeshBasicMaterial({color:'#121212'}),shine=new T.MeshBasicMaterial({color:'#ffffff'}),nostril=new T.MeshBasicMaterial({color:'#121212'});
  const {V,loft,sweep,station,ringAt}=loftTools(T);
  const sphere=sphereGeo(T),cone=new T.ConeGeometry(1,1,6),limbG=new T.CylinderGeometry(1,.8,1,8);
  const body=new T.Group();group.add(body);
  const part=(g,m,[x,y,z],[sx,sy,sz],parent=body)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;parent.add(o);return o;};
  const put=(geo,mat,parent)=>{const o=new T.Mesh(geo,mat);o.castShadow=true;parent.add(o);return o;};
+ // a claw (11 October 2026): a curved talon that runs forward from its base and curves down at the tip, k times the size; set at a toe or a finger tip, turned along it (ry)
+ const talon=(parent,[x,y,z],ry=0,k=1,fat=1)=>{const m=put(sweep([[0,0,0],[0,.02*k,-.08*k],[0,-.045*k,-.17*k]],u=>(.048*(1-u)+.006)*k*fat,u=>(.048*(1-u)+.006)*k*fat,V(1,0,0),6,8),claw,parent);m.position.set(x,y,z);m.rotation.y=ry;return m;};
  // ---- The body: z, belly, back, half width. A deep chest, narrow shoulders, the hips and then the tail ----
  const torsoRings=station([[-1.4,2.45,3,.1],[-1.3,2.12,3.14,.32],[-1,1.8,3.18,.5],[-.5,1.62,3.1,.62],[.1,1.6,3,.65],[.7,1.66,2.96,.62],[1.2,1.78,2.9,.52],[1.65,1.98,2.78,.34]],([z,lo,hi,w])=>({c:V(0,(lo+hi)/2,z),a:V(w,0,0),b:V(0,(hi-lo)/2,0)}));
- put(loft(torsoRings,20),skin,body);part(sphere,belly,[0,1.78,-.2],[.46,.2,1.3]);
+ put(loft(torsoRings,20),skin,body);
+ // The cream belly (11 October 2026): a strip of the torso's own lower side, 1.5 % outside it, so it lies flush (an ellipsoid stuck out under the body and at both ends before).
+ {const m=26,n=9,pos=[],idx=[];for(let i=0;i<=m;i++){const z=-1.05+i*(2.3/m),r=ringAt(torsoRings,z);for(let k=0;k<n;k++){const f=Math.PI*1.5+(k/(n-1)-.5)*1.3;pos.push(r.hw*1.015*Math.cos(f),r.cy+r.hy*1.015*Math.sin(f),z);}}
+  for(let i=0;i<m;i++)for(let k=0;k<n-1;k++){const p=i*n+k;idx.push(p,p+n,p+1,p+1,p+n,p+n+1);}
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();const strip=new T.Mesh(g,belly);strip.userData.open=true;body.add(strip);}
  const backAt=z=>{const r=ringAt(torsoRings,z);return r.cy+r.hy;};
  for(let z=-.8;z<=1.25;z+=.41)part(cone,ridge,[0,backAt(z)+.02,z],[.1,.2,.12]); // the plates down the back
  // ---- The neck, and the head: a skull with its upper jaw, and the lower jaw hinged under it at the back ----
@@ -351,7 +357,7 @@ export function createTRex(T,{logos={}}={}){
  put(loft(skullRings,18),skin,head);part(sphere,mouth,[0,-.3,-.7],[.17,.03,.5],head); // the roof of the mouth, seen when it opens
  const jaw=new T.Group();jaw.position.set(0,-.3,-.1);head.add(jaw); // the hinge: at the back of the jaw; negative rotation.x drops the front
  const jawRings=station([[.14,-.03,.1,.2],[-.1,-.07,.12,.29],[-.45,-.09,.12,.27],[-.8,-.08,.1,.22],[-1.1,-.02,.08,.16],[-1.28,.03,.07,.12]],([z,cy,hy,hw])=>({c:V(0,cy,z),a:V(hw,0,0),b:V(0,hy,0)}));
- put(loft(jawRings,16),skin,jaw);part(sphere,mouth,[0,.01,-.55],[.2,.035,.5],jaw);part(sphere,tongue,[0,.03,-.5],[.11,.03,.4],jaw);part(sphere,belly,[0,-.2,-.5],[.14,.05,.55],jaw);
+ put(loft(jawRings,16),skin,jaw);part(sphere,mouth,[0,.01,-.55],[.2,.035,.5],jaw);part(sphere,tongue,[0,.03,-.5],[.11,.03,.4],jaw);part(sphere,belly,[0,-.19,-.5],[.12,.035,.5],jaw);
  for(const s of [-1,1]){
   // the teeth: the upper ones hang down outside the lower jaw, the lower ones stand up inside; a little stubby and friendly
   for(let k=0;k<7;k++){const z=-.35-k*.17,r=ringAt(skullRings,z);part(cone,tooth,[s*r.hw*.86,r.cy-r.hy+.005,z],[.035,k<2?.17:.14,.035],head).rotation.x=Math.PI;}
@@ -362,14 +368,20 @@ export function createTRex(T,{logos={}}={}){
  // where Ludvig is held: by his shirt, in the teeth at the right corner of the upper jaw (the T. rex's right is +x)
  const grip=new T.Object3D();grip.position.set(.28,-.33,-.7);head.add(grip);
  // ---- Tiny arms with two claws each ----
- const arms=[-1,1].map(s=>{const a=new T.Group();a.position.set(s*.5,2.5,-1);body.add(a);part(limbG,skin,[0,-.16,-.05],[.07,.32,.07],a).rotation.x=.9;for(const c of [-1,1])part(cone,claw,[c*.03,-.3,-.25],[.025,.07,.025],a).rotation.x=-1.2;return a;});
+ const arms=[-1,1].map(s=>{const a=new T.Group();a.position.set(s*.5,2.5,-1);body.add(a);
+  put(sweep([[0,0,0],[s*.02,-.1,-.06],[s*.04,-.22,-.12]],u=>.095-.03*u,u=>.095-.03*u,V(1,0,0),5,10),skin,a); // the upper arm
+  const elbow=new T.Group();elbow.position.set(s*.04,-.22,-.12);a.add(elbow);part(sphere,skin,[0,0,0],[.075,.075,.075],elbow);
+  put(sweep([[0,0,0],[0,-.07,-.12],[0,-.1,-.26]],u=>.068-.02*u,u=>.068-.02*u,V(1,0,0),5,10),skin,elbow); // the forearm
+  const hand=new T.Group();hand.position.set(0,-.1,-.26);elbow.add(hand);part(sphere,skin,[0,0,0],[.06,.05,.075],hand);
+  for(const c of [-1,1]){put(sweep([[0,0,0],[c*.03,-.035,-.11],[c*.055,-.06,-.22]],u=>.032-.014*u,u=>.032-.014*u,V(1,0,0),4,8),skin,hand);talon(hand,[c*.055,-.06,-.22],c*.15,1.25,.7);} // two fingers, each with a long curved claw
+  a.userData.elbow=elbow;return a;});
  // ---- The legs: a strong thigh, a shin that slopes back, a short foot bone, a three-toed foot with claws ----
  const limb=rows=>loft(station(rows,([y,rx,rz,dz])=>({c:V(0,y,dz),a:V(rx,0,0),b:V(0,0,rz)})),14); // rows: y, half width, half depth, how far forward (+ back)
  const thighG=limb([[.55,.18,.26,0],[.15,.33,.42,0],[-.2,.37,.45,-.06],[-.55,.27,.32,-.2],[-.85,.17,.2,-.32]]),shinG=limb([[.12,.15,.17,0],[-.25,.14,.16,.1],[-.6,.11,.12,.25],[-.9,.09,.1,.35]]),footG=limb([[.05,.09,.1,0],[-.2,.1,.12,0],[-.33,.11,.13,-.02]]);
  const legs=[-1,1].map(s=>{const hip=new T.Group();hip.position.set(s*.6,2.15,.45);body.add(hip);put(thighG,skin,hip);
   const knee=new T.Group();knee.position.set(0,-.85,-.32);hip.add(knee);put(shinG,skin,knee);
   const ankle=new T.Group();ankle.position.set(0,-.9,.35);knee.add(ankle);put(footG,skin,ankle);
-  for(const c of [-1,0,1]){part(sphere,skin,[c*.13,-.31,-.27],[.065,.055,.3],ankle).rotation.y=c*.28;part(cone,claw,[c*.2,-.31,-.6],[.04,.14,.04],ankle).rotation.x=-Math.PI/2;}
+  for(const c of [-1,0,1]){part(sphere,skin,[c*.13,-.31,-.27],[.065,.055,.3],ankle).rotation.y=-c*.28;talon(ankle,[c*.2,-.3,-.56],-c*.28,1.5);} // three toes spread forward, each with a big curved claw
   return {hip,knee,ankle};});
  // ---- The tail: four swept pieces on joints, thick at the hips and a thin tip, with plates on its first three ----
  const TP=[[0,2.45,1.3],[0,2.5,2.3],[0,2.42,3.3],[0,2.32,4.25],[0,2.22,5.1]],tail=[],W=u=>.44*Math.pow(1-u,1.1)+.03,H=u=>.43*Math.pow(1-u,1.1)+.03;
@@ -394,7 +406,7 @@ export function createTRex(T,{logos={}}={}){
   legs.forEach(({hip,knee,ankle},i)=>{const p=phase+i*Math.PI;hip.rotation.x=Math.sin(p)*.65*run;knee.rotation.x=-Math.max(0,Math.cos(p))*.8*run;ankle.rotation.x=-(hip.rotation.x+knee.rotation.x)*.7;});
   body.position.y=Math.abs(Math.sin(phase))*.14*run;body.rotation.x=-.08*run+Math.sin(phase*2)*.03*run;
   tail.forEach((seg,i)=>{seg.rotation.y=Math.sin(time*(2+run*3)-i*.6)*(.1+.05*run);seg.rotation.x=i?.03:-.04;});
-  arms.forEach((a,i)=>{a.rotation.x=Math.sin(phase+i)*.3*run;});
+  arms.forEach((a,i)=>{a.rotation.x=Math.sin(phase+i)*.3*run;a.userData.elbow.rotation.x=.35+Math.sin(phase*2+i)*.25*run;});
   // the roar: the jaw drops open (negative rotation.x) and the snout lifts (positive), held a moment and closed again; carrying Ludvig the mouth stays a little open
   roar=Math.max(0,roar-dt*.8);const open=Math.sin(Math.PI*Math.min(1,roar*1.3));
   jaw.rotation.x=-Math.max(held.carrying?.18:0,.85*open+.05*run*Math.abs(Math.sin(phase)));
