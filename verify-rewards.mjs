@@ -423,8 +423,13 @@ for(const [name,make,{x,y,z,minY,paints}] of [['unicorn',createUnicorn,{x:[1,2.5
  const pose=()=>{const v=[];ride.group.traverse(o=>{if(o.isGroup||o.isMesh)v.push(o.rotation.x,o.rotation.y,o.position.y,o.scale.y);});return v;};
  const still=pose();for(let i=0;i<10;i++)ride.update(.05,14,1+i*.05,pink);assert.ok(still.some((v,i)=>Math.abs(v-pose()[i])>.03),name+' moves');
  assert.equal(typeof ride.honk,'function',name+' reacts to the horn');}
-{const rex=createTRex(T);rex.update(.05,0,1);const shut=rex.jaw.rotation.x;rex.honk();let widest=0;for(let i=0;i<30;i++){rex.update(.05,0,1+i*.05);widest=Math.max(widest,rex.jaw.rotation.x);}
- assert.ok(widest>shut+.6,'The T. rex opens its jaws wide when it honks ('+widest.toFixed(2)+')');assert.ok(rex.jaw.rotation.x<widest,'and shuts them again');}
+// The T. rex's roar (11 October 2026): the FRONT of the lower jaw drops open (before, the jaw turned up into the skull, and this test only looked at the number), the snout lifts,
+ // and both close again. Measured on the tips of the jaws in the world.
+ {const rex=createTRex(T),lowerTip=new T.Vector3(0,.1,-1.28),upperTip=new T.Vector3(0,-.2,-1.42),gap=()=>{rex.group.updateMatrixWorld(true);return rex.head.localToWorld(upperTip.clone()).y-rex.jaw.localToWorld(lowerTip.clone()).y;},snout=()=>{rex.group.updateMatrixWorld(true);return rex.head.localToWorld(upperTip.clone()).y;};
+  rex.update(.05,0,1);const shut=gap(),snout0=snout();assert.ok(Math.abs(shut)<.1,'Closed, the lower jaw meets the upper at the front ('+shut.toFixed(2)+' m)');
+  rex.honk();let widest=0,lowest=9,highest=-9;for(let i=0;i<30;i++){rex.update(.05,0,1+i*.05);widest=Math.max(widest,gap());lowest=Math.min(lowest,gap());highest=Math.max(highest,snout());}
+  assert.ok(widest>shut+.7,'The T. rex opens its jaws wide when it honks: the front of the lower jaw goes DOWN ('+widest.toFixed(2)+' m open)');assert.ok(lowest>shut-.02,'and never up into the skull ('+lowest.toFixed(2)+' m)');
+  assert.ok(highest>snout0+.25,'The snout lifts for the roar ('+(highest-snout0).toFixed(2)+' m)');assert.ok(Math.abs(gap()-shut)<.15&&rex.jaw.rotation.x>-.1,'and the mouth closes again');}
 {const scene=new T.Scene(),b=createBubbles({T,scene}),pos=new T.Vector3(0,100,0),facing=new T.Vector3(0,0,-1);assert.equal(b.mesh.visible,false);b.setOn(true);
  for(let i=0;i<60;i++){pos.z-=10*.05;b.update(.05,pos,facing);}assert.ok(b.mesh.count>15,'Soap bubbles are blown ('+b.mesh.count+')');assert.ok(b.bubbles.every(q=>q.y>pos.y),'and rise above the car');
  assert.ok(b.bubbles.reduce((a,q)=>a+q.z,0)/b.bubbles.length>pos.z+1,'behind it');for(let i=0;i<120;i++)b.update(.05,pos,facing);assert.ok(b.bubbles.every(q=>q.age<=q.life),'and pop');b.setOn(false);assert.equal(b.mesh.visible,false);}
@@ -455,12 +460,30 @@ console.log('The fire engine takes the colour; its beacons follow it (red: blue,
  boy.setOn(true);rex.carrying=true;const pos=new T.Vector3(10,100.08,20),facing=new T.Vector3(0,0,-1),at=new T.Vector3(),q=new T.Quaternion();
  const legs=[];for(let i=0;i<20;i++){rex.update(.05,12,i*.05);car.updateMatrixWorld(true);boy.update(.05,pos,facing,12,i*.05,{held:true});boy.hold(rex.grip.getWorldPosition(at),rex.grip.getWorldQuaternion(q),.05,i*.05);
   boy.group.traverse(o=>{if(o.isGroup&&o!==boy.group&&o.children.length===2&&o.position.y>.4&&o.position.y<.5)legs.push(o.rotation.x);});}
- assert.ok(rex.jaw.rotation.x>=.29,'The T. rex holds its jaws a little open');
+ assert.ok(rex.jaw.rotation.x<=-.17&&rex.jaw.rotation.x>=-.26,'The T. rex holds its jaws a little open ('+rex.jaw.rotation.x.toFixed(2)+')');
  const scruff=new T.Vector3(0,.86,.12).applyQuaternion(boy.group.quaternion).add(boy.group.position);assert.ok(scruff.distanceTo(at)<.05,'Ludvig is held by the back of his shirt in its mouth');
  assert.ok(at.y>pos.y+2.4,'up at the T. rex\'s mouth ('+(at.y-pos.y).toFixed(2)+' m)');const up=new T.Vector3(0,1,0).applyQuaternion(boy.group.quaternion);assert.ok(up.y>.9,'hanging upright');
  const chest=new T.Vector3(0,.7,0).applyQuaternion(boy.group.quaternion).add(boy.group.position);assert.ok(chest.x-car.position.x>.5,'beside its face on its right, where the camera behind sees him ('+(chest.x-car.position.x).toFixed(2)+' m)');
  const box=new T.Box3().setFromObject(boy.group);assert.ok(box.min.y>pos.y+1.2,'his feet well off the ground ('+(box.min.y-pos.y).toFixed(2)+' m)');
  assert.ok(Math.max(...legs)-Math.min(...legs)>.5,'his legs still running in the air');assert.ok(boy.track.length>10,'his track kept');}
+// Ludvig well placed in the mouth (11 October 2026): he hangs from a grip on the UPPER jaw, at the right corner of the mouth by the upper teeth, so a roar (the lower jaw drops) does
+// not drag him down; he does not jump; and he does not sink into the T. rex's head, neck or body, standing, running or roaring (counted as the share of his surface inside its solid parts).
+{const scene=new T.Scene(),rex=createTRex(T),boy=createBoy({T,scene});scene.add(rex.group);boy.setOn(true);rex.carrying=true;
+ const pos=new T.Vector3(0,.08,0),facing=new T.Vector3(0,0,-1),at=new T.Vector3(),q=new T.Quaternion(),col=new T.Color('#14171c');let time=0;
+ const step=(speed,dt=.045)=>{time+=dt;rex.update(dt,speed,time,col);rex.group.updateMatrixWorld(true);boy.update(dt,pos,facing,speed,time,{held:true});boy.hold(rex.grip.getWorldPosition(at),rex.grip.getWorldQuaternion(q),dt,time);};
+ assert.equal(rex.grip.parent,rex.head,'the grip is on the head (the upper jaw), not on the lower jaw that drops in a roar');
+ const solids=[];rex.group.traverse(o=>{if(o.isMesh&&o.geometry.type==='BufferGeometry'){o.material=o.material.clone();o.material.side=T.DoubleSide;solids.push(o);}});
+ const rc=new T.Raycaster(),dir=new T.Vector3(.577,.5774,.5776).normalize(),w=new T.Vector3();
+ const clip=()=>{boy.group.updateMatrixWorld(true);let n=0,inside=0;boy.group.traverse(o=>{if(!o.isMesh)return;const p=o.geometry.attributes.position;for(let i=0;i<p.count;i+=3){w.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);n++;for(const s of solids){rc.set(w,dir);if(rc.intersectObject(s,false).length%2===1){inside++;break;}}}});return inside/n;};
+ for(let i=0;i<80;i++)step(0);const standing=clip();for(let i=0;i<60;i++)step(9);const running=clip();for(let i=0;i<60;i++)step(0);
+ const home=rex.head.worldToLocal(rex.grip.getWorldPosition(new T.Vector3()));rex.honk();let drop=0,away=0,jump=0,scruffAway=0,roaring=0;const prev=boy.group.position.clone();
+ for(let i=0;i<22;i++){step(0);away=Math.max(away,rex.head.worldToLocal(rex.grip.getWorldPosition(new T.Vector3())).distanceTo(home));drop=Math.max(drop,-rex.jaw.rotation.x);jump=Math.max(jump,boy.group.position.distanceTo(prev));prev.copy(boy.group.position);
+  scruffAway=Math.max(scruffAway,new T.Vector3(0,.86,.12).applyQuaternion(boy.group.quaternion).add(boy.group.position).distanceTo(rex.grip.getWorldPosition(at)));if(i===16)roaring=clip();}
+ assert.ok(standing<.02&&running<.03&&roaring<.02,`Ludvig does not sink into the T. rex's head, neck or body (inside: ${(standing*100).toFixed(1)} % standing, ${(running*100).toFixed(1)} % running, ${(roaring*100).toFixed(1)} % roaring)`);
+ assert.ok(drop>.7&&away<.001,'In a roar the jaw drops ('+drop.toFixed(2)+' rad) but his grip does not move in the head\'s frame ('+away.toFixed(4)+' m)');
+ assert.ok(jump<.5&&scruffAway<.05,`and he does not jump (${jump.toFixed(2)} m a frame) and stays held by the scruff (${scruffAway.toFixed(3)} m)`);
+ assert.ok(home.x>.2&&home.x<.4&&home.y<-.25&&home.y>-.4&&home.z<-.4&&home.z>-1.1,'the grip is at the right corner of the mouth, by the upper teeth ('+home.toArray().map(v=>v.toFixed(2))+')');}
+console.log('Ludvig in the T. rex\'s mouth: held by the upper jaw, unmoved by a roar, not inside its head or body: OK');
 // The ragdoll: he hangs from the scruff like a weight on a string. He trails when the T. rex sets off, swings on when it stops, swings out in a
 // bend and settles; the same at 30 and 60 frames a second; his arms, legs and head flop after the swing; and it is cheap.
 {const swing=fps=>{const scene=new T.Scene(),boy=createBoy({T,scene});boy.setOn(true);const dt=1/fps,q=new T.Quaternion(),a=new T.Vector3(0,103,0),pos=new T.Vector3(0,100.08,0),facing=new T.Vector3(0,0,-1);

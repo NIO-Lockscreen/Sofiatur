@@ -302,44 +302,106 @@ export function createBalloon(T,{logos={}}={}){
  return {group,update,skins,honk(){hop=1;},seat};
 }
 
-// The T. rex (the last reward): on two big legs, its tail held out behind, tiny arms, a big head with teeth; it runs at the car's
-// speed, and on honk opens its jaws wide (a roar).
+// The T. rex (the last reward), redesigned 11 October 2026. A lofted body with a deep chest and a long tail that tapers and sways, a big skull with a brow ridge, big
+// yellow eyes and nostrils, a lower jaw hinged at the back of the skull with friendly teeth, a tongue and a red mouth, strong thighs on bird-like legs with three-toed feet
+// and claws, tiny two-fingered arms, a cream belly and a row of dark plates down the back. It runs at the car's speed, and on honk it ROARS: the lower jaw drops open (the
+// hinge is at the back and the jaw turns down; before, it was turned up into the skull) and the snout lifts. Carrying Ludvig (the easter egg, boy.js hold()) it holds him
+// by his shirt in the teeth at the right corner of its UPPER jaw (grip), with its mouth a little open, so a roar does not drag him down. Forward is −z, the ground y = 0.
+// loftTools: the loft and sweep of the unicorn's body, to build smooth skins from rings (loft), tapered tubes along a curve (sweep) and rings through stations.
+function loftTools(T){
+ const V=(x,y,z)=>new T.Vector3(x,y,z);
+ function loft(rings,n=18){const pos=[],idx=[],m=rings.length;
+  for(const {c,a,b} of rings)for(let k=0;k<n;k++){const f=k/n*Math.PI*2,cs=Math.cos(f),sn=Math.sin(f);pos.push(c.x+a.x*cs+b.x*sn,c.y+a.y*cs+b.y*sn,c.z+a.z*cs+b.z*sn);}
+  for(let i=0;i<m-1;i++)for(let k=0;k<n;k++){const p=i*n+k,q=i*n+(k+1)%n;idx.push(p,p+n,q,q,p+n,q+n);}
+  const P=i=>V(pos[i*3],pos[i*3+1],pos[i*3+2]);
+  if(P(idx[1]).sub(P(idx[0])).cross(P(idx[2]).sub(P(idx[0]))).dot(P(idx[0]).sub(rings[0].c))<0)for(let i=0;i<idx.length;i+=3){const t=idx[i+1];idx[i+1]=idx[i+2];idx[i+2]=t;} // triangles face outwards
+  for(const [i,j] of [[0,1],[m-1,m-2]]){const ci=pos.length/3,ring=rings[i],dir=ring.c.clone().sub(rings[j].c);pos.push(ring.c.x,ring.c.y,ring.c.z);
+   for(let k=0;k<n;k++){const p=i*n+k,q=i*n+(k+1)%n;idx.push(...(P(p).sub(ring.c).cross(P(q).sub(ring.c)).dot(dir)>0?[ci,p,q]:[ci,q,p]));}}
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();return g;}
+ function sweep(points,wide,thick,side=V(1,0,0),seg=14,n=10){const curve=new T.CatmullRomCurve3(points.map(p=>V(...p))),rings=[];
+  for(let i=0;i<=seg;i++){const u=i/seg,c=curve.getPointAt(u),t=curve.getTangentAt(u),a=side.clone().addScaledVector(t,-side.dot(t)).normalize(),b=t.clone().cross(a).normalize();rings.push({c,a:a.multiplyScalar(wide(u)),b:b.multiplyScalar(thick(u))});}
+  return loft(rings,n);}
+ const cr=(p0,p1,p2,p3,t)=>.5*(2*p1+(p2-p0)*t+(2*p0-5*p1+4*p2-p3)*t*t+(3*p1-p0-3*p2+p3)*t*t*t);
+ function station(stations,ring){const out=[],at=j=>stations[Math.max(0,Math.min(stations.length-1,j))];
+  for(let i=0;i<stations.length-1;i++)for(let s=0;s<3;s++){const t=s/3;out.push(ring([0,1,2,3].map(k=>cr(at(i-1)[k],at(i)[k],at(i+1)[k],at(i+2)[k],t))));}
+  out.push(ring(stations.at(-1)));return out;}
+ // a ring of a loft at z (interpolated): its centre height, half height and half width
+ const ringAt=(rings,z)=>{const s=rings[0].c.z<rings.at(-1).c.z?1:-1;for(let i=0;i<rings.length-1;i++){const p=rings[i],q=rings[i+1];if((z-p.c.z)*s>=0&&(z-q.c.z)*s<=0){const f=(z-p.c.z)/(q.c.z-p.c.z||1);return {cy:p.c.y+(q.c.y-p.c.y)*f,hy:p.b.y+(q.b.y-p.b.y)*f,hw:p.a.x+(q.a.x-p.a.x)*f};}}const r=Math.abs(z-rings[0].c.z)<Math.abs(z-rings.at(-1).c.z)?rings[0]:rings.at(-1);return {cy:r.c.y,hy:r.b.y,hw:r.a.x};};
+ return {V,loft,sweep,station,ringAt};
+}
 export function createTRex(T,{logos={}}={}){
  const group=new T.Group();group.name='T-rex';
- const skin=new T.MeshStandardMaterial({color:'#14171c',roughness:.8}),belly=new T.MeshStandardMaterial({color:'#d9cfa6',roughness:.85});
- const tooth=new T.MeshStandardMaterial({color:'#fbf8ec',roughness:.5}),mouth=new T.MeshStandardMaterial({color:'#9c2f34',roughness:.7}),eye=new T.MeshBasicMaterial({color:'#f2c230'}),pupil=new T.MeshBasicMaterial({color:'#121212'});
- const sphere=sphereGeo(T),limb=new T.CylinderGeometry(1,.75,1,10),cone=new T.ConeGeometry(1,1,6);
+ const std=(color,roughness=.8,extra={})=>new T.MeshStandardMaterial({color,roughness,...extra});
+ const skin=std('#14171c'),ridge=std('#0b0d10'),belly=std('#e6dcb0',.85),tooth=std('#fbf8ec',.45),claw=std('#efe6c8',.5),mouth=std('#b13a45',.7),tongue=std('#e47585',.6);
+ const eye=new T.MeshBasicMaterial({color:'#f2c230'}),pupil=new T.MeshBasicMaterial({color:'#121212'}),shine=new T.MeshBasicMaterial({color:'#ffffff'}),nostril=new T.MeshBasicMaterial({color:'#121212'});
+ const {V,loft,sweep,station,ringAt}=loftTools(T);
+ const sphere=sphereGeo(T),cone=new T.ConeGeometry(1,1,6),limbG=new T.CylinderGeometry(1,.8,1,8);
  const body=new T.Group();group.add(body);
  const part=(g,m,[x,y,z],[sx,sy,sz],parent=body)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;parent.add(o);return o;};
- part(sphere,skin,[0,2.15,.1],[.78,.85,1.45]);part(sphere,belly,[0,1.85,-.2],[.55,.55,1.0]);part(sphere,skin,[0,2.55,-1.05],[.55,.6,.65]);
- const head=new T.Group();head.position.set(0,3.05,-1.55);body.add(head);
- part(sphere,skin,[0,.05,-.35],[.48,.42,.78],head);
- const jaw=new T.Group();jaw.position.set(0,-.18,0);head.add(jaw);const grip=new T.Object3D();grip.position.set(.46,-.04,-.5);jaw.add(grip);part(sphere,skin,[0,-.12,-.4],[.42,.18,.7],jaw);part(sphere,mouth,[0,-.02,-.45],[.36,.08,.6],jaw);
- for(const s of [-1,1]){for(let k=0;k<5;k++){const z=-.15-k*.17;part(cone,tooth,[s*.3*(1-k*.08),-.12,z],[.035,.1,.035],head).rotation.x=Math.PI;part(cone,tooth,[s*.27*(1-k*.08),.02,z-.05],[.03,.08,.03],jaw);}
-  part(sphere,eye,[s*.33,.25,-.25],[.08,.08,.07],head);part(sphere,pupil,[s*.37,.25,-.27],[.03,.07,.03],head);}
- // tiny arms with two claws each
- const arms=[-1,1].map(s=>{const a=new T.Group();a.position.set(s*.45,2.35,-1.15);body.add(a);part(limb,skin,[0,-.16,-.05],[.07,.32,.07],a).rotation.x=.9;part(cone,tooth,[0,-.3,-.25],[.03,.07,.03],a).rotation.x=-1.2;return a;});
- // big legs: thigh, shin, foot with claws
- const legs=[-1,1].map(s=>{const hip=new T.Group();hip.position.set(s*.55,2.05,.25);body.add(hip);
-  part(sphere,skin,[0,-.35,.05],[.33,.6,.42],hip);const knee=new T.Group();knee.position.set(0,-.85,.15);hip.add(knee);
-  part(limb,skin,[0,-.45,0],[.17,.9,.17],knee);part(sphere,skin,[0,-.95,-.2],[.22,.1,.42],knee);for(const c of [-.1,0,.1])part(cone,tooth,[c,-.95,-.62],[.03,.12,.03],knee).rotation.x=-Math.PI/2;
-  return {hip,knee};});
- // the tail: a chain of shrinking segments held out behind
- const tail=[];let joint=new T.Group();joint.position.set(0,2.25,1.4);body.add(joint);
- for(let i=0;i<6;i++){const r=.5-i*.075;part(sphere,skin,[0,0,.3],[r,r*.9,.55],joint);tail.push(joint);const next=new T.Group();next.position.set(0,0,.55);joint.add(next);joint=next;}
- const skins=flankLogos(T,body,logos,{cy:2.15,cz:.1,rx:.78,ry:.85,rz:1.45,w:1.3,h:.42,y:2.25,z:.25});
+ const put=(geo,mat,parent)=>{const o=new T.Mesh(geo,mat);o.castShadow=true;parent.add(o);return o;};
+ // ---- The body: z, belly, back, half width. A deep chest, narrow shoulders, the hips and then the tail ----
+ const torsoRings=station([[-1.4,2.45,3,.1],[-1.3,2.12,3.14,.32],[-1,1.8,3.18,.5],[-.5,1.62,3.1,.62],[.1,1.6,3,.65],[.7,1.66,2.96,.62],[1.2,1.78,2.9,.52],[1.65,1.98,2.78,.34]],([z,lo,hi,w])=>({c:V(0,(lo+hi)/2,z),a:V(w,0,0),b:V(0,(hi-lo)/2,0)}));
+ put(loft(torsoRings,20),skin,body);part(sphere,belly,[0,1.78,-.2],[.46,.2,1.3]);
+ const backAt=z=>{const r=ringAt(torsoRings,z);return r.cy+r.hy;};
+ for(let z=-.8;z<=1.25;z+=.41)part(cone,ridge,[0,backAt(z)+.02,z],[.1,.2,.12]); // the plates down the back
+ // ---- The neck, and the head: a skull with its upper jaw, and the lower jaw hinged under it at the back ----
+ put(sweep([[0,2.85,-1],[0,3.12,-1.45],[0,3.26,-1.75]],u=>.42-.06*u,u=>.5-.1*u),skin,body);
+ const head=new T.Group();head.position.set(0,3.2,-1.7);body.add(head);
+ const skullRings=station([[.22,.06,.32,.26],[0,.1,.44,.4],[-.3,.1,.43,.42],[-.6,.06,.35,.33],[-.95,-.02,.26,.26],[-1.25,-.04,.2,.19],[-1.42,-.05,.15,.14]],([z,cy,hy,hw])=>({c:V(0,cy,z),a:V(hw,0,0),b:V(0,hy,0)}));
+ put(loft(skullRings,18),skin,head);part(sphere,mouth,[0,-.3,-.7],[.17,.03,.5],head); // the roof of the mouth, seen when it opens
+ const jaw=new T.Group();jaw.position.set(0,-.3,-.1);head.add(jaw); // the hinge: at the back of the jaw; negative rotation.x drops the front
+ const jawRings=station([[.14,-.03,.1,.2],[-.1,-.07,.12,.29],[-.45,-.09,.12,.27],[-.8,-.08,.1,.22],[-1.1,-.02,.08,.16],[-1.28,.03,.07,.12]],([z,cy,hy,hw])=>({c:V(0,cy,z),a:V(hw,0,0),b:V(0,hy,0)}));
+ put(loft(jawRings,16),skin,jaw);part(sphere,mouth,[0,.01,-.55],[.2,.035,.5],jaw);part(sphere,tongue,[0,.03,-.5],[.11,.03,.4],jaw);part(sphere,belly,[0,-.2,-.5],[.14,.05,.55],jaw);
+ for(const s of [-1,1]){
+  // the teeth: the upper ones hang down outside the lower jaw, the lower ones stand up inside; a little stubby and friendly
+  for(let k=0;k<7;k++){const z=-.35-k*.17,r=ringAt(skullRings,z);part(cone,tooth,[s*r.hw*.86,r.cy-r.hy+.005,z],[.035,k<2?.17:.14,.035],head).rotation.x=Math.PI;}
+  for(let k=0;k<6;k++){const z=-.25-k*.15,r=ringAt(jawRings,z);part(cone,tooth,[s*r.hw*.75,r.cy+r.hy+.03,z],[.03,.11,.03],jaw);}
+  part(sphere,eye,[s*.37,.26,-.2],[.075,.09,.09],head);part(sphere,pupil,[s*.435,.26,-.2],[.022,.075,.028],head);part(sphere,shine,[s*.44,.31,-.25],[.014,.014,.014],head);
+  part(sphere,ridge,[s*.33,.38,-.16],[.14,.06,.22],head).rotation.z=-s*.25; // the brow ridge
+  part(sphere,nostril,[s*.105,.125,-1.3],[.03,.035,.05],head);}
+ // where Ludvig is held: by his shirt, in the teeth at the right corner of the upper jaw (the T. rex's right is +x)
+ const grip=new T.Object3D();grip.position.set(.28,-.33,-.7);head.add(grip);
+ // ---- Tiny arms with two claws each ----
+ const arms=[-1,1].map(s=>{const a=new T.Group();a.position.set(s*.5,2.5,-1);body.add(a);part(limbG,skin,[0,-.16,-.05],[.07,.32,.07],a).rotation.x=.9;for(const c of [-1,1])part(cone,claw,[c*.03,-.3,-.25],[.025,.07,.025],a).rotation.x=-1.2;return a;});
+ // ---- The legs: a strong thigh, a shin that slopes back, a short foot bone, a three-toed foot with claws ----
+ const limb=rows=>loft(station(rows,([y,rx,rz,dz])=>({c:V(0,y,dz),a:V(rx,0,0),b:V(0,0,rz)})),14); // rows: y, half width, half depth, how far forward (+ back)
+ const thighG=limb([[.55,.18,.26,0],[.15,.33,.42,0],[-.2,.37,.45,-.06],[-.55,.27,.32,-.2],[-.85,.17,.2,-.32]]),shinG=limb([[.12,.15,.17,0],[-.25,.14,.16,.1],[-.6,.11,.12,.25],[-.9,.09,.1,.35]]),footG=limb([[.05,.09,.1,0],[-.2,.1,.12,0],[-.33,.11,.13,-.02]]);
+ const legs=[-1,1].map(s=>{const hip=new T.Group();hip.position.set(s*.6,2.15,.45);body.add(hip);put(thighG,skin,hip);
+  const knee=new T.Group();knee.position.set(0,-.85,-.32);hip.add(knee);put(shinG,skin,knee);
+  const ankle=new T.Group();ankle.position.set(0,-.9,.35);knee.add(ankle);put(footG,skin,ankle);
+  for(const c of [-1,0,1]){part(sphere,skin,[c*.13,-.31,-.27],[.065,.055,.3],ankle).rotation.y=c*.28;part(cone,claw,[c*.2,-.31,-.6],[.04,.14,.04],ankle).rotation.x=-Math.PI/2;}
+  return {hip,knee,ankle};});
+ // ---- The tail: four swept pieces on joints, thick at the hips and a thin tip, with plates on its first three ----
+ const TP=[[0,2.45,1.3],[0,2.5,2.3],[0,2.42,3.3],[0,2.32,4.25],[0,2.22,5.1]],tail=[],W=u=>.44*Math.pow(1-u,1.1)+.03,H=u=>.43*Math.pow(1-u,1.1)+.03;
+ let joint=new T.Group();joint.position.set(...TP[0]);body.add(joint);
+ for(let i=0;i<4;i++){const a=TP[i],b=TP[i+1],d=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],t0=i/4,t1=(i+1)/4;
+  put(sweep([[0,0,0],[d[0]/2,d[1]/2,d[2]/2],d],u=>W(t0+(t1-t0)*u),u=>H(t0+(t1-t0)*u),V(1,0,0),6,12),skin,joint);if(i)part(sphere,skin,[0,0,0],[W(t0),H(t0),W(t0)],joint); // the ball covers the bend (the first joint is inside the body)
+  if(i<3)part(cone,ridge,[0,H(t0)+.02,.45],[.08,.16,.1],joint);
+  tail.push(joint);const next=new T.Group();next.position.set(...d);joint.add(next);joint=next;}
+ // The KIWI logo, a plane on each flank bent onto the body's own skin (flankLogos is for ellipsoids): 2 cm off it, tail to head on the right, head to tail on the left. It sits on the
+ // chest, below the little arm and in front of the thigh, which would cover it further back.
+ const skins=Object.fromEntries(Object.entries(logos).map(([name,material])=>[name,[-1,1].map(s=>{const g=new T.PlaneGeometry(.9,.38,16,4),p=g.attributes.position;
+  for(let i=0;i<p.count;i++){const yy=2.15+p.getY(i),zz=-.45-s*p.getX(i),r=ringAt(torsoRings,zz);p.setXYZ(i,s*(r.hw*Math.sqrt(Math.max(0,1-((yy-r.cy)/r.hy)**2))+.02),yy,zz);}
+  g.computeVertexNormals();const m=new T.Mesh(g,material);m.name=name+' logo';m.visible=false;body.add(m);return m;})]));
+ // The paint: the body is the colour; the plates and the brow ridge are a darker shade of it (a lighter one on a dark paint, or they would vanish).
+ const hsl={h:0,s:0,l:0};
+ function dress(c){skin.color.copy(c);c.getHSL(hsl);ridge.color.setHSL(hsl.h,Math.min(1,hsl.s*1.05),hsl.l<.25?hsl.l+.09:hsl.l*.62);}
  let phase=0,roar=0;const held={carrying:false};
  function update(dt,speed,time,colour){
-  if(colour)skin.color.copy(colour);
+  if(colour)dress(colour);
   const run=Math.min(1,speed/5);phase+=dt*(1.8+speed*.35);
-  legs.forEach(({hip,knee},i)=>{const p=phase+i*Math.PI;hip.rotation.x=Math.sin(p)*.65*run;knee.rotation.x=Math.max(0,-Math.cos(p))*.7*run;});
+  // the legs swing in turn; the knee bends (negative: the foot goes back and up) while the thigh swings forward, and the foot stays level
+  legs.forEach(({hip,knee,ankle},i)=>{const p=phase+i*Math.PI;hip.rotation.x=Math.sin(p)*.65*run;knee.rotation.x=-Math.max(0,Math.cos(p))*.8*run;ankle.rotation.x=-(hip.rotation.x+knee.rotation.x)*.7;});
   body.position.y=Math.abs(Math.sin(phase))*.14*run;body.rotation.x=-.08*run+Math.sin(phase*2)*.03*run;
-  tail.forEach((seg,i)=>{seg.rotation.y=Math.sin(time*(2+run*3)-i*.5)*(.12+.05*run);seg.rotation.x=i?.04:-.05;});
+  tail.forEach((seg,i)=>{seg.rotation.y=Math.sin(time*(2+run*3)-i*.6)*(.1+.05*run);seg.rotation.x=i?.03:-.04;});
   arms.forEach((a,i)=>{a.rotation.x=Math.sin(phase+i)*.3*run;});
-  roar=Math.max(0,roar-dt*.8);const open=Math.sin(Math.PI*Math.min(1,roar*1.3));jaw.rotation.x=Math.max(held.carrying?.3:0,.75*open+.06*run*Math.abs(Math.sin(phase)));head.rotation.x=-.25*open+Math.sin(phase*2)*.04*run;head.rotation.y=held.carrying?-.3+Math.sin(time*1.3)*.05:Math.sin(time*.6)*.15*(1-run);
+  // the roar: the jaw drops open (negative rotation.x) and the snout lifts (positive), held a moment and closed again; carrying Ludvig the mouth stays a little open
+  roar=Math.max(0,roar-dt*.8);const open=Math.sin(Math.PI*Math.min(1,roar*1.3));
+  jaw.rotation.x=-Math.max(held.carrying?.18:0,.85*open+.05*run*Math.abs(Math.sin(phase)));
+  head.rotation.x=.3*open+Math.sin(phase*2)*.04*run;head.rotation.y=held.carrying?-.3+Math.sin(time*1.3)*.05:Math.sin(time*.6)*.15*(1-run);
  }
  update(0,0,0);
- return {group,update,skins,jaw,grip,honk(){roar=1;},get carrying(){return held.carrying;},set carrying(v){held.carrying=!!v;}};
+ return {group,update,skins,jaw,head,grip,honk(){roar=1;},get carrying(){return held.carrying;},set carrying(v){held.carrying=!!v;}};
 }
 
 // ---- The pig (5 October 2026, the reward for finding it hiding in the house): a big round pink pig with a curly tail that wiggles, a snout with two nostrils,
