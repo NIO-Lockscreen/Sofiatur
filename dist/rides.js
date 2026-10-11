@@ -57,7 +57,7 @@ export function createRideDuck(T,{logos={}}={}){
  const group=new T.Group();group.name='And';group.scale.setScalar(.85); // about 3 m tall with its head up, 4 m long
  const plumage=new T.MeshStandardMaterial({color:'#14171c',roughness:.75}),chestnut=new T.MeshStandardMaterial({color:'#6e3a26',roughness:.75});
  const green=new T.MeshStandardMaterial({color:'#17643a',roughness:.35,metalness:.25}),white=new T.MeshStandardMaterial({color:'#f3f0e6',roughness:.7});
- const bill=new T.MeshStandardMaterial({color:'#e5b52b',roughness:.5}),orange=new T.MeshStandardMaterial({color:'#f08a24',roughness:.6}),black=new T.MeshStandardMaterial({color:'#1c1f21',roughness:.6}),blue=new T.MeshStandardMaterial({color:'#3055b5',roughness:.4,metalness:.2});
+ const bill=new T.MeshStandardMaterial({color:'#e5b52b',roughness:.5}),orange=new T.MeshStandardMaterial({color:'#f08a24',roughness:.6}),tongue=new T.MeshStandardMaterial({color:'#e0786a',roughness:.6}),inside=new T.MeshStandardMaterial({color:'#b5524a',roughness:.7}),black=new T.MeshStandardMaterial({color:'#1c1f21',roughness:.6}),blue=new T.MeshStandardMaterial({color:'#3055b5',roughness:.4,metalness:.2});
  const sphere=sphereGeo(T),limb=new T.CylinderGeometry(1,1,1,8);
  const body=new T.Group();group.add(body);
  const part=(g,m,[x,y,z],[sx,sy,sz],parent=body)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;parent.add(o);return o;};
@@ -67,13 +67,15 @@ export function createRideDuck(T,{logos={}}={}){
  part(new T.TorusGeometry(1,.45,8,16,Math.PI*1.4),black,[0,.5,.2],[.08,.15,.08],tail).rotation.set(0,Math.PI/2,Math.PI*.6);
  const head=new T.Group();head.position.set(0,2.05,-1.35);body.add(head);
  part(sphere,green,[0,.42,-.05],[.38,.55,.38],head);part(sphere,white,[0,.1,0],[.41,.09,.41],head);part(sphere,green,[0,.95,-.2],[.48,.45,.52],head);
- part(sphere,bill,[0,.82,-.78],[.22,.09,.38],head);part(sphere,bill,[0,.76,-.72],[.19,.06,.33],head);
+ part(sphere,bill,[0,.84,-.78],[.22,.08,.38],head);part(sphere,inside,[0,.78,-.7],[.15,.02,.3],head); // the upper bill, and the roof of the mouth, seen when it quacks
+ // the lower bill (11 October 2026): it hangs on a hinge at the back of the bill, and drops open for each quack of the horn (negative rotation.x drops its front), with a tongue in it
+ const beak=new T.Group();beak.position.set(0,.78,-.42);head.add(beak);part(sphere,bill,[0,-.03,-.3],[.19,.055,.32],beak);part(sphere,tongue,[0,0,-.28],[.1,.03,.2],beak);
  for(const s of [-1,1]){part(sphere,black,[s*.36,1.05,-.47],[.07,.08,.07],head);part(sphere,white,[s*.4,1.08,-.51],[.02,.025,.02],head);}
  // legs from the hips, orange webbed feet
  const legs=[-1,1].map(s=>{const hip=new T.Group();hip.position.set(s*.42,.95,.15);body.add(hip);
   part(limb,orange,[0,-.45,0],[.08,.9,.08],hip);const foot=part(new T.ConeGeometry(1,1,3),orange,[0,-.9,-.22],[.32,.44,.06],hip);foot.rotation.x=-Math.PI/2;return hip;});
  const skins=flankLogos(T,body,logos,{cy:1.45,cz:.1,rx:.95,ry:.78,rz:1.55,w:1.05,h:.36,y:1.08,z:.35}); // 7 October 2026: smaller, below the folded wings (they cover the flank above y 1.3) and above the belly
- let phase=0;
+ let phase=0,quackT=9; // quackT: seconds since the horn (9: not quacking)
  function update(dt,speed,time,colour){
   if(colour)plumage.color.copy(colour);
   const run=Math.min(1,speed/5);phase+=dt*(2+speed*.55);
@@ -82,10 +84,12 @@ export function createRideDuck(T,{logos={}}={}){
   body.rotation.z=Math.sin(phase)*.12*run;body.position.y=Math.abs(Math.cos(phase))*.12*run;body.rotation.x=-.1*run;
   wings.forEach((w,i)=>{w.rotation.z=(i?-1:1)*(.15+.5*Math.min(1,speed/20)*(.5+.5*Math.sin(time*14)))*Math.min(1,speed/8);});
   head.position.z=-1.35-.12*Math.sin(phase*2)*run;head.rotation.y=Math.sin(time*.7)*.3*(1-run);head.rotation.x=Math.max(0,Math.sin(time*.9)-.9)*3*(1-run);
+  // the quacks of the horn (horn-duck.mp3, 0.94 s: one quack at 0.11-0.36 s and another at 0.60-0.85 s, "kvakk kvakk"): the bill snaps open for each, the head lifts a little
+  quackT+=dt;const pulse=(t,a,b)=>t<a||t>b?0:Math.pow(Math.sin(Math.PI*(t-a)/(b-a)),.5),open=Math.max(pulse(quackT,.11,.36),pulse(quackT,.6,.85));beak.rotation.x=-.55*open;head.rotation.x+=.22*open;
   tail.rotation.y=Math.sin(time*6)*.2;
  }
  update(0,0,0);
- return {group,update,skins};
+ return {group,update,skins,beak,head,honk(){quackT=0;}};
 }
 
 // ---- The rocket: a rocket in the car's colour that hovers over the road, white nose, red fins, round windows and a flame behind it ----

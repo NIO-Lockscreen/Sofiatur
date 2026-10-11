@@ -530,3 +530,9 @@ The user: fix the white belly so it does not stick out as much; improve the hand
 - **The hands.** Each arm is now an upper arm, an elbow (a ball and a joint that bends as it runs), a forearm, a palm and two tapered fingers, each with a long curved claw. The claws are `talon()` in `createTRex`: a swept, tapered tube in bone colour that runs forward and curves down at the tip.
 - **The feet.** The three toes now spread forward (before, they pointed in towards each other) and each has a big curved claw, 1.5 times the size of a finger's.
 Tests: `verify-rewards.mjs` (the same ones; the open belly strip is left out of the "inside its solid parts" count for Ludvig). Looked at in the test scene: standing, running, from the front and close up on a hand and a foot.
+
+## The duck quacks when the horn is used · 11 October 2026
+The user: make the duck mouth quack when the horn is used.
+- **The lower bill** is now its own part on a hinge at the back of the bill (`beak` in `createRideDuck`), with a pink tongue; the upper bill has a darker roof of the mouth under it, which shows when the bill is open. Before, both bills were fixed ellipsoids.
+- **The quacks.** The horn clip (`sounds/horn-duck.mp3`, 0.94 s) is "kvakk kvakk": one quack at 0.11–0.36 s and one at 0.60–0.85 s. `honk()` on the ride (the world already calls it) starts a clock, and each quack opens the lower bill (a negative `rotation.x` drops its front, 0.55 rad at the widest, a quick snap and a slower close) while the head lifts a little. Between the quacks and after the clip the bill is shut, and a new honk starts over.
+Tests (`verify-rewards.mjs`): the front of the lower bill measured in the world: shut by default and without the horn, down at both quacks, shut between and after, never up through the upper bill, the head lifts and settles, a new honk restarts. Looked at in the test scene: shut, first quack, between, second quack from the front.

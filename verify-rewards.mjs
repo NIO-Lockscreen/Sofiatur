@@ -430,6 +430,16 @@ for(const [name,make,{x,y,z,minY,paints}] of [['unicorn',createUnicorn,{x:[1,2.5
   rex.honk();let widest=0,lowest=9,highest=-9;for(let i=0;i<30;i++){rex.update(.05,0,1+i*.05);widest=Math.max(widest,gap());lowest=Math.min(lowest,gap());highest=Math.max(highest,snout());}
   assert.ok(widest>shut+.7,'The T. rex opens its jaws wide when it honks: the front of the lower jaw goes DOWN ('+widest.toFixed(2)+' m open)');assert.ok(lowest>shut-.02,'and never up into the skull ('+lowest.toFixed(2)+' m)');
   assert.ok(highest>snout0+.25,'The snout lifts for the roar ('+(highest-snout0).toFixed(2)+' m)');assert.ok(Math.abs(gap()-shut)<.15&&rex.jaw.rotation.x>-.1,'and the mouth closes again');}
+// The duck quacks with the horn (11 October 2026): the lower bill drops open for each of the two quacks of the clip (0.11-0.36 s and 0.60-0.85 s), is shut in between and after, and the head lifts a little.
+ {const duck=createRideDuck(T),tip=new T.Vector3(0,-.03,-.62),gap=()=>{duck.group.updateMatrixWorld(true);return duck.head.localToWorld(new T.Vector3(0,.84,-1.16)).y-duck.beak.localToWorld(tip.clone()).y;},lift=()=>{duck.group.updateMatrixWorld(true);return duck.head.localToWorld(new T.Vector3(0,.84,-1.16)).y;};
+  duck.update(.05,0,1);const shut=gap(),still=lift();assert.ok(Math.abs(shut-.06)<.12,'Shut, the lower bill lies under the upper ('+shut.toFixed(2)+' m)');
+  for(let i=0;i<10;i++)duck.update(.05,0,1+i*.05);assert.ok(Math.abs(gap()-shut)<.02,'It stays shut without the horn');
+  duck.honk();const at={},lifted={};let t=0;for(let i=1;i<=24;i++){duck.update(.05,0,2+i*.05);t=i*.05;at[i]=gap();lifted[i]=lift();}
+  assert.ok(at[5]>shut+.25,'First quack: the front of the lower bill goes DOWN ('+(at[5]-shut).toFixed(2)+' m open)');assert.ok(at[2]<shut+.08,'it has not opened before the clip starts to quack');
+  assert.ok(at[10]<shut+.1,'and it shuts between the quacks ('+(at[10]-shut).toFixed(2)+' m)');assert.ok(at[14]>shut+.25,'Second quack: it opens again');assert.ok(at[20]<shut+.05&&at[24]<shut+.02,'and is shut when the clip is done');
+  assert.ok(Math.min(...Object.values(at))>shut-.03,'The lower bill never goes up through the upper');assert.ok(lifted[5]>still+.03&&Math.abs(lifted[24]-still)<.03,'The head lifts a little for the quack and settles');
+  duck.honk();duck.update(.05,0,3);duck.honk();duck.update(.05,0,3.05);duck.update(.05,0,3.1);duck.update(.05,0,3.15);duck.update(.05,0,3.2);assert.ok(gap()>shut+.2,'A new honk starts the quacks over');}
+console.log('The duck quacks with the horn: the lower bill drops open for each of the two quacks, shuts in between and after, the head lifts a little: OK');
 {const scene=new T.Scene(),b=createBubbles({T,scene}),pos=new T.Vector3(0,100,0),facing=new T.Vector3(0,0,-1);assert.equal(b.mesh.visible,false);b.setOn(true);
  for(let i=0;i<60;i++){pos.z-=10*.05;b.update(.05,pos,facing);}assert.ok(b.mesh.count>15,'Soap bubbles are blown ('+b.mesh.count+')');assert.ok(b.bubbles.every(q=>q.y>pos.y),'and rise above the car');
  assert.ok(b.bubbles.reduce((a,q)=>a+q.z,0)/b.bubbles.length>pos.z+1,'behind it');for(let i=0;i<120;i++)b.update(.05,pos,facing);assert.ok(b.bubbles.every(q=>q.age<=q.life),'and pop');b.setOn(false);assert.equal(b.mesh.visible,false);}
