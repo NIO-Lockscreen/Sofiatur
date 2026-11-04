@@ -211,7 +211,7 @@ function undoRoundabout(){
 $('undoRoundabout').onclick=undoRoundabout;
 function arrive(){if(!active)return;previous=active.e.arrivalFrom??active.e.from;current=active.e.to;if(current===kiwiParking)parkAtKiwi();if(current===ishallParking)parkAtIshall();if(current===remaParking)parkAtRema();if(current===bunnprisParking)parkAtBunnpris();if(current===ludvigParking)parkAtLudvig();if(current===data.start)parkAtHome();if(current===data.lakeside)parkAtLake();active.line.at(active.len,position);active.line.tangent(active.len,heading);lastEdge=active.e;if(active.hold)speed=0;active=null;state='decision';showDecision();}
 function finish(){state='finished';$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;$('undoRoundabout').hidden=true;clearWorldChoices();world.setTurnArrow(null);speed=0;ui.decision.hidden=true;ui.finish.hidden=false;document.body.classList.remove('choosing');$('remaining').textContent='Fremme!';$('finishSummary').textContent=`${(travelled/1000).toLocaleString('nb-NO',{maximumFractionDigits:1})} km gjennom nabolaget · ${freeMode?'frikjøring':turns+' veivalg'}`;
- arrivals++;newReward=['colour','cat','trail','horn','dog','duck','rocket','unicorn','bubbles','firetruck','rainbow','balloon','trex'][arrivals-1]||null;if(newReward==='trail')behind='trail';if(newReward==='bubbles')behind='bubbles';if(newReward==='rainbow')carColour='rainbow';if(newReward==='firetruck')carColour='#c62828';if(MODEL_AT[newReward])model=newReward;saveProgress();if(newReward&&newReward!=='colour')applyRewards();
+ arrivals++;newReward=['colour','cat','trail','horn','dog','duck','rocket','unicorn','bubbles','firetruck','rainbow','balloon','trex'][arrivals-1]||null;if(newReward==='trail')behind='trail';if(newReward==='bubbles')behind='bubbles';if(newReward==='rainbow')carColour='rainbow';if(MODEL_AT[newReward])switchRide(newReward);saveProgress();if(newReward&&newReward!=='colour')applyRewards();
  let reward={colour:['🎨 Ny overraskelse! Nå kan du velge farge på bilen. Fargene finner du på startskjermen.','Velg farge på bilen 🎨',' Nå kan du velge farge på bilen!'],trail:['🌈 Ny overraskelse! Bilen har fått et regnbuespor. Du kan slå det av og på på startskjermen.','Prøv regnbuesporet 🌈',' Og nå har bilen fått et regnbuespor!'],
   rainbow:['🌈 Ny overraskelse! Du har fått en regnbuebil som skifter farge. Du finner den blant fargene på startskjermen.','Se regnbuebilen 🌈',' Nå har du fått en regnbuebil som skifter farge!'],
   cat:['🐱 Ny overraskelse! Nå kan du kjøre som en katt som løper. Du kan bytte mellom bil og katt på startskjermen.','Møt katten 🐱',' Og nå kan du løpe som en katt!'],
@@ -339,7 +339,7 @@ function goInside(){if(state!=='intro'||!world)return;if(!inside)inside=createIn
  say(first?'Velkommen inn, Sofia! På pallen står alle overraskelsene dine. Trykk på dem!':'Velkommen hjem igjen, Sofia!');}
 function goOutside(){if(state==='inside')reset();}
 // The pig that hides behind the sofa: finding it (a tap on it) unlocks the pig as something to drive as, easy for a five-year-old.
-function findPig(){if(pigUnlocked)return;pigUnlocked=true;model='pig';carColour=PIG_PINK;saveProgress();applyRewards();showRewards();inside?.refresh(podiumItems(),{pigHidden:false});
+function findPig(){if(pigUnlocked)return;pigUnlocked=true;switchRide('pig');saveProgress();applyRewards();showRewards();inside?.refresh(podiumItems(),{pigHidden:false});
  const x=newUnlocks();toast('🐷 Du fant grisen! Nå kan du kjøre som en gris'+x.toast);say('Nøff nøff! Du fant grisen som gjemte seg! Nå kan du kjøre som en gris. Du velger hva du kjører som på startskjermen.'+x.say);}
 // The debug keys inside the house (6 October 2026) step through the whole podium in its order, to test every reward: X unlocks the next locked place without doing
 // the task, Z locks the last unlocked one again. The 13 trips count as outside (debugArrivals); the secrets do what the game does when the task is done (the visit, the
@@ -360,7 +360,7 @@ function lockSecret({id,title}){
  else if(id==='taxi'){ishallVisited=remaVisited=false;}
  else pigUnlocked=false; // the pig, or the hover car that goes with it
  if(!taxiReady())taxiSeen=false;if(!hoverReady())hoverSeen=false; // announced again when it is unlocked again
- if(!rideOK(model))model='car';
+ if(!rideOK(model))switchRide('car');
  saveProgress();applyRewards();showRewards();toast('🛠 '+(id==='hover'?'Grisen og svevebilen':title)+': låst igjen');}
 // Bedtime (4 November 2026, copied from Sofia's space game): the sofa is a sofa bed. A tap on it sends Sofia to bed (inside.js: she walks over, pulls the bed out,
 // lies down and dreams), with a lullaby, "God natt" and night in the room; a tap on it again, or "Stå opp", wakes her. In the dream the car, a rainbow and what she
@@ -417,14 +417,19 @@ $('reAwardRollback').onclick=()=>{if(armed==='rollback'){disarm();rollBack();}el
 // kindergarten, Z one fewer. Counting up picks the new reward as an arrival does (the cat at 2, the horn at 4, the rainbow car at 11);
 // counting down locks what the count no longer allows. The count is saved like a real one.
 function debugArrivals(delta){const before=arrivals;arrivals=Math.max(0,arrivals+delta);if(arrivals===before)return;
- if(delta>0){const now=MODELS.find(m=>MODEL_AT[m]===arrivals);if(now)model=now;if(arrivals===RAINBOW_AT)carColour='rainbow';}else{if(!rideOK(model))model=MODELS.filter(m=>MODEL_AT[m]<=arrivals).at(-1);if(arrivals<RAINBOW_AT&&carColour==='rainbow')carColour='#14171c';}
+ if(delta>0){const now=MODELS.find(m=>MODEL_AT[m]===arrivals);if(now)switchRide(now);if(arrivals===RAINBOW_AT)carColour='rainbow';}else{if(!rideOK(model))switchRide(MODELS.filter(m=>MODEL_AT[m]<=arrivals).at(-1));if(arrivals<RAINBOW_AT&&carColour==='rainbow')carColour='#14171c';}
  saveProgress();applyRewards();showRewards();const x=newUnlocks();
  const unlocked=['','farge på bilen','katt','regnbuespor','tuting','hund','and','rakett','enhjørning','såpebobler','brannbil','regnbuebil','luftballong','T-rex'][arrivals]??'alt låst opp';toast(`🛠 Turer til barnehagen: ${arrivals}${unlocked?' · '+unlocked:''}${x.toast}`);}
 // Unlocks that follow from others (5 October 2026): the taxi once all five places are visited, the hover car once everything else is unlocked.
 // Each is announced once; the caller appends the words to its own toast and speech (say() cancels earlier speech, so never call it twice in a row).
+// Every ride comes in its own colour (4 November 2026): switching to another ride, with its button or because a new one is unlocked (or locked again with the
+// debug keys), always paints it that colour. Another colour, KIWI or the rainbow can then be picked, until the next switch. The taxi is yellow, the pig pink,
+// the duck its dark grey, the fire engine red, and the car and every other ride black, the first swatch, which the car has always started in.
+const rideColour=m=>({taxi:TAXI_YELLOW,pig:PIG_PINK,duck:DUCK_PLUMAGE,firetruck:'#c62828'})[m]||'#14171c';
+function switchRide(m){if(!m||m===model)return;model=m;carColour=rideColour(m);}
 const TAXI_YELLOW='#f3c531',PIG_PINK='#ec6aa8',DUCK_PLUMAGE='#9a9186'; // the "Gul", "Rosa" and "Grå" swatches: choosing the taxi paints the car yellow, finding or choosing the pig paints it pink, choosing the duck gives it the small duck's dark grey, the "Grå" swatch (11 October 2026), and the colour can still be changed
 function newUnlocks(){let t='',s='',taxi=false,hover=false;
- if(taxiReady()&&!taxiSeen){taxiSeen=taxi=true;model='taxi';carColour=TAXI_YELLOW;t+=' · 🚕 Taxi låst opp!';s+=' Og du har besøkt alle stedene! Nå kan du kjøre taxi!';}
+ if(taxiReady()&&!taxiSeen){taxiSeen=taxi=true;switchRide('taxi');t+=' · 🚕 Taxi låst opp!';s+=' Og du har besøkt alle stedene! Nå kan du kjøre taxi!';}
  if(hoverReady()&&!hoverSeen){hoverSeen=hover=true;hoverOn=true;t+=' · ⚡ Svevebil!';s+=' Wow, du har låst opp alt! Veier? Der vi skal, trenger vi ikke veier! Nå svever bilen med hjulene under seg.';}
  if(t){saveProgress();applyRewards();showRewards();}return {toast:t,say:s,taxi,hover};}
 // Every visit to KIWI puts the KIWI paint on (since 2 October 2026); the first visit also unlocks it.
@@ -499,7 +504,7 @@ function duckHeard(){
  else{toast('🦆 Anda hørte tuta · Nå løper den etter bilen igjen!'+x.toast);say('Kvakk kvakk! Nå løper anda etter bilen igjen.'+x.say);}
 }
 // What the car is (the start screen's "Kjør som" row): the unlocked ones of car, cat, dog, duck and rocket.
-for(const m of MODELS)$('model-'+m).onclick=()=>{if(m==='taxi'&&model!=='taxi')carColour=TAXI_YELLOW;if(m==='pig'&&model!=='pig')carColour=PIG_PINK;if(m==='duck'&&model!=='duck')carColour=DUCK_PLUMAGE;model=m;saveProgress();applyRewards();showRewards();};
+for(const m of MODELS)$('model-'+m).onclick=()=>{switchRide(m);saveProgress();applyRewards();showRewards();};
 $('music').onchange=e=>{musicOn=e.target.value==='on';saveSettings();if(musicOn&&sound)music.play();else music.stop();};
 $('cameraMode').onchange=e=>camMode=e.target.value;$('start').onclick=start;// Arriving at the kindergarten and starting over both lead to the start screen, with the car to choose (4 October 2026; before, "Kjør en gang til" started at once
 // unless a new reward had come, and "Begynn turen på nytt" started at once in free driving).

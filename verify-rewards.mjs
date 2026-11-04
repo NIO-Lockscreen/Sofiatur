@@ -58,9 +58,11 @@ console.log('First arrival unlocks the colour picker on the start screen: OK');
 game=await launch(()=>storage);assert.equal(game.world.colour,'#7b4cc2');assert.equal(game.element('rewards').hidden,false);assert.match(game.element('rewardTeaser').textContent,/én gang til/);
 game.test.arrive();assert.equal(game.test.progress().arrivals,2);assert.equal(game.world.model,'cat');assert.match(game.element('unlock').textContent,/katt/);assert.match(game.element('again').textContent,/katten/);
 game.element('again').onclick();assert.equal(game.element('modelRow').hidden,false);assert.ok(game.element('model-cat').classes.has('on'));assert.equal(game.element('model-dog').hidden,true,'The dog waits for the fifth trip');assert.equal(game.element('trailRow').hidden,true,'The trail waits for the third trip');assert.equal(game.element('rewardTeaser').hidden,false,'More surprises to come');
-assert.equal(game.world.trail,false);assert.equal(game.world.colour,'#7b4cc2','A purple cat');
+assert.equal(game.world.trail,false);assert.equal(game.world.colour,'#14171c','the new cat comes in its own colour, black, not the purple of the car (4 November 2026)');
+game.element('carColours').children[3].onclick();assert.equal(game.world.colour,'#7b4cc2','and can then be painted purple');
 game.element('model-car').onclick();assert.equal(game.world.model,'car');game=await launch(()=>storage);assert.equal(game.world.model,'car','Car remembered');
 game.element('model-cat').onclick();game=await launch(()=>storage);assert.equal(game.world.model,'cat','Cat remembered');
+game.element('carColours').children[3].onclick();assert.equal(game.world.colour,'#7b4cc2','a purple cat again');
 console.log('Second arrival turns the car into a running cat; the switch survives a reload: OK');
 
 // Third arrival: the rainbow trail (on by default), with its switch on the start screen, remembered after a reload.
@@ -80,7 +82,7 @@ game.test.arrive();assert.equal(game.test.progress().arrivals,5);assert.equal(ga
 game.element('again').onclick();assert.equal(game.element('model-dog').hidden,false);assert.ok(game.element('model-dog').classes.has('on'));assert.equal(game.element('model-duck').hidden,true);assert.equal(game.element('rewardTeaser').hidden,false);
 game.test.arrive();assert.equal(game.world.model,'duck');assert.match(game.element('unlock').textContent,/and/);game.element('again').onclick();assert.equal(game.element('model-duck').hidden,false);assert.equal(game.element('model-rocket').hidden,true);
 game.test.arrive();assert.equal(game.world.model,'rocket');assert.match(game.element('unlock').textContent,/rakett/);game.element('again').onclick();assert.equal(game.element('model-rocket').hidden,false);assert.equal(game.element('rewardTeaser').hidden,false,'More to come after the seventh trip');
-game.element('model-dog').onclick();assert.equal(game.world.model,'dog');game=await launch(()=>storage);assert.equal(game.world.model,'dog','The dog remembered');assert.equal(game.world.colour,'#7b4cc2','a purple dog');
+game.element('model-dog').onclick();assert.equal(game.world.model,'dog');game=await launch(()=>storage);assert.equal(game.world.model,'dog','The dog remembered');assert.equal(game.world.colour,'#14171c','switched to, the dog is black, its own colour');
 // Trips 8 to 13 (3 October 2026): the unicorn, soap bubbles (an alternative behind the car), the fire engine, the horn, the hot-air balloon and last the T. rex.
 game.test.arrive();assert.equal(game.test.progress().arrivals,8);assert.equal(game.world.model,'unicorn');assert.match(game.element('unlock').textContent,/enhjørning/);game.element('again').onclick();assert.equal(game.element('model-unicorn').hidden,false);assert.equal(game.element('bubblesRow').hidden,true);
 game.test.arrive();assert.match(game.element('unlock').textContent,/såpebobler/);assert.equal(game.world.bubbles,true,'Bubbles on at once');assert.equal(game.world.trail,false,'instead of the trail');game.element('again').onclick();assert.equal(game.element('bubblesRow').hidden,false);assert.equal(game.element('bubbles').checked,true);
@@ -615,7 +617,7 @@ const house=g=>{g.element('goInside').onclick();return g.inside.enters.at(-1).it
  g.element('carColours').children[4].onclick();assert.equal(g.world.colour,'#1f63c6','a blue taxi');assert.equal(g.world.model,'taxi');g.element('model-taxi').onclick();assert.equal(g.world.colour,'#1f63c6','tapping the taxi button while it is the taxi leaves the colour');
  g=await launch(()=>storage);assert.equal(g.world.model,'taxi');assert.equal(g.world.colour,'#1f63c6','the blue taxi survives a reload');assert.ok(g.element('carColours').children[4].classes.has('on'));
  g.element('carColours').children[11].onclick();assert.equal(g.world.colour,'rainbow','a rainbow taxi');g.element('carColours').children[12].onclick();assert.equal(g.world.colour,'#5fae36');assert.equal(g.world.skin,'kiwi','the KIWI paint on the taxi, with its door logos');
- g.element('model-car').onclick();assert.equal(g.world.model,'car');assert.equal(g.world.colour,'#5fae36','the car has whatever paint is chosen');assert.equal(g.world.skin,'kiwi');g.element('carColours').children[0].onclick();assert.equal(g.world.colour,'#14171c');g.element('model-taxi').onclick();assert.equal(g.world.colour,'#f3c531','from another ride, the taxi is painted yellow');assert.equal(g.world.skin,null);assert.ok(g.element('carColours').children[7].classes.has('on'));
+ g.element('model-car').onclick();assert.equal(g.world.model,'car');assert.equal(g.world.colour,'#14171c','switched to, the car is black again, its own colour, not the KIWI paint of the taxi (4 November 2026)');assert.equal(g.world.skin,null);g.element('carColours').children[0].onclick();assert.equal(g.world.colour,'#14171c');g.element('model-taxi').onclick();assert.equal(g.world.colour,'#f3c531','from another ride, the taxi is painted yellow');assert.equal(g.world.skin,null);assert.ok(g.element('carColours').children[7].classes.has('on'));
  // The duck (11 October 2026): choosing it from another ride gives it its own dark grey body, the small duck's (the "Grå" swatch), like the taxi's yellow and the pig's pink; the colour can still be changed, and tapping the duck while it is the duck leaves the colour
  {save({arrivals:11,colour:'#ec6aa8',model:'car'});let g=await launch(()=>storage);assert.equal(g.world.colour,'#ec6aa8');g.element('model-duck').onclick();assert.equal(g.world.model,'duck');assert.equal(g.world.colour,'#9a9186','from a pink car, the duck gets its own dark grey body, the small duck\'s');assert.ok(g.element('carColours').children[10].classes.has('on'),'and the Grå swatch (the last of the plain colours) shows it');assert.equal(g.element('carColours').children[10].title,'Grå');g.element('carColours').children[0].onclick();assert.equal(g.world.colour,'#14171c','Svart is still there for a black duck');g.element('carColours').children[10].onclick();assert.equal(g.world.colour,'#9a9186','and Grå brings the grey back');
   g.element('carColours').children[4].onclick();assert.equal(g.world.colour,'#1f63c6','a blue duck');g.element('model-duck').onclick();assert.equal(g.world.colour,'#1f63c6','tapping the duck button while it is the duck leaves the colour');
@@ -779,7 +781,7 @@ console.log('Horn on the start screen: a button beside "Gå inn" once the horn i
  g=await launch(()=>storage);assert.equal(g.world.model,'pig');assert.equal(g.world.colour,'#1f63c6','the blue pig survives a reload');assert.ok(g.element('carColours').children[4].classes.has('on'));
  g.element('carColours').children[12].onclick();assert.equal(g.world.colour,'#5fae36');assert.equal(g.world.skin,'kiwi','the KIWI paint on the pig, with its flank logos');
  g.element('carColours').children[11].onclick();assert.equal(g.world.colour,'rainbow','a rainbow pig');
- g.element('model-dog').onclick();assert.equal(g.world.colour,'rainbow','the other rides have the paint chosen');g.element('model-pig').onclick();assert.equal(g.world.colour,'#ec6aa8','and back to the pig it is pink again');
+ g.element('model-dog').onclick();assert.equal(g.world.colour,'#14171c','the dog comes in its own black, not the pig\'s rainbow (4 November 2026)');g.element('model-pig').onclick();assert.equal(g.world.colour,'#ec6aa8','and back to the pig it is pink again');
  // found in the house from another ride, then recoloured
  save({arrivals:3,model:'cat',colour:'#1f63c6'});g=await launch(()=>storage);g.element('goInside').onclick();g.tap({type:'pig'});
  assert.equal(g.world.model,'pig');assert.equal(g.world.colour,'#ec6aa8','a pig found is pink');assert.ok(g.element('carColours').children[2].classes.has('on'));
@@ -791,6 +793,20 @@ console.log('Horn on the start screen: a button beside "Gå inn" once the horn i
  save({pig:'on',model:'pig'});g=await launch(()=>storage);assert.equal(g.world.colour,'#ec6aa8','a saved pig with no colour and no trips');
  save({kiwi:'on',pig:'on',model:'pig',colour:'kiwi'});g=await launch(()=>storage);assert.equal(g.world.colour,'#5fae36');assert.equal(g.world.skin,'kiwi','KIWI with no trips: green with the logos');}
 console.log('The pig takes the paint: pink when chosen or found (also with no trips), any colour afterwards and remembered, KIWI green with its logos, the rainbow: OK');
+// Every switch of ride paints it its own colour (4 November 2026): black for the car and most rides, yellow for the taxi, pink for the pig, grey for the duck,
+// red for the fire engine. Another colour can then be picked (kept after a reload, and when the same ride's button is tapped again), until the next switch.
+{const own={car:'#14171c',cat:'#14171c',dog:'#14171c',duck:'#9a9186',rocket:'#14171c',unicorn:'#14171c',firetruck:'#c62828',balloon:'#14171c',trex:'#14171c',taxi:'#f3c531',pig:'#ec6aa8'};
+ save({arrivals:13,...placesDone,taxi:'on',kiwi:'on',pig:'on',model:'car',colour:'#7b4cc2'});let g=await launch(()=>storage);assert.equal(g.world.colour,'#7b4cc2','the saved colour is kept on loading');
+ let from='car';for(const m of ['cat','dog','duck','rocket','unicorn','firetruck','balloon','trex','taxi','pig','car','firetruck','cat']){
+  g.element('carColours').children[from==='cat'?5:3].onclick();assert.notEqual(g.world.colour,own[m],'a colour of her own on the '+from);
+  g.element('model-'+m).onclick();assert.equal(g.world.model,m);assert.equal(g.world.colour,own[m],`from a ${from} in another colour, the ${m} comes in its own`);assert.equal(g.world.skin,null);from=m;}
+ g.element('carColours').children[12].onclick();assert.equal(g.world.skin,'kiwi','KIWI on the cat');g.element('model-cat').onclick();assert.equal(g.world.skin,'kiwi','tapping the same ride keeps it');
+ g=await launch(()=>storage);assert.equal(g.world.skin,'kiwi','and so does a reload');g.element('model-rocket').onclick();assert.equal(g.world.colour,'#14171c');assert.equal(g.world.skin,null,'a switch takes the KIWI paint off');
+ g.element('carColours').children[11].onclick();g.element('model-unicorn').onclick();assert.equal(g.world.colour,'#14171c','and the rainbow');
+ // a ride unlocked on a trip comes in its own colour too, and so does one the debug keys take back
+ save({arrivals:9,model:'unicorn',colour:'#1f63c6'});g=await launch(()=>storage);g.test.arrive();assert.equal(g.world.model,'firetruck');assert.equal(g.world.colour,'#c62828');
+ g.element('carColours').children[4].onclick();g.key('z');assert.equal(g.world.model,'unicorn','Z takes the fire engine back');assert.equal(g.world.colour,'#14171c','and the unicorn comes in its own black');}
+console.log('Every switch of ride gives it its own colour (black, the taxi yellow, the pig pink, the duck grey, the fire engine red); a colour picked afterwards stays until the next switch: OK');
 
 // The new models with real three.js: the pig, the car's hinged wheels and taxi, the fire engine's wheels, the girl and the balloon's seat.
 {const globalDocument=globalThis.document;globalThis.document={createElement:()=>({getContext:()=>new Proxy({},{get:(o,p)=>/Gradient$/.test(p)?()=>({addColorStop(){}}):()=>{}}),width:0,height:0})}; // the car's number plate and decals draw on a canvas
