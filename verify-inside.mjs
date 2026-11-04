@@ -48,7 +48,7 @@ console.log('Inside: a tap at the middle of each of the 19 places picks it, at f
  const [dx,dy]=screen(inside.pigHit.position);assert.deepEqual({...inside.pick(dx,dy)},{type:'pig'});
  const door=new T.Vector3();inside.scene.updateMatrixWorld(true);inside.scene.traverse(o=>{if(o.userData.kind==='door')o.getWorldPosition(door);});assert.deepEqual({...inside.pick(...screen(door))},{type:'door'});
  assert.equal(inside.pick(...screen(new T.Vector3(0,2.95,-3.4))),null,'the window');assert.equal(inside.pick(...screen(new T.Vector3(-3.4,2.85,-3.4))),null,'a picture on the wall');
- assert.equal(inside.pick(...screen(new T.Vector3(-3.55,.8,1.45))),null,'the sofa is no floor');assert.equal(inside.pick(5,5),null,'nor is the backdrop');
+ assert.deepEqual({...inside.pick(...screen(new T.Vector3(-3.55,.8,1.45)))},{type:'bed'},'the sofa is a sofa bed, no floor');assert.equal(inside.pick(5,5),null,'nor is the backdrop');
  // a tap on the floor starts the girl walking at about 1.4 m/s, turned to where she goes
  const girl=inside.girl.group;assert.ok(Math.abs(girl.position.x)<.01&&Math.abs(girl.position.z-1.4)<.01,'she starts on the rug');
  assert.deepEqual({...inside.pick(...screen(new T.Vector3(3,0,2)))},{type:'floor'});let t=0;const frame=dt=>{t+=dt;inside.update(dt,t);};
@@ -72,3 +72,66 @@ console.log('Inside: the pig hides behind the sofa, the door leads out, the girl
  inside.enter(items.map(i=>i.id==='pig'?{...i,unlocked:true}:i),{pigHidden:false});assert.ok(inside.pig.group.position.x>-1,'entering later, it is already out');
  inside.enter(items,{pigHidden:true});assert.ok(inside.pig.group.position.x<-3.9,'and hiding if not found');}
 console.log('Inside: the pig hops out when found, stands on the rug, and a tap on it is a tap on its place: OK');
+
+// Bedtime (4 November 2026): the sofa is a sofa bed. sleep() walks her to it; she lays the throw pillows at the head end, pulls the seat out, the back falls flat and
+// the duvet comes; she lies down under it with her eyes shut, the camera glides in and she dreams; wake() gets her up, and the sofa is a sofa again.
+{let t=200;const frame=dt=>{t+=dt;inside.update(dt,t);},run=(seconds,dt=1/30)=>{for(let i=0;i<Math.round(seconds/dt);i++)frame(dt);};
+ const items=list(id=>['colour','cat','dog','horn'].includes(id));inside.enter(items,{pigHidden:true});const bed=inside.bed,sb=inside.sofaBed,girl=inside.girl,cam=inside.camera.position.clone();
+ const allMeshes=[];inside.scene.traverse(o=>{if(o.isMesh)allMeshes.push(o);});assert.ok(allMeshes.every(m=>!m.material.transparent),'no see-through meshes: the software renderer would skip them');
+ assert.ok(inside.dream.zs.every(z=>z.isSprite),'the Z\'s are sprites, which the software renderer draws as pictures');
+ assert.equal(inside.asleep,false);assert.equal(sb.duvet.visible,false,'no duvet on a sofa');assert.equal(sb.seat.position.x,0);
+ assert.equal(inside.sleep(),true);assert.equal(inside.sleep(),false,'once is enough');assert.equal(inside.asleep,true);
+ // she walks over to the sofa and takes hold of the seat; until then the sofa is a sofa
+ run(.5);assert.equal(bed.u,0);assert.ok(girl.group.position.x<-.3,'on her way');
+ const floorTap=inside.pick(...screen(new T.Vector3(1,0,2)));assert.equal(floorTap,null,'on her way to bed, the floor is no tap');
+ let walked=0;while(bed.u===0&&walked<150){frame(1/30);walked++;}assert.ok(bed.u>0&&walked>40,'she has walked over and started making the bed ('+(walked/30+.5).toFixed(1)+' s)');assert.ok(Math.abs(Math.cos(girl.group.rotation.y))<.2&&Math.sin(girl.group.rotation.y)>.9,'facing the sofa');
+ // the pillows first, then the seat comes out with her, then the back falls flat, then the duvet; each step only moves forward
+ const at=[];while(bed.u<1){frame(1/30);at.push({u:bed.u,seat:sb.seat.position.x,tip:-sb.back.rotation.z,x:girl.group.position.x,p1:sb.p1.position.x});}
+ assert.ok(at.length>80&&at.length<110,'about 3.2 s ('+(at.length/30).toFixed(1)+' s)');
+ const near=u=>at.find(a=>a.u>=u);assert.ok(near(.2).p1>.2&&near(.2).seat===0&&near(.2).tip===0,'the pillows are laid down before the seat moves');
+ assert.ok(near(.45).seat>.25&&near(.45).tip===0,'the seat comes out before the back falls');assert.ok(Math.abs(near(.45).x-(near(.2).x+near(.45).seat))<.01,'and she walks backwards with it');
+ assert.ok(near(.7).tip>.6&&near(.7).seat>.33,'then the back falls');
+ {const first=at.findIndex(a=>a.seat>.349);assert.ok(first>0&&at.slice(first).some(a=>a.seat<.34),'the seat stops with a jolt: it springs back a little and out again');}assert.ok(at.some((a,i)=>i&&a.tip<at[i-1].tip),'the back bounces once');
+ for(let i=1;i<at.length;i++){assert.ok(Math.abs(at[i].seat-at[i-1].seat)<.06&&Math.abs(at[i].tip-at[i-1].tip)<.25,'smooth at '+at[i].u.toFixed(2));}
+ assert.ok(Math.abs(sb.seat.position.x-.35)<.001&&Math.abs(sb.back.rotation.z+Math.PI/2)<.001,'out 0.35 m, the back flat');assert.equal(sb.duvet.visible,true,'and the duvet is there');
+ inside.scene.updateMatrixWorld(true);const flat=new T.Box3().setFromObject(sb.back),seatTop=new T.Box3().setFromObject(sb.seat).max.y;assert.ok(Math.abs(flat.max.y-.65)<.01&&Math.abs(seatTop-.65)<.01,'the back lies level with the cushions ('+flat.max.y.toFixed(3)+', '+seatTop.toFixed(3)+')');
+ for(const l of sb.seatLegs)assert.ok(Math.abs(l.rotation.z)<.01&&l.visible,'the seat stands on its own legs');
+ // she lies down: on her back, her head on the pillows at the back end, her eyes shut, the duvet up to her shoulders
+ run(1.6);inside.scene.updateMatrixWorld(true);assert.equal(bed.k,1);assert.equal(girl.asleep,true,'eyes shut');assert.ok(girl.group.rotation.x>1.1,'lying on her back');
+ const head=girl.head.getWorldPosition(new T.Vector3());assert.ok(head.x<-3&&head.x>-3.6&&head.z>.8&&head.z<1.1&&head.y>.9&&head.y<1.1,'head on the pillows ('+head.toArray().map(v=>v.toFixed(2))+')');
+ const pillows=new T.Box3().setFromObject(sb.p1).union(new T.Box3().setFromObject(sb.p2));assert.ok(pillows.containsPoint(new T.Vector3(head.x,pillows.max.y-.01,head.z)),'the pillows are under her head');
+ const duvet=new T.Box3().setFromObject(sb.cover);assert.ok(duvet.max.y>1&&duvet.min.z<1.2+.05&&duvet.max.z>2,'the duvet covers her from the shoulders down ('+duvet.min.z.toFixed(2)+'..'+duvet.max.z.toFixed(2)+')');
+ // asleep: only the sofa and the dream answer taps
+ assert.equal(inside.pick(...screen(new T.Vector3(1,0,2))),null,'no walking in her sleep');assert.equal(inside.pick(...screen(slot('cat').hit.getWorldPosition(new T.Vector3()))),null,'nor the podium');
+ assert.deepEqual({...inside.pick(...screen(new T.Vector3(-3.3,.9,1.9)))},{type:'bed'},'the sofa bed wakes her');
+ // the camera has glided in, and night has fallen in the window
+ run(2);assert.ok(inside.camera.position.distanceTo(new T.Vector3(-3.3,.8,1.6))<cam.distanceTo(new T.Vector3(-3.3,.8,1.6))*.75,'closer to the bed');
+ // the dream: Z's, then the bubble; in it the car, the rainbow and the unlocked models (cat, dog), three at a time, each a tap that names it
+ assert.ok(inside.dream.zs.some(z=>z.visible),'Z\'s rise');assert.equal(inside.dream.group.visible,true,'the bubble is there');assert.deepEqual(inside.dream.list,['car','arc','cat','dog'],'the car, the rainbow, the cat and the dog (no medallions)');
+ const shown=inside.dream.slots.filter(s=>s.holder.visible);assert.equal(shown.length,3,'three at a time');assert.equal(new Set(shown.map(s=>s.id)).size,3,'all different');
+ for(const s of shown.filter(s=>s.show>.9)){const p=s.hit.getWorldPosition(new T.Vector3());assert.deepEqual({...inside.pick(...screen(p))},{type:'dream',id:s.id},'a tap on '+s.id+' in the dream');}
+ const seen=new Set(shown.map(s=>s.id));run(10);for(const s of inside.dream.slots)if(s.holder.visible)seen.add(s.id);assert.equal(seen.size,4,'after a while she has dreamt of all four');
+ // the comet, now and then: tapped, it is gone until the next
+ let comet=false;for(let i=0;i<200&&!comet;i++){frame(1/30);comet=inside.dream.targets().includes(inside.dream.cometHit);}assert.ok(comet,'a comet comes');
+ assert.deepEqual({...inside.pick(...screen(inside.dream.cometHit.getWorldPosition(new T.Vector3())))},{type:'comet'});assert.ok(!inside.dream.targets().includes(inside.dream.cometHit),'caught, it is gone');
+ // the bubble, the bed and her head are on the screen, under the header and over the title, at every size
+ for(const [w,h] of [[1024,768],[768,1024],[820,1180],[390,844],[844,390]]){canvas.clientWidth=w;canvas.clientHeight=h;frame(1/30);const top=1-2*90/h,bottom=-1+2*75/h;
+  const e=inside.camera.matrixWorld.elements,right=new T.Vector3(e[0],e[1],e[2]),up=new T.Vector3(e[4],e[5],e[6]),b=inside.dream.group.position;
+  for(const [x,y] of [[1.08,0],[-1.08,0],[0,.74],[0,-.74]]){const p=b.clone().addScaledVector(right,x*.75).addScaledVector(up,y*.75).project(inside.camera);assert.ok(Math.abs(p.x)<1&&p.y<top&&p.y>bottom,`the bubble's edge on the screen at ${w}×${h}`);}
+  for(const v of [girl.head.getWorldPosition(new T.Vector3()),new T.Vector3(-2.7,.65,2.5),new T.Vector3(-4,.65,.4)]){const p=v.clone().project(inside.camera);assert.ok(Math.abs(p.x)<1&&p.y<top&&p.y>bottom,`her and the bed on the screen at ${w}×${h}`);}}
+ canvas.clientWidth=1024;canvas.clientHeight=768;frame(1/30);
+ // up again: the dream goes at once, she climbs out, and the sofa is made again the other way round: the duvet, the back, the seat, the pillows
+ assert.equal(inside.wake(),true);assert.equal(inside.wake(),false);assert.equal(inside.asleep,false);frame(1/30);assert.equal(inside.dream.group.visible,false,'the dream is gone');assert.equal(girl.asleep,false,'eyes open');
+ run(1.3);assert.equal(bed.k,0,'out of bed');const back=[];while(bed.u>0){frame(1/30);back.push({u:bed.u,seat:sb.seat.position.x,tip:-sb.back.rotation.z,duvet:sb.duvet.visible});}
+ assert.ok(back.length>70&&back.length<90,'about 2.6 s ('+(back.length/30).toFixed(1)+' s)');const when=u=>back.find(a=>a.u<=u);
+ assert.ok(!when(.74).duvet&&when(.6).seat>.34&&when(.6).tip<.9,'the duvet goes first, then the back is lifted while the seat is still out');assert.ok(when(.3).tip<.06&&when(.3).seat<.3,'then the seat goes in');
+ for(let i=1;i<back.length;i++)assert.ok(Math.abs(back[i].seat-back[i-1].seat)<.06&&Math.abs(back[i].tip-back[i-1].tip)<.25,'smooth back at '+back[i].u.toFixed(2));
+ assert.ok(Math.abs(sb.seat.position.x)<1e-9&&Math.abs(sb.back.rotation.z)<1e-9,'a sofa again');assert.equal(sb.duvet.visible,false);assert.ok(Math.abs(sb.p1.position.x+.2)<.001&&Math.abs(sb.p2.position.z-.55)<.001,'the pillows lean on the back again');
+ run(2);assert.ok(inside.camera.position.distanceTo(cam)<.01,'and the camera is back where it was');
+ assert.deepEqual({...inside.pick(...screen(new T.Vector3(1,0,2)))},{type:'floor'},'she walks again');run(3);
+ // a change of mind halfway: the same motion runs backwards, with no jump
+ inside.sleep();while(bed.u<.6)frame(1/30);inside.wake();let last=sb.seat.position.x,lastTip=-sb.back.rotation.z;
+ while(bed.u>0){frame(1/30);assert.ok(Math.abs(sb.seat.position.x-last)<.06&&Math.abs(-sb.back.rotation.z-lastTip)<.25,'no jump going back');last=sb.seat.position.x;lastTip=-sb.back.rotation.z;}
+ // coming in again, she is always awake and the sofa a sofa
+ inside.sleep();run(9);inside.enter(items,{pigHidden:true});assert.equal(inside.asleep,false);assert.equal(bed.u,0);assert.equal(bed.view,0);assert.ok(Math.abs(sb.seat.position.x)<1e-9);assert.equal(girl.asleep,false);assert.ok(inside.camera.position.distanceTo(cam)<.01);}
+console.log('Inside: bedtime on the sofa bed (pillows, seat, back, duvet, and back again), asleep under the duvet, the camera, the dream and its taps, the comet: OK');

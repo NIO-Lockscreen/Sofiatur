@@ -56,10 +56,13 @@ body.at-lake:has(#freeControls:not([hidden])) .horn:not([hidden]){display:grid!i
 #insideHud{position:absolute;inset:0;z-index:31;pointer-events:none}#insideHud>*{pointer-events:auto}
 .inside-title{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);padding:8px 22px;border-radius:18px;background:#fffdf1e8;box-shadow:0 3px 0 #174e4830;text-align:center;font-weight:850;font-size:17px;white-space:nowrap;pointer-events:none}
 .inside-title small{display:block;font-size:12px;font-weight:700;color:#4f6f64;margin-top:2px}
+/* Bedtime in the house (4 November 2026): the room darkens towards the edges while Sofia sleeps on the sofa bed, and "Stå opp" stands under "Gå ut". */
+#insideHud>.night{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.8s;background:radial-gradient(ellipse 72% 78% at 50% 52%,#0a103a00 30%,#0a103ab8 100%),#0a103a2e}#insideHud.sleeping>.night{opacity:1}
+.go-out.wake-up{top:160px}
 .unlock-info{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);width:min(480px,calc(100% - 32px));padding:16px 20px;display:flex;align-items:center;gap:16px;touch-action:manipulation}
 .unlock-info[hidden]{display:none}.info-icon{font-size:44px;line-height:1;flex:none}.unlock-info strong{font-size:19px}.unlock-info p{margin:4px 0 0;font-size:16px;line-height:1.4;font-weight:700}
-@media(max-width:700px){.go-inside{right:14px;top:68px;bottom:auto;min-height:52px;padding:8px 18px;font-size:17px}.welcome{max-height:calc(100dvh - 170px)}.go-out{left:14px;top:78px;min-height:52px;padding:8px 18px;font-size:17px}.inside-title{bottom:14px;padding:6px 16px;font-size:15px}.unlock-info{bottom:80px;padding:12px 16px}.info-icon{font-size:36px}}
-@media(max-height:500px){.go-inside{bottom:30px}.go-out{top:70px}.inside-title{padding:4px 14px;bottom:26px}.unlock-info{bottom:74px;padding:10px 16px}.info-icon{font-size:32px}.unlock-info p{font-size:14px}}
+@media(max-width:700px){.go-inside{right:14px;top:68px;bottom:auto;min-height:52px;padding:8px 18px;font-size:17px}.welcome{max-height:calc(100dvh - 170px)}.go-out{left:14px;top:78px;min-height:52px;padding:8px 18px;font-size:17px}.go-out.wake-up{top:142px}.inside-title{bottom:14px;padding:6px 16px;font-size:15px}.unlock-info{bottom:80px;padding:12px 16px}.info-icon{font-size:36px}}
+@media(max-height:500px){.go-inside{bottom:30px}.go-out{top:70px}.go-out.wake-up{top:134px}.inside-title{padding:4px 14px;bottom:26px}.unlock-info{bottom:74px;padding:10px 16px}.info-icon{font-size:32px}.unlock-info p{font-size:14px}}
 /* With the taxi, the pig or the hover switch on the start card (5 October 2026) the card was 60 px too tall for an iPad in landscape (1024×768): on a wide screen it
    drops the little heading and tightens up while they show. On a phone the card stops short of "Gå inn", which sits under the header. */
 @media(min-width:701px){.welcome:has(#model-taxi:not([hidden]),#model-pig:not([hidden]),#hoverRow:not([hidden]),#secretHint:not([hidden])){padding:24px 30px 26px}

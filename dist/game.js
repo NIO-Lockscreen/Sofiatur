@@ -39,7 +39,7 @@ function incomingEdge(){if(lastEdge&&lastEdge.to===current)return lastEdge;if(pr
 function endDirection(e,start=true){const p=e.path.map(n=>data.nodes[n]),i=start?e.stub||0:p.length-2;const a=p[i],b=p[i+1];return new T.Vector3(b[0]-a[0],0,b[1]-a[1]).normalize();}
 function routeFrom(n){const route=[];const visited=new Set();while(n!==data.goal&&!visited.has(n)){visited.add(n);const e=optimal.get(n);if(!e)break;route.push(e);n=e.to;}return route;}
 function computeRoutes(){const reverse=incoming;for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);if(!reverse.has(e.to))reverse.set(e.to,[]);reverse.get(e.to).push(e);}distances.set(data.goal,0);const todo=[data.goal];while(todo.length){todo.sort((a,b)=>distances.get(b)-distances.get(a));const n=todo.pop(),d=distances.get(n);for(const e of reverse.get(n)||[]){const nd=d+(e.cost||e.length);if(nd<(distances.get(e.from)??Infinity)){distances.set(e.from,nd);optimal.set(e.from,e);if(!todo.includes(e.from))todo.push(e.from);}}}}
-function reset(){clearInputs();homeAt=0;$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;picked=null;$('undoRoundabout').hidden=true;maxKmh=200;current=data.start;previous=null;lastEdge=null;active=null;distance=0;speed=0;travelled=0;turns=0;state='intro';position.copy(point(current));heading.copy(endDirection(optimal.get(current)));totalInitial=routeFrom(current).reduce((n,e)=>n+e.length,0);ui.welcome.hidden=false;ui.drive.hidden=true;ui.decision.hidden=true;ui.finish.hidden=true;document.body.classList.remove('choosing');world.resetCamera();clearWorldChoices();world.setTurnArrow(null);$('remaining').textContent='Herlofsons veg → Skjermvegen';newReward=null;$('insideHud').hidden=true;$('goInside').hidden=false;hintTurn++;showRewards();}
+function reset(){clearInputs();homeAt=0;$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;picked=null;$('undoRoundabout').hidden=true;maxKmh=200;current=data.start;previous=null;lastEdge=null;active=null;distance=0;speed=0;travelled=0;turns=0;state='intro';position.copy(point(current));heading.copy(endDirection(optimal.get(current)));totalInitial=routeFrom(current).reduce((n,e)=>n+e.length,0);ui.welcome.hidden=false;ui.drive.hidden=true;ui.decision.hidden=true;ui.finish.hidden=true;document.body.classList.remove('choosing');world.resetCamera();clearWorldChoices();world.setTurnArrow(null);$('remaining').textContent='Herlofsons veg → Skjermvegen';newReward=null;$('insideHud').hidden=true;sleepHud(false);$('goInside').hidden=false;hintTurn++;showRewards();}
 function start(){if(state!=='intro')return;$('goInside').hidden=true;$('hornHome').hidden=true;lakeVisit=false;if(sound&&musicOn)music.play();if(sound&&arrivals>=HORN_AT)music.preloadHorns?.();if(freeMode){startFree();return;}ui.welcome.hidden=true;ui.drive.hidden=false;state='decision';const rexCarries=model==='trex'&&arrivals>=MODEL_AT.trex&&ludvigUnlocked&&behind==='ludvig'; // the easter egg (world.js)
  if(rexCarries)toast('🦖 Oi! T-rexen har tatt Ludvig i munnen!');say('Hei Sofia! Nå kjører vi til barnehagen. Ved hvert kryss velger du vei med en pil.'+(rexCarries?' Oi! T-rexen har tatt Ludvig i munnen!':''));leavingHome=true;showDecision();}
 // A roundabout exit's arrow shows where its road goes, seen from the circle (roundaboutLabels); without that, where its
@@ -362,13 +362,25 @@ function lockSecret({id,title}){
  if(!taxiReady())taxiSeen=false;if(!hoverReady())hoverSeen=false; // announced again when it is unlocked again
  if(!rideOK(model))model='car';
  saveProgress();applyRewards();showRewards();toast('🛠 '+(id==='hover'?'Grisen og svevebilen':title)+': låst igjen');}
-// A tap on the house (under 12 px and 600 ms, so a swipe is not one): an item on the podium says how it was unlocked, the pig is found, the door leads out.
+// Bedtime (4 November 2026, copied from Sofia's space game): the sofa is a sofa bed. A tap on it sends Sofia to bed (inside.js: she walks over, pulls the bed out,
+// lies down and dreams), with a lullaby, "God natt" and night in the room; a tap on it again, or "Stå opp", wakes her. In the dream the car, a rainbow and what she
+// has unlocked float by: a tap on one says its name, a tap on the comet says "En komet!". "Gå ut" works while she sleeps; she always comes back in awake.
+const DREAM_NAMES={car:'Bilen',arc:'Regnbuen'};let bedTapAt=-1e9;
+function sleepHud(on){$('wakeUp').hidden=!on;$('insideHud').classList.toggle('sleeping',on);$('insideName').textContent=on?'Sofia sover':'Hjemme hos Sofia';
+ $('insideTip').textContent=on?'Trykk på drømmen, eller på sofaen for å vekke henne':'Trykk på premiene, eller på sofaen når du er trøtt';if(on)$('unlockInfo').hidden=true;}
+function goToBed(){if(state!=='inside'||!inside||!inside.sleep())return;sleepHud(true);if(sound)music.effect?.('lullaby');say('God natt, Sofia! Sov godt, og drøm søtt om bilturer og regnbuer.');}
+function wakeUp(){if(state!=='inside'||!inside?.wake())return;sleepHud(false);if(sound)music.effect?.('sparkle');say('God morgen, Sofia! Nå er du uthvilt og klar for en ny biltur.');}
+// A tap on the house (under 12 px and 600 ms, so a swipe is not one): an item on the podium says how it was unlocked, the pig is found, the door leads out,
+// the sofa sends her to bed or wakes her (not twice within 0.6 s), and something in her dream says its name.
 function houseTap(x,y){const hit=inside.pick(x,y);$('unlockInfo').hidden=true;if(!hit)return;
  if(hit.type==='item'){const it=podiumItems().find(i=>i.id===hit.id);if(!it)return;$('unlockInfoIcon').textContent=it.icon;$('unlockInfoTitle').textContent=it.title;$('unlockInfoText').textContent=it.text;$('unlockInfo').hidden=false;say((it.unlocked?it.title+'. ':'')+it.text);}
- else if(hit.type==='pig')findPig();else if(hit.type==='door')goOutside();}
+ else if(hit.type==='pig')findPig();else if(hit.type==='door')goOutside();
+ else if(hit.type==='bed'){const now=performance.now();if(now-bedTapAt<600)return;bedTapAt=now;if(inside.asleep)wakeUp();else goToBed();}
+ else if(hit.type==='dream'){const name=DREAM_NAMES[hit.id]||podiumItems().find(i=>i.id===hit.id&&i.unlocked)?.title;if(sound)music.effect?.('pop');if(name)say(name+'!');}
+ else if(hit.type==='comet'){if(sound)music.effect?.('sparkle');say('En komet!');}}
 {let down=null;const canvas=$('world');canvas.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,t:performance.now()};});
  canvas.addEventListener('pointerup',e=>{const d=down;down=null;if(state==='inside'&&d&&Math.hypot(e.clientX-d.x,e.clientY-d.y)<12&&performance.now()-d.t<600)houseTap(e.clientX,e.clientY);});}
-$('goInside').onclick=goInside;$('goOut').onclick=goOutside;$('unlockInfo').onclick=()=>{$('unlockInfo').hidden=true;};
+$('goInside').onclick=goInside;$('goOut').onclick=goOutside;$('wakeUp').onclick=wakeUp;$('unlockInfo').onclick=()=>{$('unlockInfo').hidden=true;};
 // RE-ward (4 October 2026, with the taxi, the pig, the hover car and the house from 7 October), a kind of prestige: the button in the settings saves everything unlocked so far
 // (the trips and so the colours and rides; the secrets KIWI, Ludvig, the duck, the places visited, the pig; the hover switch; whether she has been inside) and starts over with
 // nothing; "rull tilbake" brings the latest saved game back, the new one is dropped. The saved games are a

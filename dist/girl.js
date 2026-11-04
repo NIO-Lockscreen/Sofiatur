@@ -17,7 +17,9 @@ export function createGirlModel(T){
  part(sphere,skin,[0,0,0],[.12,.13,.12],head);
  part(sphere,hair,[0,.035,.015],[.13,.12,.13],head);part(sphere,hair,[0,-.03,.075],[.12,.14,.07],head);
  part(sphere,hair,[0,.062,-.098],[.112,.05,.045],head);part(sphere,hair,[-.055,.052,-.104],[.07,.045,.04],head).rotation.z=.5;part(sphere,hair,[.055,.052,-.104],[.07,.045,.04],head).rotation.z=-.5;
- for(const s of [-1,1]){part(sphere,dark,[s*.045,.002,-.113],[.017,.024,.01],head);part(sphere,glint,[s*.05,.01,-.121],[.006,.008,.004],head);part(sphere,cheek,[s*.07,-.043,-.1],[.027,.018,.01],head);part(sphere,skin,[s*.12,-.005,0],[.022,.03,.022],head);}
+ const eyes=[],lids=[];
+ for(const s of [-1,1]){eyes.push(part(sphere,dark,[s*.045,.002,-.113],[.017,.024,.01],head),part(sphere,glint,[s*.05,.01,-.121],[.006,.008,.004],head));part(sphere,cheek,[s*.07,-.043,-.1],[.027,.018,.01],head);part(sphere,skin,[s*.12,-.005,0],[.022,.03,.022],head);
+  const lid=part(smile,dark,[s*.045,.004,-.116],[.02,.016,.012],head);lid.rotation.z=Math.PI;lid.visible=false;lids.push(lid);} // closed eyes, two little arcs, while she sleeps
  part(smile,mouth,[0,-.043,-.116],[.03,.03,.012],head).rotation.z=Math.PI;
  const pigtails=[-1,1].map(s=>{const pivot=new T.Group();pivot.position.set(s*.118,.03,.03);head.add(pivot);
   part(sphere,tie,[0,0,0],[.026,.026,.026],pivot);part(sphere,hair,[s*.01,-.075,0],[.043,.1,.043],pivot);part(sphere,hair,[s*.016,-.155,.004],[.036,.05,.036],pivot);return pivot;});
@@ -26,18 +28,20 @@ export function createGirlModel(T){
   part(limb,skin,[0,-.11,0],[.04,.22,.04],hip);part(limb,sock,[0,-.29,0],[.046,.14,.046],hip);part(box,shoe,[0,-.39,-.025],[.075,.06,.15],hip);return hip;});
  const arms=[-1,1].map(s=>{const sh=new T.Group();sh.position.set(s*.15,.76,0);body.add(sh);
   part(limb,top,[0,-.04,0],[.04,.09,.04],sh);part(limb,skin,[0,-.15,0],[.031,.13,.031],sh);part(sphere,skin,[0,-.235,0],[.034,.034,.034],sh);return sh;});
- let phase=0;
+ let phase=0,asleep=false;
+ // Asleep (the bed in the house, inside.js): the eyes are shut, and the head and the pigtails lie still.
+ function setAsleep(on){asleep=!!on;for(const e of eyes)e.visible=!asleep;for(const l of lids)l.visible=asleep;}
  // speed in m/s; wave 0..1 lifts the right arm and waves it.
  function update(dt,speed,time,wave=0){
   const run=Math.min(1,speed/1.6);phase+=dt*Math.min(16,5+speed*2.4);
   const s=Math.sin(phase)*.75*run;legs[0].rotation.x=s;legs[1].rotation.x=-s;arms[0].rotation.x=-s*.9;arms[1].rotation.x=s*.9;
   arms[0].rotation.z=-.08;arms[1].rotation.z=.08;
   body.position.y=Math.abs(Math.cos(phase))*.03*run;body.rotation.x=-.06*run;torso.scale.y=.28+Math.sin(time*2.2)*.004*(1-run);
-  head.rotation.y=Math.sin(time*.9)*.25*(1-run);head.rotation.z=Math.sin(time*.7)*.04*(1-run);
+  const still=asleep?0:1;head.rotation.y=Math.sin(time*.9)*.25*(1-run)*still;head.rotation.z=Math.sin(time*.7)*.04*(1-run)*still;
   // the pigtails swing out and bounce with each step, and sway a little when she stands
-  pigtails.forEach((p,i)=>{const side=i?1:-1;p.rotation.z=side*(.12+.14*Math.abs(Math.cos(phase))*run)+Math.sin(time*1.3+i)*.03;p.rotation.x=Math.sin(phase*2+i)*.16*run+Math.sin(time*1.1)*.02;});
+  pigtails.forEach((p,i)=>{const side=i?1:-1;p.rotation.z=side*(.12+.14*Math.abs(Math.cos(phase))*run)+Math.sin(time*1.3+i)*.03*still;p.rotation.x=Math.sin(phase*2+i)*.16*run+Math.sin(time*1.1)*.02*still;});
   if(wave>0){arms[1].rotation.x=-.2*wave;arms[1].rotation.z=2.6*wave+Math.sin(time*9)*.35*wave;}
  }
  update(0,0,0);
- return {group,update,legs,arms,head,pigtails};
+ return {group,update,setAsleep,get asleep(){return asleep;},legs,arms,head,pigtails};
 }
