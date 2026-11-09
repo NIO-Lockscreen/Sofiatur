@@ -135,3 +135,52 @@ console.log('Inside: the pig hops out when found, stands on the rug, and a tap o
  // coming in again, she is always awake and the sofa a sofa
  inside.sleep();run(9);inside.enter(items,{pigHidden:true});assert.equal(inside.asleep,false);assert.equal(bed.u,0);assert.equal(bed.view,0);assert.ok(Math.abs(sb.seat.position.x)<1e-9);assert.equal(girl.asleep,false);assert.ok(inside.camera.position.distanceTo(cam)<.01);}
 console.log('Inside: bedtime on the sofa bed (pillows, seat, back, duvet, and back again), asleep under the duvet, the camera, the dream and its taps, the comet: OK');
+
+// Jumping on the bed (9 November 2026): jump() walks her to the sofa and pulls the bed out as at bedtime, but by day; she climbs up and bounces seven times with her
+// arms up and laughing, the cushions giving under her, spins round on the highest bounce, hops down beside the bed, and the sofa is made again. game.js hears each moment.
+// sleep() in the middle of it puts her straight to bed from where she is, with no jump in her position.
+{let t=500;const heard=[];const house=createInside({T,renderer,canvas,on:(name)=>heard.push([name,t])});const frame=dt=>{t+=dt;house.update(dt,t);},run=(seconds,dt=1/30)=>{for(let i=0;i<Math.round(seconds/dt);i++)frame(dt);};
+ const items=list(id=>['colour','cat'].includes(id));canvas.clientWidth=1024;canvas.clientHeight=768;house.enter(items,{pigHidden:true});
+ const bed=house.bed,sb=house.sofaBed,girl=house.girl,J=house.JUMP,cam=house.camera.position.clone(),at=()=>girl.group.position.clone();
+ const shot=v=>{const p=v.clone().project(house.camera);return [(p.x+1)/2*canvas.clientWidth,(1-p.y)/2*canvas.clientHeight];};
+ assert.equal(house.jump(),true);assert.equal(house.jump(),false,'once is enough');assert.equal(house.jumping,true);assert.equal(house.asleep,false,'jumping is not sleeping');
+ run(.3);assert.equal(house.pick(...shot(new T.Vector3(1,0,2))),null,'while she jumps, the floor is no tap');assert.deepEqual({...house.pick(...shot(new T.Vector3(-3.55,.55,1.45)))},{type:'bed'},'the sofa still is');
+ // she walks over and pulls the bed out, the same as at bedtime, but it stays day
+ let n=0;while(bed.play<0&&n<400){frame(1/30);n++;}assert.ok(n<300,'the bed is out ('+(n/30+.3).toFixed(1)+' s)');assert.equal(bed.u,1);assert.ok(Math.abs(sb.seat.position.x-.35)<.001&&Math.abs(sb.back.rotation.z+Math.PI/2)<.001,'the bed pulled out');
+ assert.equal(sb.duvet.visible,true,'with the duvet at the foot end');assert.equal(bed.night,0,'by day: no night');assert.equal(heard.length,0);
+ // the jump, frame by frame
+ let prev=at(),top=0,low=9,turned=0,lastYaw=girl.group.rotation.y,arms=9,laughing=0,squash=1,frames=0,worst=0,onScreen=true;
+ while(house.jumping&&frames<400){frame(1/30);frames++;const p=at();worst=Math.max(worst,p.distanceTo(prev));prev=p;
+  if(bed.play>J.climb&&bed.play<J.off){top=Math.max(top,p.y);low=Math.min(low,p.y);arms=Math.min(arms,Math.abs(girl.arms[0].rotation.z),Math.abs(girl.arms[1].rotation.z));if(girl.laughing)laughing++;squash=Math.min(squash,sb.cushions[0].scale.y);
+   assert.ok(Math.abs(p.x-J.x)<1e-9&&Math.abs(p.z-J.z)<1e-9,'she bounces on one spot');const y=girl.group.rotation.y;turned+=Math.atan2(Math.sin(y-lastYaw),Math.cos(y-lastYaw));}
+  lastYaw=girl.group.rotation.y;}
+ assert.ok(frames>150&&frames<180,'the jump takes about 5.5 s ('+(frames/30).toFixed(1)+' s)');assert.ok(worst<.3,'no jump in her position from one frame to the next ('+worst.toFixed(3)+' m)');
+ assert.ok(top>J.y+.75&&top<J.y+.83,'up to 0.82 m over the bed ('+(top-J.y).toFixed(2)+')');assert.ok(low>J.y-.03,'her feet never sink into the bed ('+(low-J.y).toFixed(3)+')');
+ assert.ok(squash<.75,'the cushions give as she lands ('+squash.toFixed(2)+')');assert.ok(arms>1.9,'both arms up all the time ('+arms.toFixed(2)+')');assert.ok(laughing>100,'laughing');assert.ok(Math.abs(turned-2*Math.PI)<.2,'and one spin, all the way round ('+turned.toFixed(2)+')');
+ assert.deepEqual(heard.map(h=>h[0]),['boing','boing','boing','boing','boing','boing','spin','boing','down','done'],'seven boings, the spin on the sixth bounce, then down and done');
+ {const gaps=heard.filter(h=>h[0]==='boing').map(h=>h[1]).map((v,i,a)=>i?v-a[i-1]:J.period);assert.ok(gaps.every(g=>Math.abs(g-J.period)<.04),'a boing every '+J.period+' s');}
+ // down beside the bed, then the sofa is made again by itself and the camera goes back
+ assert.equal(house.jumping,false);assert.ok(Math.abs(at().x-(-2.47))<.02&&Math.abs(at().z-1.55)<.02&&Math.abs(at().y)<1e-9,'down beside the bed');assert.equal(girl.laughing,false);
+ for(const s of sb.cushions)assert.ok(Math.abs(s.scale.y-1)<1e-9,'the cushions full again');
+ run(2.7);assert.equal(bed.u,0,'a sofa again');assert.equal(sb.duvet.visible,false);run(2);assert.ok(house.camera.position.distanceTo(cam)<.01,'the camera back where it was');
+ assert.deepEqual({...house.pick(...shot(new T.Vector3(1,0,2)))},{type:'floor'},'she walks again');run(2);
+ // her head at the top of the highest bounce is on the screen, under the header and over the title, at five sizes
+ for(const [w,h] of [[1024,768],[768,1024],[820,1180],[390,844],[844,390]]){canvas.clientWidth=w;canvas.clientHeight=h;house.enter(items,{pigHidden:true});house.jump();while(bed.play<0)frame(1/30);
+  run(J.climb+(J.spin+J.press+(1-J.press)/2)*J.period-bed.play,1/60);house.scene.updateMatrixWorld(true);const top=1-2*90/h,bottom=-1+2*75/h;
+  for(const v of [girl.head.getWorldPosition(new T.Vector3()).add(new T.Vector3(0,.15,0)),new T.Vector3(J.x,J.y,J.z)]){const p=v.clone().project(house.camera);assert.ok(Math.abs(p.x)<1&&p.y<top&&p.y>bottom,`her head and feet on the screen at ${w}×${h}`);}}
+ canvas.clientWidth=1024;canvas.clientHeight=768;
+ // sleep() in the middle of a bounce: she lies down from where she is in the air, smoothly, under the duvet with her head on the pillows, and gets up beside the bed
+ for(const when of [J.climb*.5,1.2,J.climb+(J.spin+.6)*J.period,J.off+J.down*.5]){house.enter(items,{pigHidden:true});house.jump();while(bed.play<0)frame(1/30);run(when-bed.play,1/60);
+  const from=at();assert.equal(house.sleep(),true,'to bed at '+when.toFixed(2)+' s');assert.equal(house.jumping,false);assert.equal(house.asleep,true);
+  let last=from,step=0;for(let i=0;i<60;i++){frame(1/30);step=Math.max(step,at().distanceTo(last));last=at();}assert.ok(step<.15,'from the jump into bed with no jump ('+step.toFixed(3)+' m a frame)');
+  house.scene.updateMatrixWorld(true);assert.equal(bed.k,1);assert.equal(girl.asleep,true);assert.equal(girl.laughing,false);const head=girl.head.getWorldPosition(new T.Vector3());
+  assert.ok(head.x<-3&&head.x>-3.6&&head.z>.8&&head.z<1.1&&head.y>.9&&head.y<1.1,'head on the pillows ('+head.toArray().map(v=>v.toFixed(2))+')');for(const c of sb.cushions)assert.ok(Math.abs(c.scale.y-1)<1e-9);
+  run(2);assert.ok(house.dream.group.visible,'and she dreams');assert.equal(house.wake(),true);last=at();step=0;for(let i=0;i<45;i++){frame(1/30);step=Math.max(step,at().distanceTo(last));last=at();}
+  assert.ok(step<.15,'getting up with no jump');assert.equal(bed.k,0);assert.ok(Math.abs(at().x-(-2.47))<.02&&Math.abs(at().z-1.55)<.02,'beside the bed');run(3);assert.equal(bed.u,0,'and the sofa made again');}
+ // on her way or making the bed when told to sleep: she carries on and lies down as at bedtime
+ house.enter(items,{pigHidden:true});house.jump();run(.5);assert.equal(bed.u,0);house.sleep();run(12);assert.equal(bed.k,1);assert.equal(house.dream.group.visible,true);
+ house.enter(items,{pigHidden:true});house.jump();while(bed.u<.5)frame(1/30);house.sleep();run(6);assert.equal(bed.k,1);
+ // no jump while asleep or while the bed is still out; coming in again in the middle of a jump, she is standing and the sofa a sofa
+ assert.equal(house.jump(),false,'not while asleep');house.wake();run(.6);assert.equal(house.jump(),false,'not while she climbs out');
+ house.enter(items,{pigHidden:true});house.jump();while(bed.play<1)frame(1/30);house.enter(items,{pigHidden:true});assert.equal(house.jumping,false);assert.equal(bed.u,0);assert.equal(bed.play,-1);frame(1/30);assert.ok(Math.abs(at().y)<1e-9&&Math.abs(sb.seat.position.x)<1e-9);}
+console.log('Inside: jumping on the sofa bed (the bed pulled out first, by day; seven bounces with the cushions giving, arms up, laughing, one spin, down again and a sofa again), on the screen at five sizes, and to bed from any moment of it: OK');

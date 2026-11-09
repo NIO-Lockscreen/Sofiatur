@@ -5,6 +5,8 @@
 // A separate scene and camera, lit by a hemisphere light and one warm light, no shadows. Solid colours only: the software renderer skips see-through things and ignores lights.
 // Bedtime (4 November 2026, copied from Sofia's space game): the sofa is a sofa bed. A tap on it (game.js calls sleep) walks the girl over; she pulls the bed out,
 // hops in and lies down under the duvet with her eyes shut. The camera glides in, night falls in the window, and she dreams (dream.js). wake() gets her up again.
+// Jumping on the bed (9 November 2026, as in the space game): the first tap on the sofa each time the game is opened (game.js keeps count) calls jump() instead.
+// She walks over and pulls the bed out as at bedtime, climbs up and jumps on it, then hops down and the sofa is made again. sleep() halfway puts her straight to bed.
 import {createGirlModel} from './girl.js';
 import {createET5} from './car-model.js';
 import {createCat} from './cat-model.js';
@@ -23,10 +25,15 @@ const HIDE={x:-4.2,z:2.65},OUT={x:.95,z:1.95,yaw:Math.PI-.5}; // the pig behind 
 // The sofa bed: where she takes hold of the seat, facing the sofa, and where she stands once she has pulled it out (PULL m); how she lies (her feet towards the open front, her head on the pillow at the back, propped up
 // a little so her face shows over the duvet); the middle of the dream bubble and its size, and the way the Z's drift (towards the wall, away from the bubble).
 const GRAB={x:-2.82,z:1.55,yaw:Math.PI/2},SIDE={x:-2.47,z:1.55},PULL=.35,LIE={x:-3.3,y:.7,z:1.81,yaw:Math.PI,tilt:1.23},BUBBLE={x:-2.2,y:2.7,z:1.3,size:.75},ZSIDE=[-.85,0,.5];
+// Jumping on the open bed: where she stands (in the middle, between the pillows and the folded duvet, on the cushions' top at 0.65 m), facing the camera at the bed;
+// then, in seconds from when the bed is open: she climbs up from beside it, bounces seven times with her arms in the air (spinning round on the highest), each bounce
+// pressing the cushions down for its first part and in the air for the rest, and hops down again to where she pulled the bed out.
+const JUMP={x:-3.38,y:.65,z:1.5,yaw:Math.atan2(-.42,-1),climb:.55,period:.64,press:.22,heights:[.42,.52,.62,.52,.66,.82,.45],spin:5,down:.5};
+JUMP.off=JUMP.climb+JUMP.heights.length*JUMP.period;JUMP.end=JUMP.off+JUMP.down;
 const MODELS=new Set(['cat','dog','duck','rocket','unicorn','firetruck','rainbow','balloon','trex','kiwi','ludvig','duckRunner','taxi','pig']); // the podium's places with a model of their own
 const ease=k=>k*k*(3-2*k);
 
-export function createInside({T,renderer,canvas}){
+export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): game.js hears the jump's moments ('boing', 'spin', 'down', 'done') for the sounds and the words
  const scene=new T.Scene(),camera=new T.PerspectiveCamera(45,1,.1,120);scene.background=new T.Color('#f3e7d3');
  const std=(color,roughness=.85,extra={})=>new T.MeshStandardMaterial({color,roughness,...extra});
  const blockers=[],pickables=[]; // blockers: walls, the podium and the furniture, which a tap cannot go through
@@ -130,20 +137,44 @@ export function createInside({T,renderer,canvas}){
  function walkTo(x,z,face=null,free=false){if(!free)[x,z]=clamp(x,z);walk={x,z};arrive=face;waveLeft=0;}
  // ---- Bedtime: on (told to sleep), u (0 a sofa .. 1 a bed), k (in bed, 0 standing by it .. 1 lying), night (0..1, eases with on), view (the camera at the bed, 0..1:
  // it stays there until the sofa is a sofa again), dream (seconds dreamt) ----
- const bed={on:false,u:0,k:0,night:0,view:0,dream:0,open:true}; // open: the sofa is (or was last) opening; the bounces come at the bed end then, at the sofa end closing
+ // jumping (told to jump: on her way, making the bed, or on it), play (seconds since the bed was open for the jump, −1 before and after), from (where she flops into
+ // bed from when told to sleep in the middle of the jump), blend (the pose she glides away from over 0.3 s after such a change of mind), clock (seconds, for the blend)
+ const bed={on:false,u:0,k:0,night:0,view:0,dream:0,open:true,jumping:false,play:-1,from:null,blend:null,clock:0}; // open: the sofa is (or was last) opening; the bounces come at the bed end then, at the sofa end closing
  const dream=createDream({T,scene,build:id=>build(id)});
  const head=new T.Vector3(),bubbleAt=new T.Vector3(BUBBLE.x,BUBBLE.y,BUBBLE.z),zSide=new T.Vector3(...ZSIDE).normalize(),DAY='#f3e7d3',NIGHT='#2f2f57',GLASS='#bfe6f7',DARK='#1c2858',tint=new T.Color();
  function dreamList(){return ['car','arc',...items.filter(i=>i.unlocked&&MODELS.has(i.id)).map(i=>i.id)];}
  // To bed: she walks to the sofa (or, already by it, stays), makes the bed of it and lies down (bedtime, below). Already on her way or asleep: nothing.
- function sleep(){if(bed.on)return false;bed.on=true;bed.dream=0;dream.reset();dream.setList(dreamList());waveLeft=0;if(bed.k===0&&bed.u===0)walkTo(GRAB.x,GRAB.z,{yaw:GRAB.yaw,bed:true},true);return true;}
+ // Told while jumping: on her way or making the bed, she carries on and lies down; up on the bed, she flops down under the duvet from where she is.
+ function sleep(){if(bed.on)return false;
+  if(bed.jumping){if(bed.play>=0){bed.from=here();bed.blend={...bed.from,at:bed.clock};gx=GRAB.x+PULL;gz=GRAB.z;yaw=GRAB.yaw;}bed.jumping=false;bed.play=-1;}
+  bed.on=true;bed.dream=0;dream.reset();dream.setList(dreamList());waveLeft=0;if(bed.k===0&&bed.u===0)walkTo(GRAB.x,GRAB.z,{yaw:GRAB.yaw,bed:true},true);return true;}
  // Up again: a burst of sparkles where the dream was, then she climbs out and makes the bed a sofa again. On her way to bed, she just stops.
- function wake(){if(!bed.on)return false;if(bed.dream>1.5)dream.burst(bubbleAt,22,3);bed.on=false;bed.dream=0;if(bed.k===0){walk=null;arrive=null;}return true;}
+ // She always climbs out beside the bed, wherever she flopped in from (woken halfway, she glides over).
+ function wake(){if(!bed.on)return false;if(bed.dream>1.5)dream.burst(bubbleAt,22,3);bed.on=false;bed.dream=0;if(bed.from){bed.blend={...here(),at:bed.clock};bed.from=null;}if(bed.k===0){walk=null;arrive=null;}return true;}
+ // Jump on the bed: only from awake with the sofa a sofa. She walks over and pulls the bed out exactly as at bedtime, but by day; then she jumps (bedtime, below).
+ function jump(){if(bed.on||bed.jumping||bed.u>0||bed.k>0)return false;bed.jumping=true;bed.play=-1;waveLeft=0;walkTo(GRAB.x,GRAB.z,{yaw:GRAB.yaw,bed:true},true);return true;}
+ const here=()=>({x:girl.group.position.x,y:girl.group.position.y,z:girl.group.position.z,rx:girl.group.rotation.x,ry:girl.group.rotation.y});
  const atGrab=()=>!walk&&Math.hypot(gx-GRAB.x,gz-GRAB.z)<.06&&Math.abs(Math.atan2(Math.sin(GRAB.yaw-yaw),Math.cos(GRAB.yaw-yaw)))<.2;
  // Making the bed takes 3.2 s, making the sofa again 2.6 s; she lies down in 1.5 s and gets up in 1.2 s. The dream starts once she lies still.
- function bedtime(dt){if(bed.u===0)bed.open=true;else if(bed.u===1)bed.open=false;
+ // Jumping, the bed is made in the same 3.2 s, the jump takes 5.5 s, and once she is down the sofa is made again by itself (2.6 s), as after bedtime.
+ function bedtime(dt){bed.clock+=dt;if(bed.u===0)bed.open=true;else if(bed.u===1)bed.open=false;
   if(bed.on){if(bed.u<1){if(bed.k===0&&(bed.u>0||atGrab()))bed.u=Math.min(1,bed.u+dt/3.2);}else bed.k=Math.min(1,bed.k+dt/1.5);if(bed.k===1)bed.dream+=dt;}
+  else if(bed.jumping){if(bed.u<1){if(bed.u>0||atGrab())bed.u=Math.min(1,bed.u+dt/3.2);}else jumping(dt);}
   else if(bed.k>0)bed.k=Math.max(0,bed.k-dt/1.2);else if(bed.u>0)bed.u=Math.max(0,bed.u-dt/2.6);
-  bed.night=bed.on?Math.min(1,bed.night+dt/2.6):Math.max(0,bed.night-dt/1.8);bed.view=bed.on||bed.k>0||bed.u>0?Math.min(1,bed.view+dt/2.6):Math.max(0,bed.view-dt/1.8);}
+  bed.night=bed.on?Math.min(1,bed.night+dt/2.6):Math.max(0,bed.night-dt/1.8);bed.view=bed.on||bed.jumping||bed.k>0||bed.u>0?Math.min(1,bed.view+dt/2.6):Math.max(0,bed.view-dt/1.8);}
+ // The jump's moments: a boing each time she presses the cushions, sparkles at the top of the spin, a word as she climbs down, and done once she stands beside the bed.
+ function jumping(dt){const was=bed.play,s=bed.play=was<0?0:was+dt,past=x=>was<x&&s>=x;
+  JUMP.heights.forEach((h,n)=>{if(past(JUMP.climb+n*JUMP.period))on('boing');});
+  if(past(JUMP.climb+(JUMP.spin+JUMP.press+(1-JUMP.press)/2)*JUMP.period)){const top=new T.Vector3(JUMP.x,JUMP.y+JUMP.heights[JUMP.spin]+1.2,JUMP.z);dream.burst(top,16,1.8);on('spin',top);}
+  if(past(JUMP.off))on('down');if(s>=JUMP.end){bed.jumping=false;bed.play=-1;on('done');}}
+ // How far the cushions are pressed down (0..1) as she lands on them, at s seconds into the jump; and where she is then, which way she faces, how high her arms are.
+ const press=s=>{const f=(s-JUMP.climb)/JUMP.period%1;return s<JUMP.climb||s>=JUMP.off||f>=JUMP.press?0:Math.sin(f/JUMP.press*Math.PI);};
+ function jumpPose(s){const sx=GRAB.x+PULL,sz=GRAB.z; // beside the open bed, where she stopped pulling the seat out
+  if(s<JUMP.climb){const c=ease(s/JUMP.climb);return {x:mix(sx,JUMP.x,c),y:JUMP.y*c+Math.sin(c*Math.PI)*.4,z:mix(sz,JUMP.z,c),rx:0,ry:turn(GRAB.yaw,JUMP.yaw,c),arms:c};}
+  if(s<JUMP.off){const n=Math.floor((s-JUMP.climb)/JUMP.period),f=(s-JUMP.climb)/JUMP.period-n;
+   if(f<JUMP.press)return {x:JUMP.x,y:JUMP.y-.025*press(s),z:JUMP.z,rx:0,ry:JUMP.yaw,arms:1-.25*press(s)};
+   const a=(f-JUMP.press)/(1-JUMP.press);return {x:JUMP.x,y:JUMP.y+JUMP.heights[n]*4*a*(1-a),z:JUMP.z,rx:Math.sin(a*Math.PI*2)*.08,ry:JUMP.yaw+(n===JUMP.spin?ease(a)*Math.PI*2:0),arms:1+.15*Math.sin(a*Math.PI)};}
+  const c=ease(Math.min(1,(s-JUMP.off)/JUMP.down));return {x:mix(JUMP.x,sx,c),y:JUMP.y*(1-c)+Math.sin(c*Math.PI)*.35,z:mix(JUMP.z,sz,c),rx:0,ry:turn(JUMP.yaw,GRAB.yaw,c),arms:1-c};}
  // ---- How the sofa becomes a bed, in four parts of u, and how she helps ----
  // A: she lays the two throw pillows at the head end, the pink one first, the yellow on top, each in a little hop and a twirl, squashing as it lands.
  // B: she takes hold of the seat and walks backwards with it, leaning back; its legs fold down, and it stops with a jolt that squashes the cushions.
@@ -166,8 +197,9 @@ export function createInside({T,renderer,canvas}){
   const hop=(p,k,land,[x0,y0,z0,rx0,rz0],[x1,y1,z1],arc)=>{const e=ease(k);p.position.set(mix(x0,x1,e),mix(y0,y1,e)+Math.sin(k*Math.PI)*arc,mix(z0,z1,e));p.rotation.set(mix(rx0,0,e),Math.PI*e,mix(rz0,-Math.PI/2,e));p.scale.set(1-.3*land,1+.12*land,1+.12*land);};
   hop(p2,m.a2,m.land2,[-.2,.88,.55,.2,-.2],[.25,.72,-.55],.32);hop(p1,m.a1,m.land1,[-.2,.9,-.5,0,-.25],[.25,.86,-.55],.42);
   seat.position.x=PULL*m.slide;for(const l of seatLegs){l.visible=m.B>0;l.rotation.z=-Math.PI/2*(1-m.legs);}
-  for(const c of cushions)c.scale.y=1-.25*m.squash-.15*m.thud;
-  back.position.set(mix(-.35,-.17,m.tip),mix(.85,.52,m.tip),0);back.rotation.z=-Math.PI/2*m.tip;back.scale.x=1-.2*m.thud;
+  const jp=bed.play>=0&&bed.k===0?press(bed.play):0; // jumping on it
+  for(const c of cushions)c.scale.y=1-.25*m.squash-.15*m.thud-.3*jp;
+  back.position.set(mix(-.35,-.17,m.tip),mix(.85,.52,m.tip),0);back.rotation.z=-Math.PI/2*m.tip;back.scale.x=1-.2*m.thud-.25*jp;
   // the duvet: she throws it from her hands over her head, a small bundle that unfolds as it flutters down onto the foot end (and back up into her hands)
   duvet.visible=m.D>0;const k=Math.max(.01,.35+.65*ease(m.D)),f=m.drop,g=sofaBed.group.position;duvet.scale.set(k,k,k);
   duvet.position.set(mix(SIDE.x-g.x,.25,f),mix(1.3,.62,f)+Math.sin(Math.min(1,f)*Math.PI)*.45,mix(SIDE.z-g.z,.5,f));duvet.rotation.set(Math.sin(m.D*8)*.18*(1-m.D),Math.sin(m.D*6)*.4*(1-m.D),Math.sin(m.D*10)*.3*(1-m.D));
@@ -180,13 +212,18 @@ export function createInside({T,renderer,canvas}){
  // Her pose: walking and standing as before. Making the bed she is by the seat: she reaches for the pillows, walks backwards with the seat leaning back (or pushes
  // it in leaning forward), cheers with a little hop when the back lands, and throws up her arms for the duvet. Getting into bed she hops up, turns and tips back
  // onto the pillows, and the same way back out.
+ // Jumping, she is on the bed (jumpPose); told to sleep in the middle of it, she lies down from where she was (bed.from) instead of from beside the bed.
  function pose(){let lean=0,up=0;
   if(bed.u>0&&bed.k===0){gx=GRAB.x+PULL*mo.slide;gz=GRAB.z;yaw=GRAB.yaw;lean=(mo.open?.24:-.2)*Math.sin(mo.B*Math.PI);up=mo.open?.12*bump(mo.C,.72,.95):0;}
-  if(bed.k===0){girl.group.position.set(gx,up,gz);girl.group.rotation.set(lean,yaw,0);}
-  else{const c=ease(bed.k);girl.group.position.set(gx+(LIE.x-gx)*c,LIE.y*c+Math.sin(c*Math.PI)*.45,gz+(LIE.z-gz)*c);girl.group.rotation.set(LIE.tilt*c,turn(yaw,LIE.yaw,c),0);}
-  girl.setAsleep(bed.on&&bed.k>.85);}
+  let p={x:gx,y:up,z:gz,rx:lean,ry:yaw};
+  if(bed.k===0&&bed.play>=0)p=jumpPose(bed.play);
+  else if(bed.k>0){const c=ease(bed.k),f=bed.from||{x:gx,y:0,z:gz,ry:yaw};p={x:f.x+(LIE.x-f.x)*c,y:mix(f.y,LIE.y,c)+Math.sin(c*Math.PI)*.45,z:f.z+(LIE.z-f.z)*c,rx:LIE.tilt*c,ry:turn(f.ry,LIE.yaw,c)};}
+  const b=bed.blend;if(b){const e=ease(Math.min(1,(bed.clock-b.at)/.3));if(e<1){for(const k of ['x','y','z','rx'])p[k]=mix(b[k],p[k],e);p.ry=turn(b.ry,p.ry,e);}else bed.blend=null;}
+  girl.group.position.set(p.x,p.y,p.z);girl.group.rotation.set(p.rx,p.ry,0);
+  girl.setAsleep(bed.on&&bed.k>.85);girl.setLaugh(bed.play>=JUMP.climb*.5&&bed.play<JUMP.off+JUMP.down*.5);}
  // Her arms while she makes the bed, after girl.update has swung them: forward for the pillows and the seat, up and out to cheer, up for the duvet.
- function arms(){if(!(bed.u>0&&bed.k===0))return;const m=mo,ahead=1.3*Math.sin(m.A*Math.PI)+1.45*Math.min(1,4*m.B,4*(1-m.B))+(m.open?0:2.4*Math.sin(m.C*Math.PI))+2.3*bump(m.D,0,.75),out=m.open?2.4*bump(m.C,.6,1):0;
+ function arms(){if(bed.play>=0&&bed.k===0){const up=2.5*jumpPose(bed.play).arms,[l,r]=girl.arms;l.rotation.x=r.rotation.x=0;l.rotation.z=-.08-up;r.rotation.z=.08+up;return;} // jumping: both arms up
+  if(!(bed.u>0&&bed.k===0))return;const m=mo,ahead=1.3*Math.sin(m.A*Math.PI)+1.45*Math.min(1,4*m.B,4*(1-m.B))+(m.open?0:2.4*Math.sin(m.C*Math.PI))+2.3*bump(m.D,0,.75),out=m.open?2.4*bump(m.C,.6,1):0;
   const [l,r]=girl.arms;l.rotation.x=r.rotation.x=ahead;l.rotation.z=-.08-out;r.rotation.z=.08+out;}
  function placePig(){const p=pigOut?OUT:HIDE;pig.group.position.set(p.x,0,p.z);pig.group.rotation.y=pigOut?OUT.yaw:0;pigHit.userData.kind=pigOut?'item':'pig';pigHit.userData.id='pig';
   if(pigOut){pigHit.position.set(OUT.x,.4,OUT.z);pigHit.scale.set(.65,.8,.9);}else{pigHit.position.set(-3.95,.5,3);pigHit.scale.set(1,1,1);}}
@@ -194,7 +231,7 @@ export function createInside({T,renderer,canvas}){
  // Found now (hidden before): the pig hops out onto the rug. Already out, or still hidden: it stays where it is.
  function refresh(list,opts={}){items=list;dream.setList(dreamList());if(opts.pigHidden!==false){pigOut=false;hop=-1;}else if(!pigOut){pigOut=true;hop=0;}if(hop<0)placePig();for(const s of slots)content(s);}
  function enter(list,opts={}){pigOut=opts.pigHidden===false;hop=-1;items=[];for(const s of slots)s.key='';refresh(list,opts);gx=0;gz=1.4;yaw=Math.PI;walk=null;arrive=null;waveLeft=2.2;
-  Object.assign(bed,{on:false,u:0,k:0,night:0,view:0,dream:0,open:true});mo=motion();dream.reset();dressBed(0);dressNight();pose();fit(true);} // she always comes in awake, with the bed folded in
+  Object.assign(bed,{on:false,u:0,k:0,night:0,view:0,dream:0,open:true,jumping:false,play:-1,from:null,blend:null});mo=motion();dream.reset();dressBed(0);dressNight();pose();fit(true);} // she always comes in awake, with the bed folded in
  // ---- The camera: from the front and a little above (the narrower the screen, the higher), as close as lets the whole room show, the front corners of the floor included ----
  const corners=[[-4.5,0,3],[4.5,0,3],[-4.5,3.6,-3.5],[4.5,3.6,-3.5],[0,0,3],[0,3.6,-3.5]].map(p=>new T.Vector3(...p)),probe=new T.Vector3();let aspect=0;
  function fit(force){const w=canvas.clientWidth||1,h=canvas.clientHeight||1,a=w/h;if(!force&&a===aspect)return;aspect=a;camera.aspect=a;
@@ -216,7 +253,7 @@ export function createInside({T,renderer,canvas}){
  // ---- Taps: the nearest of the hit boxes, the door and the walls and furniture decides; a tap on the floor walks the girl there ----
  const ray=new T.Raycaster(),ndc=new T.Vector2(),floor=new T.Plane(new T.Vector3(0,1,0),0),at=new T.Vector3();
  function pick(clientX,clientY){const r=canvas.getBoundingClientRect();ndc.set((clientX-r.left)/(r.width||1)*2-1,-((clientY-r.top)/(r.height||1))*2+1);fit();aim();scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);ray.setFromCamera(ndc,camera);
-  const dreaming=dream.targets(),resting=bed.on||bed.k>0; // resting: on her way to bed, in it or getting up; then only the bed and the dream answer
+  const dreaming=dream.targets(),resting=bed.on||bed.k>0||bed.jumping; // resting: on her way to bed, in it or getting up, or jumping on it; then only the bed and the dream answer
   const hit=ray.intersectObjects([...pickables,...blockers,...dreaming],false)[0],onFloor=ray.ray.intersectPlane(floor,at),floorAt=onFloor?ray.ray.origin.distanceTo(at):Infinity;
   if(hit&&dreaming.includes(hit.object)){const found=dream.hit(hit.object,hit.point);return found&&found.type!=='sky'?found:null;}
   if(hit&&hit.object.userData.kind==='bed')return {type:'bed'}; // to bed, or up again: game.js decides
@@ -246,5 +283,5 @@ export function createInside({T,renderer,canvas}){
   else if(!pigOut)pig.group.rotation.y=Math.max(0,Math.sin(time*.9)-.6)*Math.sin(time*16)*.35;
   pig.update(dt,0,time);
   renderer.render(scene,camera);}
- return {scene,camera,girl,pig,slots,pigHit,door,enter,refresh,update,pick,sleep,wake,get asleep(){return bed.on;},bed,dream,sofaBed,hitBoxes:slots.map(s=>s.hit)};
+ return {scene,camera,girl,pig,slots,pigHit,door,enter,refresh,update,pick,sleep,wake,jump,get asleep(){return bed.on;},get jumping(){return bed.jumping;},bed,dream,sofaBed,hitBoxes:slots.map(s=>s.hit),JUMP};
 }

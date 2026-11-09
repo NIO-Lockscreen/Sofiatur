@@ -56,6 +56,7 @@ export function createMusic({fetch=globalThis.fetch,horns:files=HORNS}={}){
   fetch(files[name]).then(r=>{if(!r.ok)throw new Error(r.status);return r.arrayBuffer();}).then(data=>new Promise((ok,no)=>ctx.decodeAudioData(data,ok,no))).then(b=>horns.set(name,b),()=>horns.set(name,false));}
  // Little sounds for bedtime in the house (4 November 2026, as in Sofia's space game): a lullaby when she goes to bed (the start of Brahms' Wiegenlied, in F like
  // the music), a sparkle when she wakes up or a comet is caught, and a pop for a tap on something in the dream. Sine tones straight to the speakers, like the horns.
+ // A boing (9 November 2026) each time she lands jumping on the sofa bed.
  let fxOut=null;
  function fx(freq,delay,length,peak,to=freq){const t=ctx.currentTime+delay,o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.setValueAtTime(freq,t);if(to!==freq)o.frequency.exponentialRampToValueAtTime(to,t+length);
   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+.015);g.gain.exponentialRampToValueAtTime(.0001,t+length);o.connect(g).connect(fxOut);o.start(t);o.stop(t+length+.05);}
@@ -64,7 +65,8 @@ export function createMusic({fetch=globalThis.fetch,horns:files=HORNS}={}){
   effect(name){hornContext();if(!fxOut){fxOut=ctx.createGain();fxOut.gain.value=.9;fxOut.connect(ctx.destination);}
    if(name==='lullaby')LULLABY.forEach(([f,d],i)=>{fx(f,d,i===12?1.2:.62,.05);fx(f*2,d,.4,.012);});
    else if(name==='sparkle')[1319,1568,2093].forEach((f,i)=>fx(f,i*.05,.16,.05));
-   else if(name==='pop')fx(520,0,.09,.08,1150);},
+   else if(name==='pop')fx(520,0,.09,.08,1150);
+   else if(name==='boing')fx(210,0,.42,.07,640);},
   preloadHorns(){hornContext();for(const name in files)loadHorn(name);},
   horn(name){hornContext();const b=horns.get(name);if(!b){loadHorn(name);return false;}try{hornSource?.stop();}catch{}const s=ctx.createBufferSource();s.buffer=b;s.connect(hornOut);s.start();hornSource=s;return true;},
   // Call from a tap or click: browsers only start audio after a user gesture.

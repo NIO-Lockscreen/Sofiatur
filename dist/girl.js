@@ -20,7 +20,8 @@ export function createGirlModel(T){
  const eyes=[],lids=[];
  for(const s of [-1,1]){eyes.push(part(sphere,dark,[s*.045,.002,-.113],[.017,.024,.01],head),part(sphere,glint,[s*.05,.01,-.121],[.006,.008,.004],head));part(sphere,cheek,[s*.07,-.043,-.1],[.027,.018,.01],head);part(sphere,skin,[s*.12,-.005,0],[.022,.03,.022],head);
   const lid=part(smile,dark,[s*.045,.004,-.116],[.02,.016,.012],head);lid.rotation.z=Math.PI;lid.visible=false;lids.push(lid);} // closed eyes, two little arcs, while she sleeps
- part(smile,mouth,[0,-.043,-.116],[.03,.03,.012],head).rotation.z=Math.PI;
+ const grin=part(smile,mouth,[0,-.043,-.116],[.03,.03,.012],head);grin.rotation.z=Math.PI;
+ const laugh=part(sphere,mouth,[0,-.05,-.112],[.028,.022,.01],head);laugh.visible=false; // her mouth open in a laugh, jumping on the bed
  const pigtails=[-1,1].map(s=>{const pivot=new T.Group();pivot.position.set(s*.118,.03,.03);head.add(pivot);
   part(sphere,tie,[0,0,0],[.026,.026,.026],pivot);part(sphere,hair,[s*.01,-.075,0],[.043,.1,.043],pivot);part(sphere,hair,[s*.016,-.155,.004],[.036,.05,.036],pivot);return pivot;});
  // Legs from the hips (skin, white sock, purple shoe) and arms from the shoulders (short sleeve, hand), each in a group that swings.
@@ -31,6 +32,8 @@ export function createGirlModel(T){
  let phase=0,asleep=false;
  // Asleep (the bed in the house, inside.js): the eyes are shut, and the head and the pigtails lie still.
  function setAsleep(on){asleep=!!on;for(const e of eyes)e.visible=!asleep;for(const l of lids)l.visible=asleep;}
+ // Laughing (jumping on the bed, inside.js): the smile opens.
+ function setLaugh(on){laugh.visible=!!on;grin.visible=!on;}
  // speed in m/s; wave 0..1 lifts the right arm and waves it.
  function update(dt,speed,time,wave=0){
   const run=Math.min(1,speed/1.6);phase+=dt*Math.min(16,5+speed*2.4);
@@ -43,5 +46,5 @@ export function createGirlModel(T){
   if(wave>0){arms[1].rotation.x=-.2*wave;arms[1].rotation.z=2.6*wave+Math.sin(time*9)*.35*wave;}
  }
  update(0,0,0);
- return {group,update,setAsleep,get asleep(){return asleep;},legs,arms,head,pigtails};
+ return {group,update,setAsleep,setLaugh,get asleep(){return asleep;},get laughing(){return laugh.visible;},legs,arms,head,pigtails};
 }

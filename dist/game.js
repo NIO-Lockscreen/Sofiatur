@@ -334,7 +334,7 @@ function podiumItems(){
   other('pig','🐷','Grisen',pigUnlocked,'Du fant grisen som gjemte seg bak sofaen.','Hint: Noe rosa gjemmer seg her i huset. Se etter en krøllete hale!'),
   other('hover','⚡','Svevebilen',hoverReady(),'Du låste opp alt sammen! Der vi skal, trenger vi ikke veier.','Hint: Lås opp alt det andre på pallen først. Da skjer det noe fra fremtiden!')];
  return items.map(i=>i.unlocked?i:{...i,icon:'❓',title:'Hemmelig overraskelse'});}
-function goInside(){if(state!=='intro'||!world)return;if(!inside)inside=createInside({T,renderer:world.renderer,canvas:$('world')});state='inside';ui.welcome.hidden=true;$('goInside').hidden=true;$('hornHome').hidden=true;$('insideHud').hidden=false;$('unlockInfo').hidden=true;
+function goInside(){if(state!=='intro'||!world)return;if(!inside)inside=createInside({T,renderer:world.renderer,canvas:$('world'),on:bedEvent});state='inside';ui.welcome.hidden=true;$('goInside').hidden=true;$('hornHome').hidden=true;$('insideHud').hidden=false;$('unlockInfo').hidden=true;
  const first=!beenInside;beenInside=true;saveProgress();applyRewards();inside.enter(podiumItems(),{pigHidden:!pigUnlocked});
  say(first?'Velkommen inn, Sofia! På pallen står alle overraskelsene dine. Trykk på dem!':'Velkommen hjem igjen, Sofia!');}
 function goOutside(){if(state==='inside')reset();}
@@ -365,17 +365,25 @@ function lockSecret({id,title}){
 // Bedtime (4 November 2026, copied from Sofia's space game): the sofa is a sofa bed. A tap on it sends Sofia to bed (inside.js: she walks over, pulls the bed out,
 // lies down and dreams), with a lullaby, "God natt" and night in the room; a tap on it again, or "Stå opp", wakes her. In the dream the car, a rainbow and what she
 // has unlocked float by: a tap on one says its name, a tap on the comet says "En komet!". "Gå ut" works while she sleeps; she always comes back in awake.
-const DREAM_NAMES={car:'Bilen',arc:'Regnbuen'};let bedTapAt=-1e9;
+// Jumping on the bed (9 November 2026, as in the space game): the first tap on the sofa each time the game is opened makes her jump on it instead: she pulls the
+// bed out, climbs up and jumps with her arms in the air, "Hopp, hopp, hopp!", a boing at each bounce, then hops down and the sofa is made again. The next tap on the
+// sofa, while she jumps or after, puts her to bed as usual. bedJumped is not saved: it starts again with the page.
+const DREAM_NAMES={car:'Bilen',arc:'Regnbuen'};let bedTapAt=-1e9,bedJumped=false;
 function sleepHud(on){$('wakeUp').hidden=!on;$('insideHud').classList.toggle('sleeping',on);$('insideName').textContent=on?'Sofia sover':'Hjemme hos Sofia';
  $('insideTip').textContent=on?'Trykk på drømmen, eller på sofaen for å vekke henne':'Trykk på premiene, eller på sofaen når du er trøtt';if(on)$('unlockInfo').hidden=true;}
+function jumpHud(){$('wakeUp').hidden=true;$('insideHud').classList.remove('sleeping');$('insideName').textContent='Sofia hopper i senga!';$('insideTip').textContent='Trykk på sofaen igjen, så legger hun seg';$('unlockInfo').hidden=true;}
+function jumpOnBed(){if(state!=='inside'||!inside)return;bedJumped=true;if(!inside.jump()){goToBed();return;}jumpHud();say('Hopp, hopp, hopp! Sofia hopper i senga!');}
+// What the house tells of the jump: a boing at each bounce, a sparkle at the top of the spin, a word as she climbs down, and the room as before once she is down.
+function bedEvent(name){if(state!=='inside')return;if(name==='boing'||name==='spin'){if(sound)music.effect?.(name==='spin'?'sparkle':'boing');}
+ else if(name==='down')say('Det var gøy! Trykk på sofaen igjen når du er trøtt, Sofia.');else if(name==='done'&&!inside?.asleep)sleepHud(false);}
 function goToBed(){if(state!=='inside'||!inside||!inside.sleep())return;sleepHud(true);if(sound)music.effect?.('lullaby');say('God natt, Sofia! Sov godt, og drøm søtt om bilturer og regnbuer.');}
 function wakeUp(){if(state!=='inside'||!inside?.wake())return;sleepHud(false);if(sound)music.effect?.('sparkle');say('God morgen, Sofia! Nå er du uthvilt og klar for en ny biltur.');}
 // A tap on the house (under 12 px and 600 ms, so a swipe is not one): an item on the podium says how it was unlocked, the pig is found, the door leads out,
-// the sofa sends her to bed or wakes her (not twice within 0.6 s), and something in her dream says its name.
+// the sofa sends her to bed or wakes her (not twice within 0.6 s; the first time each time the game is opened, she jumps on it), and something in her dream says its name.
 function houseTap(x,y){const hit=inside.pick(x,y);$('unlockInfo').hidden=true;if(!hit)return;
  if(hit.type==='item'){const it=podiumItems().find(i=>i.id===hit.id);if(!it)return;$('unlockInfoIcon').textContent=it.icon;$('unlockInfoTitle').textContent=it.title;$('unlockInfoText').textContent=it.text;$('unlockInfo').hidden=false;say((it.unlocked?it.title+'. ':'')+it.text);}
  else if(hit.type==='pig')findPig();else if(hit.type==='door')goOutside();
- else if(hit.type==='bed'){const now=performance.now();if(now-bedTapAt<600)return;bedTapAt=now;if(inside.asleep)wakeUp();else goToBed();}
+ else if(hit.type==='bed'){const now=performance.now();if(now-bedTapAt<600)return;bedTapAt=now;if(inside.asleep)wakeUp();else if(!bedJumped)jumpOnBed();else goToBed();}
  else if(hit.type==='dream'){const name=DREAM_NAMES[hit.id]||podiumItems().find(i=>i.id===hit.id&&i.unlocked)?.title;if(sound)music.effect?.('pop');if(name)say(name+'!');}
  else if(hit.type==='comet'){if(sound)music.effect?.('sparkle');say('En komet!');}}
 {let down=null;const canvas=$('world');canvas.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,t:performance.now()};});
