@@ -86,3 +86,111 @@ body.at-lake:has(#freeControls:not([hidden])) .horn:not([hidden]){display:grid!i
 @media(max-width:700px){.horn-home{right:142px;top:68px;bottom:auto;width:52px;height:52px}}
 /* RE-ward in the settings (4 October 2026): the two buttons ask for a second tap; the armed one is yellow. */
 .reaward{margin-top:6px}.reaward .secondary{margin:12px 0}.secondary:disabled{opacity:.5;cursor:default}.secondary.armed{background:#ffe398;box-shadow:inset 0 0 0 2px #e0a92b}
+
+/* UI polish (11 November 2026): gentle entrances (opacity, translate and scale only, never transform, so positioning is untouched), pressed and selected feedback,
+   child-size touch targets, the finish card beside the car, the sticker row, phone layout fixes, safe areas, a loading indicator, reduced motion. */
+@keyframes ui-rise{from{opacity:0;translate:0 12px}}
+@keyframes ui-drop{from{opacity:0;translate:0 -10px}}
+@keyframes ui-pop{from{opacity:0;scale:.86}}
+@keyframes ui-fade{from{opacity:0}}
+@keyframes ui-spin{to{rotate:360deg}}
+@keyframes star-pop{0%{opacity:0;scale:.2;rotate:-24deg}60%{opacity:1;scale:1.3;rotate:6deg}100%{opacity:1;scale:1;rotate:0deg}}
+@keyframes sticker-new{0%{opacity:0;scale:.2}60%{opacity:1;scale:1.55}100%{opacity:1;scale:1.15}}
+@keyframes ring-out{0%{opacity:0;scale:1}15%{opacity:.9}100%{opacity:0;scale:2.1}}
+@keyframes choice-in{from{opacity:0;scale:.6;translate:0 10px}}
+@keyframes choice-breathe{0%,100%{opacity:.85;scale:1}50%{opacity:.2;scale:1.13}}
+@keyframes choice-picked{0%{scale:1}35%{scale:1.14}100%{scale:1}}
+.welcome,.finish,.decision,.unlock-info{animation:ui-rise .3s ease-out}
+.road-chip,#turnHint{animation:ui-drop .26s ease-out}
+.trip{animation:ui-rise .28s ease-out}
+.horn,.go-inside,.go-out,.undo-roundabout{animation:ui-pop .25s ease-out}
+#loading{animation:ui-pop .25s ease-out}
+dialog[open]{animation:ui-rise .24s ease-out}
+dialog[open]::backdrop{animation:ui-fade .24s ease-out}
+#toast{translate:0 -8px;transition:opacity .3s,translate .3s ease-out}#toast.show{translate:0 0}
+/* Loading: a small turning ring in the pill, shown only while the start button is still disabled (the failure message has none). */
+#loading{display:flex;align-items:center;gap:10px;box-shadow:0 4px 18px #183d3918}
+#loading::before{content:"";flex:none;width:15px;height:15px;border-radius:50%;border:3px solid #d3e2d8;border-top-color:#174e48;animation:ui-spin 1.1s linear infinite}
+body:has(#start:not(:disabled)) #loading::before{display:none}
+/* Junction arrows: pop in; a soft ring breathes while the game waits for a tap (not on the arrows shown while driving); the arrow just picked pulses and sends out a ring. */
+.world-choice{animation:choice-in .28s ease-out backwards}
+body.choosing .world-choice:not(.ahead):not(.picked)::before{content:"";position:absolute;inset:-6px;border:3px solid #ffe08a;border-radius:30px;pointer-events:none;animation:choice-breathe 2.2s ease-in-out infinite}
+.world-choice.picked{animation:choice-picked .45s ease-out}
+.world-choice.picked::after{content:"";position:absolute;inset:-4px;border:4px solid #ffe08a;border-radius:28px;pointer-events:none;opacity:0;animation:ring-out .7s ease-out}
+@media(max-width:700px){body.choosing .world-choice:not(.ahead):not(.picked)::before{border-radius:25px}.world-choice.picked::after{border-radius:23px}}
+/* Pressed and selected feedback. */
+.swatch,.model-choice,.trail-row{transition:transform .15s ease-out,box-shadow .15s ease-out,background-color .15s,border-color .15s}
+.swatch:active{transform:scale(.88)}.swatch.on:active{transform:scale(1.02)}
+.model-choice:active{transform:scale(.95)}.model-choice.on{box-shadow:inset 0 0 0 1px #174e48}
+.trail-row:has(input:checked){background:#dcebe3}.trail-row:active{background:#cfe2d8}
+/* Touch targets for a small child: colour dots 38 px, ride chips 40 px, check rows 36 px with a 24 px box, round buttons 44 px or more. */
+.swatch{width:38px;height:38px}.swatch.kiwi{line-height:32px}
+.model-row{gap:6px}.model-choice{min-height:40px;padding:6px 13px;font-size:14px}
+.trail-row{min-height:36px;padding:0 6px;border-radius:10px}.trail-row input{width:24px;height:24px;flex:none}
+.close{width:48px;height:48px;right:10px;top:8px;display:grid;place-items:center;padding:0;line-height:1;border-radius:50%}
+summary{padding:12px 0}
+@media(max-width:1000px){.round{width:44px;height:44px}}
+@media(max-width:700px){.round{width:44px;height:44px;font-size:21px}}
+.welcome-foot span{color:#5b7165}
+/* Finish card: beside the car like the start card, as a bottom sheet on a phone (the 3D picture is shifted into the free part by game.js). */
+.finish{left:5%;top:50%;transform:translateY(-42%);width:440px;padding:34px;max-height:calc(100dvh - 130px);overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
+.finish-stars{display:flex;justify-content:center;gap:22px;letter-spacing:0;font-size:40px;line-height:1.2;margin-bottom:14px}
+.finish-stars span{display:block;animation:star-pop .35s ease-out backwards}
+.finish-stars span:nth-child(1){animation-delay:.15s}.finish-stars span:nth-child(2){animation-delay:.45s}.finish-stars span:nth-child(3){animation-delay:.75s}
+#finishSummary{margin:16px 0 14px}
+.stickers{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:clamp(1px,.5vw,4px);max-width:360px;margin:4px auto 10px;animation:ui-fade .4s ease-out .35s backwards}
+.sticker{position:relative;aspect-ratio:1;display:grid;place-items:center;border-radius:50%;background:#fff1c4;font-size:min(17px,calc((100vw - 90px)/13*.62));line-height:1}
+.sticker.locked{background:#eef3e7}.sticker.locked::after{content:"";width:34%;height:34%;border-radius:50%;background:#d3dfd0}
+.sticker.new{z-index:1;scale:1.15;background:#ffe398;box-shadow:0 0 0 2px #f1b33a,0 0 12px 4px #ffcf5acc;animation:sticker-new .6s cubic-bezier(.3,1.4,.5,1) 1.1s backwards}
+.sticker.new::after{content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid #f6c453;pointer-events:none;opacity:0;animation:ring-out .8s ease-out 1.1s backwards}
+body.arrived .road-chip,body.arrived .trip{display:none}
+@media(max-width:1000px){.finish{left:4%;width:398px;padding:28px}}
+@media(max-height:650px) and (min-width:701px){.finish{padding:22px;width:390px;transform:translateY(-40%)}.finish-stars{font-size:30px;margin-bottom:8px}.finish h1{font-size:34px;margin:8px 0 4px}#finishSummary{margin:10px 0}}
+/* Safe areas: max() keeps every position as it was where the insets are zero. */
+#toast{top:max(160px,calc(env(safe-area-inset-top) + 150px))}
+.trip{left:max(30px,env(safe-area-inset-left));bottom:max(46px,env(safe-area-inset-bottom))}
+.horn{right:max(30px,env(safe-area-inset-right));bottom:max(46px,env(safe-area-inset-bottom))}
+#freeControls{left:max(20px,env(safe-area-inset-left));right:max(20px,env(safe-area-inset-right));bottom:max(32px,env(safe-area-inset-bottom))}
+.go-inside{right:max(28px,env(safe-area-inset-right));bottom:max(58px,env(safe-area-inset-bottom))}
+.go-out{left:max(28px,env(safe-area-inset-left))}
+.horn.horn-home{right:calc(max(28px,env(safe-area-inset-right)) + 148px);bottom:max(50px,env(safe-area-inset-bottom))}
+@media(max-width:1000px){.trip{left:max(20px,env(safe-area-inset-left));bottom:max(40px,env(safe-area-inset-bottom))}}
+@media(max-width:700px){
+:root{--st:max(12px,env(safe-area-inset-top))}
+header{top:var(--st);left:max(14px,env(safe-area-inset-left));right:max(14px,env(safe-area-inset-right))}
+.trip{left:max(14px,env(safe-area-inset-left));bottom:max(30px,env(safe-area-inset-bottom))}
+.horn{right:max(14px,env(safe-area-inset-right));bottom:max(30px,env(safe-area-inset-bottom))}
+#freeControls{left:max(14px,env(safe-area-inset-left));right:max(14px,env(safe-area-inset-right));bottom:max(30px,env(safe-area-inset-bottom))}
+.go-inside{right:max(14px,env(safe-area-inset-right));top:calc(var(--st) + 56px);bottom:auto}
+.horn.horn-home{right:calc(max(14px,env(safe-area-inset-right)) + 130px);top:calc(var(--st) + 56px);bottom:auto}
+.go-out{left:max(14px,env(safe-area-inset-left))}
+.welcome,.finish{left:max(16px,env(safe-area-inset-left));right:max(16px,env(safe-area-inset-right));bottom:max(40px,calc(env(safe-area-inset-bottom) + 30px))}
+.road-chip{top:calc(var(--st) + 55px);left:max(14px,env(safe-area-inset-left))}
+#turnHint{top:calc(var(--st) + 112px)}
+#toast{top:calc(var(--st) + 154px)}
+#loading{top:calc(var(--st) + 56px);bottom:auto}
+.undo-roundabout{top:auto;right:auto;left:max(14px,env(safe-area-inset-left));bottom:calc(max(30px,env(safe-area-inset-bottom)) + 72px)}
+.finish{top:auto;transform:none;width:auto;padding:18px 20px;max-height:max(240px,calc(100dvh - 330px))}
+.finish-stars{font-size:28px;gap:16px;margin-bottom:4px}
+.finish h1{font-size:31px;margin:6px 0 2px}.finish .eyebrow{font-size:10px}.finish p{font-size:15px;line-height:1.45}
+#finishSummary{font-size:14px;margin:8px 0 8px}
+.finish .unlock{margin:8px 0 4px;padding:9px 12px;font-size:14px;line-height:1.4}
+.finish .primary{padding:14px}
+}
+@media(max-height:500px) and (min-width:701px){.go-inside{bottom:max(30px,env(safe-area-inset-bottom))}.horn.horn-home{bottom:max(28px,env(safe-area-inset-bottom))}}
+/* Reduced motion: no animation and no transitions at all; everything is simply there. */
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+/* Start card with rewards on a wide screen: a little wider, check rows in two columns, so the bigger touch targets still fit an iPad in landscape without scrolling. */
+@media(min-width:1001px){
+.welcome:has(#rewards:not([hidden])){width:570px}
+.welcome .rewards{display:grid;grid-template-columns:1fr 1fr;column-gap:10px}
+.welcome .rewards>.rewards-title,.welcome .rewards>.swatches,.welcome .rewards>.model-row,.welcome .rewards>#hoverRow{grid-column:1/-1}
+.welcome:has(#rewards:not([hidden])) .trail-row{margin:2px 0 0}
+.welcome:has(#rewards:not([hidden])) .model-row{margin-top:6px}
+.welcome:has(#rewards:not([hidden])) .rewards{padding:9px 13px 8px;margin:-6px 0 12px}
+.welcome:has(#rewards:not([hidden])) .rewards-title{margin-bottom:6px}
+.welcome:has(#rewards:not([hidden])) .route-line{margin:10px 0 12px}
+.welcome:has(#rewards:not([hidden])) .primary{padding:16px 20px}
+}
+@media(max-width:700px){#turnHint{width:max-content;max-width:calc(100% - 28px);text-align:center}}
+@media(max-width:700px){body.arrived #horn{top:calc(var(--st) + 56px);bottom:auto}}
