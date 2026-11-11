@@ -190,7 +190,7 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  function setCarModel(name){model=rides[name]||name==='taxi'?name:'car';car.userData.body=model;showModel();}
  // The horn (the reward for the fourth trip): a little hop, and the ride's own reaction (the T. rex opens its jaws).
  const holdAt=new T.Vector3(),holdQ=new T.Quaternion();
- let hopT=0;function honk(){hopT=.55;rides[model]?.honk?.();}
+ let hopT=0;function honk(){hopT=.55;rides[model]?.honk?.();}function hop(){hopT=.55;} // hop: a jump for joy on arrival, without the ride's horn face
  // Hover mode (5 October 2026, "Back to the Future"): the wheeled rides (the car, the taxi, the fire engine) fold their wheels flat at their sides (like the DeLorean's) and float; hv eases 0 to 1.
  let hoverOn=false,hv=0;function setHover(on){hoverOn=!!on;}
  // Paint colour (a reward). Black keeps the original deep metallic look; brighter colours are less metallic so they read as colour.
@@ -223,7 +223,7 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  function setTurnArrow(info){if(!info){turnArrow.visible=false;return;}paintTurnArrow(info.symbol,info.label);turnArrow.visible=true;}
  const look=new T.Vector3(),target=new T.Vector3();let initialized=false,overview=false;
  const up=new T.Vector3(0,1,0),horizontal=new T.Vector3(),orbitDirection=new T.Vector3(),camLook=new T.Vector3(),facing=new T.Euler(0,0,0,'YXZ'),rot=new T.Quaternion();
- const follows={high:{back:26,up:22,ahead:13},intro:{back:14,up:7,ahead:2},introCar:{back:14,up:7,ahead:2},follow:{back:14,up:7.8,ahead:8}};
+ const follows={high:{back:26,up:22,ahead:13},intro:{back:14,up:7,ahead:2},introCar:{back:14,up:7,ahead:2},follow:{back:14,up:7.8,ahead:8},arrived:{back:14,up:7.8,ahead:0}}; // arrived (11 November 2026): at the kindergarten the camera looks at the car itself, not 8 m ahead of it, so the view shift puts the car in the middle of the free part beside the finish card
  // Adaptive resolution, judged over ~1.5 s: when many frames are slow (under ~45 fps) the pixel ratio steps down; with steady headroom it steps
  // back up. A step up that proves too slow makes the next try wait twice as long.
  const maxRatio=renderer.getPixelRatio(),minRatio=Math.min(maxRatio,.8);let frameAt=0,frames=0,slowFrames=0,fastFrames=0,frameTime=0,raiseAt=0,raisedAt=-1e9,backoff=8000;
@@ -286,5 +286,5 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
   for(const m of buildingMeshes)m.material=seeThrough.material;renderer.compile(scene,camera);renderer.render(scene,camera);for(const m of buildingMeshes)m.material=staticMaterial; // the see-through shader, compiled now
   renderer.setRenderTarget(null);rt.dispose();confettiShow(false);
   chunks.forEach((c,i)=>{[c.mesh.visible,c.mesh.frustumCulled,c.mesh.castShadow]=keep[i];});}
- resize();window.addEventListener('resize',resize);return {houseStats:houses.stats,height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setHover,setBalloonGirl,setViewShift,cameraYaw:()=>orbit.yaw,setTrail:trail.setOn,setBoy:boy.setOn,setDuckRunner:duckRunner.setOn,setDuckling:duckling.setOn,setBubbles:bubbles.setOn,boy,honk,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();trail.clear();boy.clear();duckRunner.clear();duckling.clear();bubbles.clear();}};
+ resize();window.addEventListener('resize',resize);return {houseStats:houses.stats,height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setHover,setBalloonGirl,setViewShift,hop,cameraYaw:()=>orbit.yaw,setTrail:trail.setOn,setBoy:boy.setOn,setDuckRunner:duckRunner.setOn,setDuckling:duckling.setOn,setBubbles:bubbles.setOn,boy,honk,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();trail.clear();boy.clear();duckRunner.clear();duckling.clear();bubbles.clear();}};
 }
