@@ -199,7 +199,23 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  const trail=createRainbowTrail({T,scene}),boy=createBoy({T,scene}),duckRunner=createDuckRunner({T,scene}),duckling=createDucklingRunner({T,scene}),bubbles=createBubbles({T,scene}); // behind the car: the rainbow trail, Ludvig running after it (boy.js), a running duck (duck-runner.js) or soap bubbles (bubbles.js), one at a time
  // Soft contact shadow remains visible with economical mobile shadows.
  const shc=document.createElement('canvas');shc.width=64;shc.height=64;const sc=shc.getContext('2d'),gr=sc.createRadialGradient(32,32,6,32,32,32);gr.addColorStop(0,'rgba(24,40,35,.48)');gr.addColorStop(1,'rgba(24,40,35,0)');sc.fillStyle=gr;sc.fillRect(0,0,64,64);const sm=new T.Mesh(new T.PlaneGeometry(3.4,6),new T.MeshBasicMaterial({map:new T.CanvasTexture(shc),transparent:true,depthWrite:false}));sm.rotation.x=-Math.PI/2;scene.add(sm);
- const confetti=[];const cg=new T.BoxGeometry(.12,.04,.24);for(let i=0;i<75;i++){const m=new T.Mesh(cg,new T.MeshBasicMaterial({color:['#ffd66c','#6ad2c9','#e99584','#fff5cf'][i%4]}));m.visible=false;scene.add(m);confetti.push(m);}
+ // Arrival confetti (rebuilt 11 November 2026): 140 pieces in seven colours as seven InstancedMeshes (20 each, one draw call and one material per colour; one mesh per colour and not per-instance colours,
+ // because the software fallback colours an instanced mesh by its material only). It starts as a burst from above the car when `finished` turns true (confettiT0), spreads out over the first
+ // second and then keeps falling in a loop. Every piece is derived from its index and the time since the burst, so nothing is random and nothing is allocated per frame. Neither casts nor receives shadows.
+ const CONF_COLOURS=['#ffd66c','#6ad2c9','#e99584','#fff5cf','#f29bb8','#8fb8f0','#7fd26b'],CONF_N=140,CONF_RADIUS=7,CONF_SPAN=9.3,CONF_SIZES=[.9,1.2,1.6],confetti=[],cdummy=new T.Object3D(),cg=new T.BoxGeometry(.12,.04,.24);let confettiT0=-1,confettiOn=false;
+ for(let c=0;c<CONF_COLOURS.length;c++){const m=new T.InstancedMesh(cg,new T.MeshBasicMaterial({color:CONF_COLOURS[c]}),CONF_N/CONF_COLOURS.length);m.name='Confetti';m.instanceMatrix.setUsage(T.DynamicDrawUsage);m.frustumCulled=false;m.castShadow=false;m.receiveShadow=false;m.visible=false;m.count=0;scene.add(m);confetti.push(m);}
+ function confettiShow(on){for(const m of confetti){m.visible=on;m.count=on?m.instanceMatrix.count:0;}}
+ function confettiUpdate(finished,time,pos){
+  if(!finished){if(confettiOn){confettiOn=false;confettiShow(false);}return;}
+  if(!confettiOn){confettiOn=true;confettiT0=time;confettiShow(true);}
+  const t=Math.max(0,time-confettiT0),s=Math.min(1,t/1.1),ease=1-(1-s)*(1-s)*(1-s);
+  for(let i=0;i<CONF_N;i++){const m=confetti[i%CONF_COLOURS.length],j=(i/CONF_COLOURS.length)|0,a=i*2.399963,r=CONF_RADIUS*Math.sqrt((i+.5)/CONF_N)*(.93+.07*Math.sin(i*7.1)), // a sunflower spread, so the disc is covered evenly
+   v=1.3+.9*((i*.618034)%1),top=9.5+((i*.381966)%1)*2.5,shift=((i*.754878)%1)*CONF_SPAN,d=v*t,k=Math.floor(d/CONF_SPAN),fall=k?(d+k*shift)%CONF_SPAN:d, // the first pass starts at the top for every piece; later passes are out of step
+   fl=Math.min(1,t)*.35,sw=t*(1.1+(i%5)*.23)+i;
+   cdummy.position.set(pos.x+Math.cos(a)*r*ease+Math.sin(sw)*fl,pos.y+top-fall,pos.z+Math.sin(a)*r*ease+Math.cos(sw*.9)*fl);
+   cdummy.rotation.set(t*(2+i%4)+i,t*(1.5+i%3*.6),Math.sin(sw)*.8+i);cdummy.scale.setScalar(CONF_SIZES[i%3]);cdummy.updateMatrix();m.setMatrixAt(j,cdummy.matrix);}
+  for(const m of confetti)m.instanceMatrix.needsUpdate=true;
+ }
  // A floating turn cue follows the car. It shows the next road Sofia has chosen ahead.
  const arrowCanvas=document.createElement('canvas');arrowCanvas.width=256;arrowCanvas.height=256;const arrowCtx=arrowCanvas.getContext('2d');
  const arrowTexture=new T.CanvasTexture(arrowCanvas);arrowTexture.colorSpace=T.SRGBColorSpace;const arrowMat=new T.SpriteMaterial({map:arrowTexture,transparent:true,depthTest:false,depthWrite:false});const turnArrow=new T.Sprite(arrowMat);turnArrow.scale.set(4.8,4.8,1);turnArrow.visible=false;scene.add(turnArrow);
@@ -255,7 +271,7 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  for(const c of chunks){const d=Math.hypot(c.x-pos.x,c.z-pos.z),h=c.trees?160:80;c.mesh.visible=d<680;c.mesh.castShadow=Math.abs(c.x-st.x)<h+reach&&Math.abs(c.z-st.z)<h+reach;}
  for(const l of labels)l.visible=l.position.distanceTo(pos)<165&&l.position.distanceTo(pos)>27;
  goalRing.visible=Math.hypot(pos.x-goalPos[0],pos.z-goalPos[1])<150;goalRing.scale.setScalar(1+.08*Math.sin(time*2));
- for(let i=0;i<confetti.length;i++){const c=confetti[i];c.visible=finished;if(finished){const phase=(time*.7+i*.037)%4;c.position.set(pos.x+Math.sin(i*5.3)*5+Math.sin(time+i),pos.y+9-phase*2,pos.z+Math.cos(i*2.3)*5);c.rotation.set(time+i,time*.8,i);}}
+ confettiUpdate(finished,time,pos);
  renderer.render(scene,camera);
  }
  function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;if(shifted)camera.setViewOffset(w,h,-shiftX,shiftY,w,h);camera.updateProjectionMatrix();}
@@ -265,9 +281,10 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  // tens of milliseconds on an iPad: the stutter and the pop-in after the graphics polish.
  if(supported){const rt=new T.WebGLRenderTarget(8,8),keep=chunks.map(c=>[c.mesh.visible,c.mesh.frustumCulled,c.mesh.castShadow]);
   for(const c of chunks){c.mesh.visible=true;c.mesh.frustumCulled=false;c.mesh.castShadow=true;}
+  confettiShow(true); // the confetti's instanced shader too, so there is no hitch at the moment of arrival
   renderer.compile(scene,camera);renderer.setRenderTarget(rt);renderer.render(scene,camera);
   for(const m of buildingMeshes)m.material=seeThrough.material;renderer.compile(scene,camera);renderer.render(scene,camera);for(const m of buildingMeshes)m.material=staticMaterial; // the see-through shader, compiled now
-  renderer.setRenderTarget(null);rt.dispose();
+  renderer.setRenderTarget(null);rt.dispose();confettiShow(false);
   chunks.forEach((c,i)=>{[c.mesh.visible,c.mesh.frustumCulled,c.mesh.castShadow]=keep[i];});}
  resize();window.addEventListener('resize',resize);return {houseStats:houses.stats,height,rawHeight,carHeight,roadLine:path=>roadSurface.edgeLine(path,.08),surfaceTop:(x,z,near)=>roadSurface.heightAt(x,z,near),scene,camera,renderer,car,update,resize,setTurnArrow,setCarColour,setCarSkin,setCarModel,setHover,setBalloonGirl,setViewShift,cameraYaw:()=>orbit.yaw,setTrail:trail.setOn,setBoy:boy.setOn,setDuckRunner:duckRunner.setOn,setDuckling:duckling.setOn,setBubbles:bubbles.setOn,boy,honk,trafficLights,duck:duck&&{centre:duck.centre,get shown(){return duck.shown;}},resetCamera(){initialized=false;orbit.reset();trail.clear();boy.clear();duckRunner.clear();duckling.clear();bubbles.clear();}};
 }
