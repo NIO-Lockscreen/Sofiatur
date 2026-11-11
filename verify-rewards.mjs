@@ -93,7 +93,7 @@ game.element('again').onclick();{const rainbowButton=game.element('carColours').
 game=await launch(()=>storage);assert.equal(game.world.colour,'rainbow','Rainbow colour remembered');
 game.test.arrive();assert.equal(game.world.model,'balloon');assert.match(game.element('unlock').textContent,/luftballong/);game.element('again').onclick();assert.equal(game.element('rewardTeaser').hidden,false);
 game.test.arrive();assert.equal(game.test.progress().arrivals,13);assert.equal(game.world.model,'trex');assert.match(game.element('unlock').textContent,/T-rex/);assert.match(game.element('unlock').textContent,/alle overraskelsene/);
-game.element('again').onclick();for(const m of ['car','cat','dog','duck','rocket','unicorn','firetruck','balloon','trex'])assert.equal(game.element('model-'+m).hidden,false,m+' in the picker');assert.equal(game.element('rewardTeaser').hidden,false,'The thirteen trips are done, but the secrets are not');assert.equal(game.element('rewardTeaser').textContent,'🔎 6 hemmeligheter mangler fortsatt');
+game.element('again').onclick();for(const m of ['car','cat','dog','duck','rocket','unicorn','firetruck','balloon','trex'])assert.equal(game.element('model-'+m).hidden,false,m+' in the picker');assert.equal(game.element('rewardTeaser').hidden,false,'The thirteen trips are done, but the secrets are not');assert.equal(game.element('rewardTeaser').textContent,'🔎 7 hemmeligheter mangler fortsatt');
 game=await launch(()=>storage);assert.equal(game.world.model,'trex','The T. rex remembered');assert.equal(game.world.bubbles,true,'and the bubbles');
 game.test.arrive();assert.equal(game.element('unlock').hidden,true,'No new reward on later trips');assert.match(game.element('again').textContent,/en gang til/);
 game.element('again').onclick();assert.equal(game.test.state(),'intro','Without a new reward too, "Kjør en gang til" goes to the start screen');assert.equal(game.element('welcome').hidden,false);assert.equal(game.element('rewards').hidden,false,'with the car to choose');assert.equal(game.element('driveHud').hidden,true,'and no drive screen');
@@ -106,31 +106,31 @@ console.log('Fourth arrival unlocks the horn, then the dog, duck, rocket, unicor
 {const keep=store.get('sofiatur.fremgang');
  const teaser=async progress=>{store.set('sofiatur.fremgang',JSON.stringify(progress));const g=await launch(()=>storage);return {g,hidden:g.element('rewardTeaser').hidden,text:g.element('rewardTeaser').textContent};};
  const base={arrivals:13};
- let t=await teaser({...base});assert.equal(t.hidden,false);assert.equal(t.text,'🔎 6 hemmeligheter mangler fortsatt','nothing found: all six');
- t=await teaser({...base,kiwi:'on'});assert.equal(t.text,'🔎 5 hemmeligheter mangler fortsatt','the KIWI car counts');
- t=await teaser({...base,kiwi:'on',ludvig:'on'});assert.equal(t.text,'🔎 4 hemmeligheter mangler fortsatt','Ludvig counts');
- t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on'});assert.equal(t.text,'🔎 3 hemmeligheter mangler fortsatt','the running duck counts; the taxi and the hover car are still missing');
- t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on'});assert.equal(t.text,'🔎 3 hemmeligheter mangler fortsatt','Dalgård ishall alone is not a secret: the taxi waits for Rema 1000');
- t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on'});assert.equal(t.text,'🔎 2 hemmeligheter mangler fortsatt','the taxi counts (KIWI, Ludvig, Dalgård ishall, Rema 1000 and the kindergarten); the pig and the hover car are missing');
- t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on',pig:'on'});assert.equal(t.hidden,true,'the pig opens the hover car: all six found, no teaser');
- t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',pig:'on'});assert.equal(t.text,'🔎 2 hemmeligheter mangler fortsatt','the pig counts, but without the taxi there is no hover car');
+ let t=await teaser({...base});assert.equal(t.hidden,false);assert.equal(t.text,'🔎 7 hemmeligheter mangler fortsatt','nothing found: all seven');
+ t=await teaser({...base,kiwi:'on'});assert.equal(t.text,'🔎 6 hemmeligheter mangler fortsatt','the KIWI car counts');
+ t=await teaser({...base,kiwi:'on',ludvig:'on'});assert.equal(t.text,'🔎 5 hemmeligheter mangler fortsatt','Ludvig counts');
+ t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on'});assert.equal(t.text,'🔎 4 hemmeligheter mangler fortsatt','the running duck counts; the taxi, the pig, the hover car and the spider are still missing');
+ t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on'});assert.equal(t.text,'🔎 4 hemmeligheter mangler fortsatt','Dalgård ishall alone is not a secret: the taxi waits for Rema 1000');
+ t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on'});assert.equal(t.text,'🔎 3 hemmeligheter mangler fortsatt','the taxi counts (KIWI, Ludvig, Dalgård ishall, Rema 1000 and the kindergarten); the pig, the hover car and the spider are missing');
+ t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on',pig:'on'});assert.equal(t.text,'🔎 1 hemmelighet mangler fortsatt','the pig opens the hover car: only the spider is left (it waits for the next arrival)');t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on',pig:'on',spider:'on'});assert.equal(t.hidden,true,'all seven found, no teaser');
+ t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',pig:'on'});assert.equal(t.text,'🔎 3 hemmeligheter mangler fortsatt','the pig counts, but without the taxi there is no hover car (and so no spider)');
  // Before the thirteenth trip the card keeps its hint about the next trip; the count is for when the trips are done.
  t=await teaser({arrivals:12,kiwi:'on'});assert.match(t.text,/én gang til/);assert.doesNotMatch(t.text,/hemmelighet/);
  // The debug keys: one trip fewer shows the hint, one more the count, and the count follows what is found (the visits and the pig, as they happen).
- t=await teaser({...base});game=t.g;game.key('z');assert.match(game.element('rewardTeaser').textContent,/én gang til/,'Z: 12 trips');game.key('x');assert.equal(game.element('rewardTeaser').textContent,'🔎 6 hemmeligheter mangler fortsatt','X: 13 trips');
- game.test.park();game.element('again').onclick?.();game.test.ludvig();assert.equal(game.element('rewardTeaser').textContent,'🔎 4 hemmeligheter mangler fortsatt','KIWI and Ludvig visited');
- game.test.ishall();game.test.rema();assert.equal(game.element('rewardTeaser').textContent,'🔎 3 hemmeligheter mangler fortsatt','the duck is still missing, so the taxi is too');
+ t=await teaser({...base});game=t.g;game.key('z');assert.match(game.element('rewardTeaser').textContent,/én gang til/,'Z: 12 trips');game.key('x');assert.equal(game.element('rewardTeaser').textContent,'🔎 7 hemmeligheter mangler fortsatt','X: 13 trips');
+ game.test.park();game.element('again').onclick?.();game.test.ludvig();assert.equal(game.element('rewardTeaser').textContent,'🔎 5 hemmeligheter mangler fortsatt','KIWI and Ludvig visited');
+ game.test.ishall();game.test.rema();assert.equal(game.element('rewardTeaser').textContent,'🔎 4 hemmeligheter mangler fortsatt','the duck is still missing, so the taxi is too');
  // The hint under the count (7 October 2026): one missing secret at a time, a riddle that never says what to do, the next one each time Sofia comes home.
- const HINTS=['En hemmelig bil gjemmer seg hos en grønn butikk i nabolaget.','En venn bor like ved barnehagen, litt bortgjemt. Han savner deg!','Ved et vann bor en kjempestor and. Den liker å høre fra en av sine egne.','Taxien kommer til dem som har vært på mange andre steder enn barnehagen.','Noe rosa gjemmer seg inne i huset ditt. Se etter en krøllete hale!','Noe fra fremtiden venter helt til slutt.'];
+ const HINTS=['En hemmelig bil gjemmer seg hos en grønn butikk i nabolaget.','En venn bor like ved barnehagen, litt bortgjemt. Han savner deg!','Ved et vann bor en kjempestor and. Den liker å høre fra en av sine egne.','Taxien kommer til dem som har vært på mange andre steder enn barnehagen.','Noe rosa gjemmer seg inne i huset ditt. Se etter en krøllete hale!','Noe fra fremtiden venter helt til slutt.','Når bilen kan sveve, venter en venn med åtte bein ved barnehagen.'];
  const hintOf=g=>g.element('secretHint').hidden?null:g.element('secretHint').textContent,home=g=>{g.element('goInside').onclick();g.element('goOut').onclick();};
  t=await teaser({...base});assert.equal(hintOf(t.g),'💡 '+HINTS[0],'the first missing secret gets the first hint');
- const seen=[];for(let n=0;n<6;n++){seen.push(hintOf(t.g));home(t.g);}
+ const seen=[];for(let n=0;n<7;n++){seen.push(hintOf(t.g));home(t.g);}
  assert.deepEqual([...seen],HINTS.map(h=>'💡 '+h),'each time Sofia comes home the next missing secret has its hint');assert.equal(hintOf(t.g),'💡 '+HINTS[0],'and then it starts again');
  for(const h of HINTS)assert.doesNotMatch(h,/parker|besøk|tut|honk|trykk|kjør til/i,'a hint says where or who, never what to do: '+h);
  const stable=hintOf(t.g);t.g.element('carColours').children[1].onclick();assert.equal(hintOf(t.g),stable,'a tap on the start card does not change the hint');
  t=await teaser({...base,kiwi:'on',ludvig:'on'});assert.equal(hintOf(t.g),'💡 '+HINTS[2],'only the missing ones have hints: the duck first');home(t.g);assert.equal(hintOf(t.g),'💡 '+HINTS[3]);
- t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on'});assert.equal(hintOf(t.g),'💡 '+HINTS[4],'the taxi found: the pig is next');home(t.g);assert.equal(hintOf(t.g),'💡 '+HINTS[5],'and the hover car last');
- t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on',pig:'on'});assert.equal(hintOf(t.g),null,'all six found: no hint');
+ t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on'});assert.equal(hintOf(t.g),'💡 '+HINTS[4],'the taxi found: the pig is next');home(t.g);assert.equal(hintOf(t.g),'💡 '+HINTS[5],'and then the hover car');home(t.g);assert.equal(hintOf(t.g),'💡 '+HINTS[6],'and the spider last');
+ t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on',pig:'on'});assert.equal(hintOf(t.g),'💡 '+HINTS[6],'the hover car found: the spider is the one left');t=await teaser({...base,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on',pig:'on',spider:'on'});assert.equal(hintOf(t.g),null,'all seven found: no hint');
  t=await teaser({arrivals:12});assert.equal(hintOf(t.g),null,'no hint before the thirteenth trip: the card hints at the next trip');
  t=await teaser({arrivals:13});game=t.g;game.key('z');assert.equal(hintOf(game),null,'Z: back to 12 trips, no hint');game.key('x');assert.equal(hintOf(game),'💡 '+HINTS[0],'X: 13 trips, the hint is there');
  // The T. rex card no longer claims that every surprise is found: it is about the trips.
@@ -212,7 +212,7 @@ console.log('Free driving counts visits: KIWI, Ludvig, Lianvannet, the kindergar
  tap(g,'reAward');assert.equal(g.test.progress().arrivals,0,'RE-ward: all progress is gone');assert.equal(g.world.model,'car');assert.equal(g.world.colour,'#14171c');assert.equal(g.world.trail,false);assert.equal(g.world.boy,false);assert.equal(g.world.duckRunner,false);assert.equal(g.world.bubbles,false);assert.equal(g.world.skin,null);
  assert.equal(g.element('horn').hidden,true);assert.equal(g.test.state(),'intro');assert.equal(g.element('welcome').hidden,false);assert.equal(g.element('rewards').hidden,true,'no colours yet');assert.equal(g.element('rewardTeaser').hidden,false);assert.equal(g.element('ludvigRow').hidden,true);assert.equal(g.element('duckRunnerRow').hidden,true);assert.equal(g.element('menu').open,false,'the menu closes');
  assert.match(g.element('toast').textContent,/RE-ward/);assert.equal(g.element('reAward').disabled,true,'and there is nothing new to save yet');assert.equal(g.element('reAward').textContent,'RE-ward');
- assert.deepEqual(JSON.parse(store.get('sofiatur.fremgang')),{arrivals:0,colour:'#14171c',trail:'on',behind:'trail',kiwi:'off',ludvig:'off',duck:'off',model:'car',ishall:'off',rema:'off',taxi:'off',pig:'off',inside:'off',hoverSeen:'off',hover:'on'},'the new game is the saved progress');
+ assert.deepEqual(JSON.parse(store.get('sofiatur.fremgang')),{arrivals:0,colour:'#14171c',trail:'on',behind:'trail',kiwi:'off',ludvig:'off',duck:'off',model:'car',ishall:'off',rema:'off',taxi:'off',pig:'off',inside:'off',hoverSeen:'off',hover:'on',spider:'off'},'the new game is the saved progress');
  assert.deepEqual(JSON.parse(store.get('sofiatur.re-ward')).saves,[big2(big)],'the old game is kept');
  assert.equal(g.element('reAwardRollback').hidden,false);assert.equal(g.element('reAwardSaved').hidden,false);assert.equal(g.element('reAwardSaved').textContent,'Lagret spill: 11 turer · KIWI · Ludvig · anda');
  // The new game is played: trips unlock again from the first (a colour, a cat), not the old ones.
@@ -239,16 +239,16 @@ console.log('Free driving counts visits: KIWI, Ludvig, Lianvannet, the kindergar
  store.set('sofiatur.re-ward',JSON.stringify({v:1,saves:Array.from({length:30},(_,i)=>({arrivals:i+1}))}));g=await launch(()=>storage);assert.equal(g.test.stash().length,20,'at most 20 saved games');assert.equal(g.test.stash().at(-1).arrivals,30);
  // Blocked storage: the game still works, and the RE-ward and the rollback work for as long as the page is open.
  const blocked={getItem(){throw new Error('blocked');},setItem(){throw new Error('blocked');}};g=await launch(()=>blocked);g.test.arrive();g.element('again').onclick();assert.equal(g.element('reAward').disabled,false);tap(g,'reAward');tap(g,'reAward');assert.equal(g.test.progress().arrivals,0);tap(g,'reAwardRollback');tap(g,'reAwardRollback');assert.equal(g.test.progress().arrivals,1,'blocked storage');
- function big2(x){return {ishall:'off',rema:'off',taxi:'off',pig:'off',inside:'off',hoverSeen:'off',hover:'on',...x,trail:'off'};}} // a save as the game writes it: what the test leaves out is as in a new game
+ function big2(x){return {ishall:'off',rema:'off',taxi:'off',pig:'off',inside:'off',hoverSeen:'off',hover:'on',spider:'off',...x,trail:'off'};}} // a save as the game writes it: what the test leaves out is as in a new game
 console.log('RE-ward: saves everything unlocked and starts over, the rollback brings the saved game back (two taps each, a stack, kept on the device): OK');
 // RE-ward and what came after it (7 October 2026): the places visited, the taxi, the pig, the hover car and the house are saved, cleared and brought back too.
-{const tap=(g,id)=>g.element(id).onclick(),full={arrivals:13,colour:'#1f63c6',model:'pig',behind:'bubbles',kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on',taxi:'on',pig:'on',inside:'on',hoverSeen:'on',hover:'off'};
+{const tap=(g,id)=>g.element(id).onclick(),full={arrivals:13,colour:'#1f63c6',model:'pig',behind:'bubbles',kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on',taxi:'on',pig:'on',inside:'on',hoverSeen:'on',hover:'off',spider:'off'};
  store.clear();store.set('sofiatur.fremgang',JSON.stringify(full));let g=await launch(()=>storage);
  assert.equal(g.world.model,'pig');assert.equal(g.world.balloonGirl,true);assert.equal(g.world.hover,false,'the hover switch is off in this save');assert.equal(g.element('model-taxi').hidden,false);assert.equal(g.element('hoverRow').hidden,false);assert.equal(g.element('hornHome').hidden,false);
  tap(g,'reAward');tap(g,'reAward');
  // a new game: none of it is left
  assert.equal(g.world.model,'car');assert.equal(g.world.balloonGirl,false,'she is in the balloon again only once she has been inside');assert.equal(g.element('model-taxi').hidden,true);assert.equal(g.element('model-pig').hidden,true);assert.equal(g.element('hoverRow').hidden,true);assert.equal(g.element('hornHome').hidden,true);
- assert.deepEqual(JSON.parse(store.get('sofiatur.fremgang')),{arrivals:0,colour:'#14171c',trail:'on',behind:'trail',kiwi:'off',ludvig:'off',duck:'off',model:'car',ishall:'off',rema:'off',taxi:'off',pig:'off',inside:'off',hoverSeen:'off',hover:'on'});
+ assert.deepEqual(JSON.parse(store.get('sofiatur.fremgang')),{arrivals:0,colour:'#14171c',trail:'on',behind:'trail',kiwi:'off',ludvig:'off',duck:'off',model:'car',ishall:'off',rema:'off',taxi:'off',pig:'off',inside:'off',hoverSeen:'off',hover:'on',spider:'off'});
  assert.equal(g.element('reAwardSaved').textContent,'Lagret spill: 13 turer · KIWI · Ludvig · anda · taxi · gris · svevebil','the label names the taxi, the pig and the hover car');
  // the new game can find them again from the start: the places count, and the taxi is announced again
  g.test.park();g.test.ludvig();g.test.ishall();g.test.arrive();g.element('again').onclick();assert.equal(g.element('model-taxi').hidden,true,'the taxi needs Rema 1000 too');g.test.rema();assert.equal(g.element('model-taxi').hidden,false);assert.match(g.element('toast').textContent,/Taxi låst opp/,'and is announced again in the new game');
@@ -671,7 +671,7 @@ console.log('Taxi: KIWI, Ludvig, Dalgård ishall, Rema 1000 and the kindergarten
  save({arrivals:12,kiwi:'on',ludvig:'on',duck:'on',ishall:'on',rema:'on',taxi:'on',pig:'on'});g=await launch(()=>storage);assert.equal(g.world.hover,false);g.test.arrive();
  assert.equal(g.world.hover,true);assert.match(g.element('unlock').textContent,/T-rex.*sveve/s);assert.match(g.spoken.at(-1),/T-rex.*Wow, du har låst opp alt!/s);}
 console.log('Hover car: only when every other unlock is there; announced once; switch on the start screen, remembered; Z and X follow the trip count: OK');
-// Inside the house: the button on the start screen, the girl in the balloon afterwards (no announcement), the podium with its 19 places, taps, the pig and the way out.
+// Inside the house: the button on the start screen, the girl in the balloon afterwards (no announcement), the podium with its 20 places, taps, the pig and the way out.
 {save({arrivals:5,kiwi:'on',ludvig:'on',model:'dog'});let g=await launch(()=>storage);
  assert.equal(g.element('goInside').hidden,false,'Gå inn on the start screen');assert.equal(g.world.balloonGirl,false,'the girl is not in the balloon before she has been inside');assert.equal(g.inside.created,0,'the house is built when first needed');
  const toastBefore=g.element('toast').textContent;g.element('goInside').onclick();
@@ -679,13 +679,13 @@ console.log('Hover car: only when every other unlock is there; announced once; s
  assert.equal(g.world.balloonGirl,true,'she rides in the balloon after the first time inside');assert.equal(g.element('toast').textContent,toastBefore,'and nothing is announced about it');assert.match(g.spoken.at(-1),/^Velkommen inn, Sofia!/);
  assert.equal(JSON.parse(store.get('sofiatur.fremgang')).inside,'on');
  const items=g.inside.enters.at(-1).items;assert.equal(g.inside.enters.at(-1).o.pigHidden,true,'the pig is hiding');
- assert.deepEqual([...items.map(i=>i.id)],['colour','cat','trail','horn','dog','duck','rocket','unicorn','bubbles','firetruck','rainbow','balloon','trex','kiwi','ludvig','duckRunner','taxi','pig','hover'],'19 places in the order of the table');
+ assert.deepEqual([...items.map(i=>i.id)],['colour','cat','trail','horn','dog','duck','rocket','unicorn','bubbles','firetruck','rainbow','balloon','trex','kiwi','ludvig','duckRunner','taxi','pig','hover','spider'],'20 places in the order of the table');
  const by=id=>items.find(i=>i.id===id);
  assert.deepEqual([by('colour').icon,by('colour').title,by('colour').unlocked].map(x=>x),['🎨','Farger på bilen',true]);assert.equal(by('colour').text,'Denne fikk du da du kom fram til barnehagen for første gang.');assert.equal(by('dog').text,'Denne fikk du da du kom fram til barnehagen for femte gang.');
  assert.deepEqual([by('rocket').icon,by('rocket').title,by('rocket').unlocked],['❓','Hemmelig overraskelse',false]);assert.equal(by('rocket').text,'Hint: Kjør til barnehagen 2 ganger til.');assert.equal(by('unicorn').text,'Hint: Kjør til barnehagen 3 ganger til.');
  assert.equal(by('trex').text,'Hint: Kjør til barnehagen 8 ganger til.');assert.equal(by('kiwi').text,'Du parkerte ved KIWI på Dalgård.');assert.equal(by('ludvig').text,'Du besøkte Ludvig i Bøckmans veg 102.');
  assert.equal(by('duckRunner').text,'Hint: Den store anda i Lianvannet vil gjerne hilse på en annen and. Husk tuta!');assert.equal(by('pig').text,'Hint: Noe rosa gjemmer seg her i huset. Se etter en krøllete hale!');
- assert.equal(by('hover').text,'Hint: Lås opp alt det andre på pallen først. Da skjer det noe fra fremtiden!');assert.equal(by('taxi').text,'Hint: Besøk alle stedene. Du mangler: Dalgård ishall og Rema 1000.');assert.equal(by('bubbles').icon,'❓');
+ assert.equal(by('hover').text,'Hint: Lås opp alt det andre på pallen først, så nær som én. Da skjer det noe fra fremtiden!');assert.equal(by('taxi').text,'Hint: Besøk alle stedene. Du mangler: Dalgård ishall og Rema 1000.');assert.equal(by('bubbles').icon,'❓');
  g=await launch(()=>storage);assert.equal(g.world.balloonGirl,true,'after a reload too');g.element('goInside').onclick();assert.match(g.spoken.at(-1),/^Velkommen hjem igjen, Sofia!/);
  save({arrivals:12,...placesDone});g=await launch(()=>storage);assert.equal(house(g).find(i=>i.id==='trex').text,'Hint: Kjør til barnehagen én gang til.','"én gang til" for one more trip');
  // taps: an item says how it was unlocked (or the hint), the next tap anywhere hides it; a swipe is no tap
@@ -747,7 +747,7 @@ console.log('Bedtime: the first tap on the sofa makes her jump on it ("Hopp, hop
 // The debug keys inside the house (6 October 2026): X unlocks the next place on the podium without doing the task, in the podium's order (the 13 trips, then the KIWI car,
 // Ludvig, the running duck, the taxi and the pig, which brings the hover car with it); Z locks the last one again. Outside the house they count trips as before.
 {save({});let g=await launch(()=>storage);g.element('goInside').onclick();
- const IDS=['colour','cat','trail','horn','dog','duck','rocket','unicorn','bubbles','firetruck','rainbow','balloon','trex','kiwi','ludvig','duckRunner','taxi','pig','hover'];
+ const IDS=['colour','cat','trail','horn','dog','duck','rocket','unicorn','bubbles','firetruck','rainbow','balloon','trex','kiwi','ludvig','duckRunner','taxi','pig','hover','spider'];
  const open=()=>[...g.inside.refreshes.at(-1).items.filter(i=>i.unlocked).map(i=>i.id)],saved=()=>JSON.parse(store.get('sofiatur.fremgang')),toast=()=>g.element('toast').textContent;
  // from nothing: one place at a time, in the order of the podium
  for(let n=0;n<13;n++){g.key('x');assert.deepEqual(open(),IDS.slice(0,n+1),'trip '+(n+1));}
@@ -756,9 +756,11 @@ console.log('Bedtime: the first tap on the sofa makes her jump on it ("Hopp, hop
  g.key('x');assert.deepEqual(open(),IDS.slice(0,15),'X: Ludvig');assert.match(toast(),/Ludvig/);assert.equal(g.world.boy,true);
  g.key('x');assert.deepEqual(open(),IDS.slice(0,16),'X: the running duck');assert.match(toast(),/Anda hørte tuta/);assert.equal(g.world.duckRunner,true);
  g.key('x');assert.deepEqual(open(),IDS.slice(0,17),'X: the taxi, once both places are visited');assert.match(toast(),/Taxi låst opp/);assert.equal(g.world.model,'taxi');assert.match(g.spoken.at(-1),/kjøre taxi/);assert.equal(saved().ishall,'on');assert.equal(saved().rema,'on');
- g.key('x');assert.deepEqual(open(),IDS,'X: the pig, and the hover car with it');assert.match(toast(),/Du fant grisen.*Svevebil/);assert.equal(g.world.model,'pig');assert.equal(g.world.hover,true);assert.equal(g.inside.refreshes.at(-1).o.pigHidden,false,'the pig comes out of hiding');
+ g.key('x');assert.deepEqual(open(),IDS.slice(0,19),'X: the pig, and the hover car with it');assert.match(toast(),/Du fant grisen.*Svevebil/);assert.equal(g.world.model,'pig');assert.equal(g.world.hover,true);assert.equal(g.inside.refreshes.at(-1).o.pigHidden,false,'the pig comes out of hiding');
+ g.key('x');assert.deepEqual(open(),IDS,'X: the spider, last');assert.match(toast(),/edderkopp/);assert.equal(g.world.model,'spider');assert.equal(saved().spider,'on');
  g.key('x');assert.deepEqual(open(),IDS);assert.equal(toast(),'🛠 Alt er låst opp');
  // and back, the last one first
+ g.key('z');assert.deepEqual(open(),IDS.slice(0,19),'Z: the spider goes first');assert.match(toast(),/Edderkoppen: låst igjen/);assert.equal(g.world.model,'car','the spider was the ride');assert.equal(saved().spider,'off');assert.equal(g.world.hover,true,'the hover car stays');
  g.key('z');assert.deepEqual(open(),IDS.slice(0,17),'Z: the pig goes, and the hover car with it');assert.match(toast(),/Grisen og svevebilen: låst igjen/);assert.equal(g.world.hover,false);assert.equal(g.world.model,'car','the pig was the ride');assert.equal(g.inside.refreshes.at(-1).o.pigHidden,true,'the pig hides again');assert.equal(saved().pig,'off');
  g.key('z');assert.deepEqual(open(),IDS.slice(0,16),'Z: the taxi');assert.equal(saved().ishall,'off');assert.equal(saved().rema,'off');assert.equal(saved().taxi,'off');
  g.key('x');assert.deepEqual(open(),IDS.slice(0,17));assert.match(toast(),/Taxi låst opp/,'the taxi is announced again when it is unlocked again');
@@ -772,8 +774,8 @@ console.log('Bedtime: the first tap on the sofa makes her jump on it ("Hopp, hop
  g.element('goOut').onclick();g.key('x');assert.equal(g.test.progress().arrivals,1);assert.equal(saved().kiwi,'off');g.key('z');assert.equal(g.test.progress().arrivals,0);
  // a real task done first: X goes on from where the game is (the pig found by hand, then X for the rest)
  save({arrivals:13,kiwi:'on',ludvig:'on',duck:'on',pig:'on'});g=await launch(()=>storage);g.element('goInside').onclick();
- g.key('x');assert.ok(g.inside.refreshes.at(-1).items.every(i=>i.unlocked),'the taxi is the only place left, and the hover car comes with it');assert.equal(g.world.model,'taxi');assert.match(toast(),/Taxi låst opp.*Svevebil/);}
-console.log('Debug keys inside the house: X unlocks the podium one place at a time (trips, KIWI, Ludvig, the duck, the taxi, the pig and the hover car), Z locks it again, outside they count trips: OK');
+ g.key('x');assert.deepEqual(open(),IDS.slice(0,19),'the taxi is the only place left, and the hover car comes with it (the spider waits)');assert.equal(g.world.model,'taxi');assert.match(toast(),/Taxi låst opp.*Svevebil/);}
+console.log('Debug keys inside the house: X unlocks the podium one place at a time (trips, KIWI, Ludvig, the duck, the taxi, the pig, the hover car and the spider), Z locks it again, outside they count trips: OK');
 
 // The horn on the start screen (7 October 2026): once the horn is unlocked (four trips since 11 October 2026, before: eleven) its button stands on the start screen beside "Gå inn", so each ride's horn can be
 // tried while choosing what to drive as. It is gone while driving and in the house, and back at home.

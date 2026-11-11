@@ -9,7 +9,7 @@ let world,data,state='loading',sound=true,current,previous=null,active=null,dist
 let roundaboutUndo=null,freeMode=false,free=null,carHeight,showDeadEnds=false,choicesStale=false,musicOn=true,queue=[],preview=null,picked=null,pickedUntil=-9,aheadShown=false,planKey='';
 let arrivals=0,carColour='#14171c',behind='trail',ludvigUnlocked=false,duckUnlocked=false,model='car',newReward=null,homeAt=0; // behind: what follows the car, 'trail' (the rainbow trail), 'ludvig', 'duck' (a running duck) or 'none'
 let ducklingOn=false; // the duckling of the double duck (7 October 2026): an easter egg for this visit to the game only, never saved (see ducklingHeard)
-let ishallVisited=false,remaVisited=false,taxiSeen=false,pigUnlocked=false,beenInside=false,hoverSeen=false,hoverOn=true; // the new unlocks (5 October 2026): places visited, the taxi and the hover car announced, the pig found, Sofia been inside, the hover mode on or off
+let ishallVisited=false,remaVisited=false,taxiSeen=false,pigUnlocked=false,beenInside=false,hoverSeen=false,hoverOn=true,spiderUnlocked=false; // the new unlocks (5 October 2026): places visited, the taxi and the hover car announced, the pig found, Sofia been inside, the hover mode on or off
 const roundaboutKmh=45; // speed round the circle and into it
 // The car speeds up by ACCEL, brakes ahead of a slower stretch (a turn, a junction where it must stop) by DECEL, and by BRAKE at most when a new plan needs it at once.
 // Strong, like a toy car (30 September 2026; 7, 4.5 and 8 before), so it reaches 200 km/h on the longest stretches of the trip again; turns keep their gentle arcs (driving-line.js A_LAT).
@@ -216,6 +216,7 @@ function arrive(){if(!active)return;previous=active.e.arrivalFrom??active.e.from
 function fillStickers(){const row=$('stickers');if(!row)return;const items=podiumItems().slice(0,13);row.replaceChildren();row.append(...items.map(it=>{const b=document.createElement('span');b.className='sticker'+(it.unlocked?it.id===newReward?' new':'':' locked');b.textContent=it.unlocked?it.icon:'';return b;}));row.setAttribute('aria-label',`${items.filter(i=>i.unlocked).length} av 13 overraskelser fra turene`);row.hidden=false;}
 function finish(){state='finished';tripBar(1);$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;$('undoRoundabout').hidden=true;clearWorldChoices();world.setTurnArrow(null);speed=0;ui.decision.hidden=true;ui.finish.hidden=false;document.body.classList.remove('choosing');document.body.classList.add('arrived');fx('fanfare');world.hop?.();setTimeout(()=>{if(state==='finished')world.hop?.();},1050);$('remaining').textContent='Fremme!';$('speed').textContent='0';$('slope').textContent='Fremme!'; // the HUD is not refreshed once arrived (11 November 2026), so it must not keep the last speed
  $('finishSummary').textContent=`${(travelled/1000).toLocaleString('nb-NO',{maximumFractionDigits:1})} km gjennom nabolaget · ${freeMode?'frikjøring':turns+' veivalg'}`;
+ const spiderNow=hoverReady()&&hoverSeen&&!spiderUnlocked; // decided before this arrival (11 November 2026): the spider needs the hover car already unlocked and announced, so an arrival that unlocks the hover car itself (newUnlocks below) leaves the spider for the next one
  arrivals++;newReward=['colour','cat','trail','horn','dog','duck','rocket','unicorn','bubbles','firetruck','rainbow','balloon','trex'][arrivals-1]||null;if(newReward==='trail')behind='trail';if(newReward==='bubbles')behind='bubbles';if(newReward==='rainbow')carColour='rainbow';if(MODEL_AT[newReward])switchRide(newReward);saveProgress();if(newReward&&newReward!=='colour')applyRewards();fillStickers();
  let reward={colour:['🎨 Ny overraskelse! Nå kan du velge farge på bilen. Fargene finner du på startskjermen.','Velg farge på bilen 🎨',' Nå kan du velge farge på bilen!'],trail:['🌈 Ny overraskelse! Bilen har fått et regnbuespor. Du kan slå det av og på på startskjermen.','Prøv regnbuesporet 🌈',' Og nå har bilen fått et regnbuespor!'],
   rainbow:['🌈 Ny overraskelse! Du har fått en regnbuebil som skifter farge. Du finner den blant fargene på startskjermen.','Se regnbuebilen 🌈',' Nå har du fått en regnbuebil som skifter farge!'],
@@ -230,10 +231,11 @@ function finish(){state='finished';tripBar(1);$('freeControls').hidden=true;roun
   balloon:['🎈 Ny overraskelse! Nå kan du fly i luftballong. Du velger hva du kjører som på startskjermen.','Fly luftballongen 🎈',' Og nå kan du fly luftballong!'],
   trex:['🦖 Den største overraskelsen! Nå kan du være en T-rex. Du har funnet alle overraskelsene fra turene!','Bli en T-rex 🦖',' Og nå kan du være en T-rex! RAAAWR! Du har funnet alle overraskelsene fra turene!']}[newReward];
  // What the trip adds to the others (5 October 2026): the kindergarten can be the last of the five places for the taxi, and the last unlock of all for the hover car.
- const x=newUnlocks(),news=[x.taxi&&['🚕 Ny overraskelse! Du har besøkt alle stedene. Nå kan du kjøre taxi! Du velger hva du kjører som på startskjermen.','🚕 Og nå kan du kjøre taxi!','Kjør taxien 🚕'],x.hover&&['⚡ Den aller siste overraskelsen! Bilene kan sveve med hjulene under seg. Du slår det av og på på startskjermen.','⚡ Og bilene kan sveve!','Prøv svevebilen ⚡']].filter(Boolean);
- if(news.length){if(reward)reward=[reward[0]+' '+news.map(n=>n[1]).join(' '),reward[1],reward[2]];else{reward=[news.map(n=>n[0]).join(' '),news[0][2],''];newReward=x.taxi?'taxi':'hover';}}
+ const x=newUnlocks(),news=[x.taxi&&['🚕 Ny overraskelse! Du har besøkt alle stedene. Nå kan du kjøre taxi! Du velger hva du kjører som på startskjermen.','🚕 Og nå kan du kjøre taxi!','Kjør taxien 🚕'],x.hover&&['⚡ Den aller siste overraskelsen! Bilene kan sveve med hjulene under seg. Du slår det av og på på startskjermen.','⚡ Og bilene kan sveve!','Prøv svevebilen ⚡'],spiderNow&&['🕷️ Den aller siste overraskelsen! En stor, snill edderkopp har kommet til barnehagen, og du kan ri på den! Du velger den på startskjermen.','🕷️ Og nå kan du ri på en edderkopp!','Ri på edderkoppen 🕷️']].filter(Boolean);
+ if(spiderNow){unlockSpider();setTimeout(()=>{if(state==='finished')world.honk?.();},1700);} // the spider says hello: it rears up and waves its front legs just after the fanfare (spider.js)
+ if(news.length){if(reward)reward=[reward[0]+' '+news.map(n=>n[1]).join(' '),reward[1],reward[2]];else{reward=[news.map(n=>n[0]).join(' '),news[0][2],''];newReward=x.taxi?'taxi':x.hover?'hover':'spider';}}
  $('unlock').hidden=!reward;if(reward)$('unlock').textContent=reward[0];$('again').textContent=reward?reward[1]:'Kjør en gang til ↗';
- say('Hurra Sofia! Du fant barnehagen! Så flink du er!'+(reward?reward[2]:'')+x.say);}
+ say('Hurra Sofia! Du fant barnehagen! Så flink du er!'+(reward?reward[2]:'')+x.say+(spiderNow?' Og se! En stor, snill edderkopp! Nå kan du ri på den!':''));} // no fx('reward') for the spider: the fanfare of this arrival is already playing, a second sound would sit on top of it
 function remaining(){let rem=0;if(active){rem=active.len-distance;for(const e of routeFrom(active.e.to))rem+=e.length;}else for(const e of routeFrom(current))rem+=e.length;return rem;}
 let tripMax=0;function tripBar(f){const t=$('tripTrack');if(!t)return;t.hidden=f===null;if(f===null||f===0)tripMax=0;if(f!==null){tripMax=Math.max(tripMax,f);$('tripFill').style.width=Math.round(100*tripMax)+'%';}} // progress track in the header pill (11 November 2026): null hides it (start screen, free driving); f is 0..1, and the marker never steps back (remaining() can grow by a few tens of metres when the route is re-planned, e.g. at roundabouts)
 function updateHud(){const rem=remaining();if(!freeMode&&(state==='decision'||state==='driving'))tripBar(Math.max(0,Math.min(1,1-rem/Math.max(1,totalInitial))));$('remaining').textContent=freeMode?'Frikjøring · automatisk gass':rem>1000?`${(rem/1000).toLocaleString('nb-NO',{maximumFractionDigits:1})} km igjen`:`${Math.round(rem/10)*10} m igjen`;$('speed').textContent=Math.round(speed*3.6);const horizontal=Math.max(.01,Math.hypot(heading.x,heading.z));let slope=Math.round(100*heading.y/horizontal);if(world?.rawHeight){const hx=heading.x/horizontal,hz=heading.z/horizontal;const ahead=world.rawHeight(position.x+hx*2,position.z+hz*2),behind=world.rawHeight(position.x-hx*2,position.z-hz*2);slope=Math.round(100*(ahead-behind)/4);} $('slope').textContent=state==='free'&&free.car.drifting?'Drifter!':state==='decision'?'Vi velger vei':Math.abs(slope)<2?'Langs veien':slope>0?'↗ Oppoverbakke':'↘ Nedoverbakke';const realAltitude=world?.rawHeight?world.rawHeight(position.x,position.z):position.y;$('altitude').textContent=`${Math.round(realAltitude)} moh.${Math.abs(slope)>=2?' · '+Math.abs(slope)+' %':''}`;}
@@ -268,7 +270,7 @@ $('music').value=musicOn?'on':'off';$('deadEnds').value=showDeadEnds?'on':'off';
 // the car instead of the trail (since 2 October 2026). Trips and
 // choices are remembered on this device.
 // What the car can be, and after how many trips to the kindergarten (3 October 2026: the dog, the duck and the rocket after the fifth, sixth and seventh).
-const MODELS=['car','cat','dog','duck','rocket','unicorn','firetruck','balloon','trex','taxi','pig'],MODEL_AT={car:0,cat:2,dog:5,duck:6,rocket:7,unicorn:8,firetruck:10,balloon:12,trex:13};
+const MODELS=['car','cat','dog','duck','rocket','unicorn','firetruck','balloon','trex','taxi','pig','spider'],MODEL_AT={car:0,cat:2,dog:5,duck:6,rocket:7,unicorn:8,firetruck:10,balloon:12,trex:13};
 // Trips 8 to 13 (3 October 2026): the unicorn, soap bubbles behind the car (ninth), the fire engine, the rainbow car (eleventh), the hot-air balloon and last the T. rex.
 const BUBBLES_AT=9,HORN_AT=4,RAINBOW_AT=11,LAST_REWARD=13; // the horn and the rainbow car swapped places on 11 October 2026 (before: the rainbow car at 4, the horn at 11)
 const carColours=[['Svart','#14171c'],['Rød','#c62828'],['Rosa','#ec6aa8'],['Lilla','#7b4cc2'],['Blå','#1f63c6'],['Turkis','#17a2a0'],['Grønn','#3b9a43'],['Gul','#f3c531'],['Oransje','#f07b22'],['Hvit','#eef0ef'],['Grå','#9a9186']];
@@ -294,13 +296,13 @@ const hoverReady=()=>arrivals>=LAST_REWARD&&kiwiUnlocked&&ludvigUnlocked&&duckUn
 // each time Sofia comes home (hintTurn, counted at the start of reset(), so a redraw of the card keeps the hint).
 const SECRETS=[[()=>kiwiUnlocked,'En hemmelig bil gjemmer seg hos en grønn butikk i nabolaget.'],[()=>ludvigUnlocked,'En venn bor like ved barnehagen, litt bortgjemt. Han savner deg!'],
  [()=>duckUnlocked,'Ved et vann bor en kjempestor and. Den liker å høre fra en av sine egne.'],[taxiReady,'Taxien kommer til dem som har vært på mange andre steder enn barnehagen.'],
- [()=>pigUnlocked,'Noe rosa gjemmer seg inne i huset ditt. Se etter en krøllete hale!'],[hoverReady,'Noe fra fremtiden venter helt til slutt.']];
+ [()=>pigUnlocked,'Noe rosa gjemmer seg inne i huset ditt. Se etter en krøllete hale!'],[hoverReady,'Noe fra fremtiden venter helt til slutt.'],[()=>spiderUnlocked,'Når bilen kan sveve, venter en venn med åtte bein ved barnehagen.']];
 const missingSecrets=()=>SECRETS.filter(([found])=>!found());let hintTurn=-1;
-function rideOK(m){return m==='taxi'?taxiReady():m==='pig'?pigUnlocked:arrivals>=(MODEL_AT[m]||0);}
-function snapshot(){return {arrivals,colour:carColour,trail:behind==='trail'?'on':'off',behind,kiwi:kiwiUnlocked?'on':'off',ludvig:ludvigUnlocked?'on':'off',duck:duckUnlocked?'on':'off',model,ishall:ishallVisited?'on':'off',rema:remaVisited?'on':'off',taxi:taxiSeen?'on':'off',pig:pigUnlocked?'on':'off',inside:beenInside?'on':'off',hoverSeen:hoverSeen?'on':'off',hover:hoverOn?'on':'off'};}
+function rideOK(m){return m==='taxi'?taxiReady():m==='pig'?pigUnlocked:m==='spider'?spiderUnlocked:arrivals>=(MODEL_AT[m]||0);}
+function snapshot(){return {arrivals,colour:carColour,trail:behind==='trail'?'on':'off',behind,kiwi:kiwiUnlocked?'on':'off',ludvig:ludvigUnlocked?'on':'off',duck:duckUnlocked?'on':'off',model,ishall:ishallVisited?'on':'off',rema:remaVisited?'on':'off',taxi:taxiSeen?'on':'off',pig:pigUnlocked?'on':'off',inside:beenInside?'on':'off',hoverSeen:hoverSeen?'on':'off',hover:hoverOn?'on':'off',spider:spiderUnlocked?'on':'off'};}
 function saveProgress(){try{localStorage.setItem('sofiatur.fremgang',JSON.stringify(snapshot()));}catch{}}
 // Sets the progress from a saved one (what snapshot() gives): anything missing or wrong is as in a new game. Used when the game starts and by RE-ward (and so by the rollback).
-function applySaved(saved){saved=saved&&typeof saved==='object'?saved:{};ducklingOn=false;carColour='#14171c';arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour))carColour=nearestColour(saved.colour);else if(saved.colour==='kiwi'&&kiwiUnlocked||saved.colour==='rainbow'&&arrivals>=RAINBOW_AT)carColour=saved.colour;ludvigUnlocked=saved.ludvig==='on';duckUnlocked=saved.duck==='on';ishallVisited=saved.ishall==='on';remaVisited=saved.rema==='on';taxiSeen=saved.taxi==='on';pigUnlocked=saved.pig==='on';beenInside=saved.inside==='on';hoverSeen=saved.hoverSeen==='on';hoverOn=saved.hover!=='off';behind=['trail','ludvig','duck','bubbles','none'].includes(saved.behind)?saved.behind:saved.trail==='off'?'none':'trail';if(behind==='ludvig'&&!ludvigUnlocked||behind==='duck'&&!duckUnlocked||behind==='bubbles'&&arrivals<BUBBLES_AT)behind='trail';model=MODELS.includes(saved.model)&&rideOK(saved.model)?saved.model:'car';}
+function applySaved(saved){saved=saved&&typeof saved==='object'?saved:{};ducklingOn=false;carColour='#14171c';arrivals=Math.max(0,Math.floor(Number(saved.arrivals))||0);kiwiUnlocked=saved.kiwi==='on';if(/^#[0-9a-f]{6}$/i.test(saved.colour))carColour=nearestColour(saved.colour);else if(saved.colour==='kiwi'&&kiwiUnlocked||saved.colour==='rainbow'&&arrivals>=RAINBOW_AT)carColour=saved.colour;ludvigUnlocked=saved.ludvig==='on';duckUnlocked=saved.duck==='on';ishallVisited=saved.ishall==='on';remaVisited=saved.rema==='on';taxiSeen=saved.taxi==='on';pigUnlocked=saved.pig==='on';beenInside=saved.inside==='on';hoverSeen=saved.hoverSeen==='on';hoverOn=saved.hover!=='off';spiderUnlocked=saved.spider==='on';behind=['trail','ludvig','duck','bubbles','none'].includes(saved.behind)?saved.behind:saved.trail==='off'?'none':'trail';if(behind==='ludvig'&&!ludvigUnlocked||behind==='duck'&&!duckUnlocked||behind==='bubbles'&&arrivals<BUBBLES_AT)behind='trail';model=MODELS.includes(saved.model)&&rideOK(saved.model)?saved.model:'car';}
 try{applySaved(JSON.parse(localStorage.getItem('sofiatur.fremgang')));}catch{}
 const swatches=carColours.map(([name,hex])=>{const b=document.createElement('button');b.type='button';b.className='swatch';b.title=name;b.setAttribute('aria-label',name);b.style.background=hex;b.onclick=()=>pickColour(hex);return b;});
 const kiwiSwatch=document.createElement('button');kiwiSwatch.type='button';kiwiSwatch.className='swatch kiwi';kiwiSwatch.title='KIWI';kiwiSwatch.setAttribute('aria-label','Hemmelig KIWI-bil');kiwiSwatch.textContent='K';kiwiSwatch.onclick=()=>pickColour('kiwi');
@@ -324,7 +326,7 @@ function showRewards(){$('rewards').hidden=arrivals<1&&!kiwiUnlocked&&!ludvigUnl
 // Going in for the first time is also what puts the girl in the hot-air balloon (applyRewards); that is no unlock, so it is never announced.
 let inside=null; // the house, built the first time Sofia goes in
 const ORD=['første','andre','tredje','fjerde','femte','sjette','sjuende','åttende','niende','tiende','ellevte','tolvte','trettende'];
-// The 19 places on the podium, in order: 13 by trips to the kindergarten, then KIWI, Ludvig, the running duck, the taxi, the pig and the hover car.
+// The 20 places on the podium, in order: 13 by trips to the kindergarten, then KIWI, Ludvig, the running duck, the taxi, the pig, the hover car and the spider.
 // Locked ones show a question mark and a hint, unlocked ones the icon, the name and how they were unlocked.
 function podiumItems(){
  const trip=(id,icon,title,n)=>{const ok=arrivals>=n,r=n-arrivals;return {id,icon,title,unlocked:ok,text:ok?`Denne fikk du da du kom fram til barnehagen for ${ORD[n-1]} gang.`:`Hint: Kjør til barnehagen ${r===1?'én gang til':r+' ganger til'}.`};};
@@ -338,12 +340,16 @@ function podiumItems(){
   other('duckRunner','🦆','Anda som løper etter bilen',duckUnlocked,'Du kjørte som anda til Lianvannet og tutet til den store anda.','Hint: Den store anda i Lianvannet vil gjerne hilse på en annen and. Husk tuta!'),
   other('taxi','🚕','Taxien',taxiReady(),'Du besøkte KIWI, Ludvig, Dalgård ishall, Rema 1000 og barnehagen.',`Hint: Besøk alle stedene. Du mangler: ${list}.`),
   other('pig','🐷','Grisen',pigUnlocked,'Du fant grisen som gjemte seg bak sofaen.','Hint: Noe rosa gjemmer seg her i huset. Se etter en krøllete hale!'),
-  other('hover','⚡','Svevebilen',hoverReady(),'Du låste opp alt sammen! Der vi skal, trenger vi ikke veier.','Hint: Lås opp alt det andre på pallen først. Da skjer det noe fra fremtiden!')];
+  other('hover','⚡','Svevebilen',hoverReady(),'Du låste opp alt sammen! Der vi skal, trenger vi ikke veier.','Hint: Lås opp alt det andre på pallen først, så nær som én. Da skjer det noe fra fremtiden!'),
+  other('spider','🕷️','Edderkoppen',spiderUnlocked,'Du kjørte til barnehagen etter at du fikk svevebilen.','Hint: Når bilen kan sveve, kjører du til barnehagen én gang til. Da venter en venn med åtte bein!')];
  return items.map(i=>i.unlocked?i:{...i,icon:'❓',title:'Hemmelig overraskelse'});}
 function goInside(){if(state!=='intro'||!world)return;fx('door');if(!inside)inside=createInside({T,renderer:world.renderer,canvas:$('world'),on:bedEvent});state='inside';ui.welcome.hidden=true;$('goInside').hidden=true;$('hornHome').hidden=true;$('insideHud').hidden=false;$('unlockInfo').hidden=true;
  const first=!beenInside;beenInside=true;saveProgress();applyRewards();inside.enter(podiumItems(),{pigHidden:!pigUnlocked});
  say(first?'Velkommen inn, Sofia! På pallen står alle overraskelsene dine. Trykk på dem!':'Velkommen hjem igjen, Sofia!');}
 function goOutside(){if(state==='inside'){fx('door');reset();}}
+// The spider (11 November 2026): comes at an arrival at the kindergarten once the hover car is unlocked and announced (finish()), as the ride to choose on the start card.
+function unlockSpider(){spiderUnlocked=true;switchRide('spider');saveProgress();applyRewards();showRewards();}
+function findSpider(){if(spiderUnlocked)return;unlockSpider();fx('reward');toast('🕷️ En edderkopp! Nå kan du ri på en edderkopp');say('Se! En stor, snill edderkopp! Nå kan du ri på den. Du velger den på startskjermen.');} // the debug key (X) in the house; the real unlock is in finish()
 // The pig that hides behind the sofa: finding it (a tap on it) unlocks the pig as something to drive as, easy for a five-year-old.
 function findPig(){if(pigUnlocked)return;pigUnlocked=true;switchRide('pig');saveProgress();applyRewards();showRewards();inside?.refresh(podiumItems(),{pigHidden:false});
  const x=newUnlocks();fx('reward');toast('🐷 Du fant grisen! Nå kan du kjøre som en gris'+x.toast);say('Nøff nøff! Du fant grisen som gjemte seg! Nå kan du kjøre som en gris. Du velger hva du kjører som på startskjermen.'+x.say);}
@@ -355,16 +361,17 @@ function debugPodium(delta){
  if(delta>0){const next=items.find(i=>!i.unlocked);if(!next){toast('🛠 Alt er låst opp');return;}
   if(ids.indexOf(next.id)<LAST_REWARD){debugArrivals(1);return;}
   if(next.id==='taxi'){for(const visit of [!ishallVisited&&parkAtIshall,!remaVisited&&parkAtRema])if(visit)visit();return;} // the last visit completes the taxi
-  ({kiwi:parkAtKiwi,ludvig:parkAtLudvig,duckRunner:duckHeard,pig:findPig})[next.id]?.();return;}
+  ({kiwi:parkAtKiwi,ludvig:parkAtLudvig,duckRunner:duckHeard,pig:findPig,spider:findSpider})[next.id]?.();return;}
  const last=[...items].reverse().find(i=>i.unlocked);if(!last){toast('🛠 Alt er låst');return;}
  if(ids.indexOf(last.id)<LAST_REWARD){debugArrivals(-1);return;}
  lockSecret(last);}
 function lockSecret({id,title}){
+ if(id==='spider'){spiderUnlocked=false;if(model==='spider')switchRide('car');}else
  if(id==='kiwi'){kiwiUnlocked=false;if(carColour==='kiwi')carColour='#14171c';}
  else if(id==='ludvig'){ludvigUnlocked=false;if(behind==='ludvig')behind='trail';}
  else if(id==='duckRunner'){duckUnlocked=false;ducklingOn=false;if(behind==='duck')behind='trail';}
  else if(id==='taxi'){ishallVisited=remaVisited=false;}
- else pigUnlocked=false; // the pig, or the hover car that goes with it
+ else pigUnlocked=false; // the pig, or the hover car that goes with it (the spider is above, and goes first)
  if(!taxiReady())taxiSeen=false;if(!hoverReady())hoverSeen=false; // announced again when it is unlocked again
  if(!rideOK(model))switchRide('car');
  saveProgress();applyRewards();showRewards();toast('🛠 '+(id==='hover'?'Grisen og svevebilen':title)+': låst igjen');}
@@ -439,8 +446,9 @@ function debugArrivals(delta){const before=arrivals;arrivals=Math.max(0,arrivals
 // Every ride comes in its own colour (4 November 2026): switching to another ride, with its button or because a new one is unlocked (or locked again with the
 // debug keys), always paints it that colour. Another colour, KIWI or the rainbow can then be picked, until the next switch. The taxi is yellow, the pig pink,
 // the duck its dark grey, the fire engine red, and the car and every other ride black, the first swatch, which the car has always started in.
-const rideColour=m=>({taxi:TAXI_YELLOW,pig:PIG_PINK,duck:DUCK_PLUMAGE,firetruck:'#c62828'})[m]||'#14171c';
+const rideColour=m=>({taxi:TAXI_YELLOW,pig:PIG_PINK,spider:SPIDER_PURPLE,duck:DUCK_PLUMAGE,firetruck:'#c62828'})[m]||'#14171c';
 function switchRide(m){if(!m||m===model)return;model=m;carColour=rideColour(m);}
+const SPIDER_PURPLE='#7b4cc2'; // the "Lilla" swatch; the same value as SPIDER_PURPLE in spider.js (kept here so the test harnesses, which strip game.js's imports, still have it)
 const TAXI_YELLOW='#f3c531',PIG_PINK='#ec6aa8',DUCK_PLUMAGE='#9a9186'; // the "Gul", "Rosa" and "Grå" swatches: choosing the taxi paints the car yellow, finding or choosing the pig paints it pink, choosing the duck gives it the small duck's dark grey, the "Grå" swatch (11 October 2026), and the colour can still be changed
 function newUnlocks(){let t='',s='',taxi=false,hover=false;
  if(taxiReady()&&!taxiSeen){taxiSeen=taxi=true;switchRide('taxi');t+=' · 🚕 Taxi låst opp!';s+=' Og du har besøkt alle stedene! Nå kan du kjøre taxi!';}
@@ -494,7 +502,7 @@ $('duckRunner').onchange=e=>{fx('pick');behind=e.target.checked?'duck':behind===
 $('bubbles').onchange=e=>{fx('pick');behind=e.target.checked?'bubbles':behind==='bubbles'?'none':behind;saveProgress();applyRewards();showRewards();};
 $('hover').onchange=e=>{fx('pick');hoverOn=e.target.checked;saveProgress();applyRewards();showRewards();};
 // The horn (the reward for the fourth trip): the button on the drive screen, or H. What you drive as says its own sound, and hops.
-const HONK={car:'Tut tut!',cat:'Mjau!',dog:'Voff voff!',duck:'Kvakk kvakk!',rocket:'Sjuuuuu!',unicorn:'Ihihihi!',firetruck:'Ba-bu, ba-bu!',balloon:'Fffff!',trex:'RAAAAWR!',taxi:'Tut tut! Taxi!',pig:'Nøff nøff!'};
+const HONK={car:'Tut tut!',cat:'Mjau!',dog:'Voff voff!',duck:'Kvakk kvakk!',rocket:'Sjuuuuu!',unicorn:'Ihihihi!',firetruck:'Ba-bu, ba-bu!',balloon:'Fffff!',trex:'RAAAAWR!',taxi:'Tut tut! Taxi!',pig:'Nøff nøff!',spider:'Krible, krable!'}; // the spider has no recording (music.horn('spider') is false), so the voice says it
 // The horn plays the ride's own sound (a real recording, music.js HORNS); while it is not loaded yet, the voice says it (HONK).
 function honk(){if(arrivals<HORN_AT||state==='inside')return; // also on the start screen (7 October 2026), to try each ride's horn while choosing
  world?.honk?.();const ride=rideOK(model)?model:'car';if(sound&&!music.horn?.(ride==='taxi'?'car':ride))say(HONK[ride]);if(ride==='duck')honkAtDuck();} // the taxi honks like the car (no recording of its own); the pig grunts (horn-pig.mp3), and the voice says "Nøff nøff!" only while that is not loaded

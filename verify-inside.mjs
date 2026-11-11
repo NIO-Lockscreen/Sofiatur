@@ -7,7 +7,7 @@ const canvas={clientWidth:1024,clientHeight:768,getBoundingClientRect(){return {
 let draws=0;const renderer={render(scene,camera){assert.ok(scene&&camera);draws++;}};
 const inside=createInside({T,renderer,canvas});
 const IDS=STEPS.flatMap(s=>s.ids);
-assert.equal(IDS.length,19);assert.deepEqual([...STEPS.map(s=>s.ids.length)],[7,6,6],'seven on the low step, six on each of the others');
+assert.equal(IDS.length,20);assert.deepEqual([...STEPS.map(s=>s.ids.length)],[7,6,7],'seven on the low and the back step, six on the middle one');
 const list=(unlocked=()=>false)=>IDS.map(id=>({id,icon:id==='colour'?'🎨':'🔹',title:id,text:'',unlocked:unlocked(id)}));
 const count=o=>{let n=0;o.traverse(m=>{if(m.isMesh)n++;});return n;};
 const slot=id=>inside.slots.find(s=>s.id===id);
@@ -16,8 +16,8 @@ const screen=(v,w=canvas.clientWidth,h=canvas.clientHeight)=>{const p=project(v)
 
 // Nineteen hit boxes: invisible (neither renderer draws them), one a place, in the order of the table.
 inside.enter(list(),{pigHidden:true});
-assert.equal(inside.hitBoxes.length,19);assert.deepEqual(inside.hitBoxes.map(h=>h.userData.id),IDS);assert.ok(inside.hitBoxes.every(h=>h.visible===false&&h.userData.kind==='item'&&h.geometry.parameters.width>1&&h.geometry.parameters.height>1));
-assert.equal(new Set(inside.hitBoxes.map(h=>h.uuid)).size,19);
+assert.equal(inside.hitBoxes.length,20);assert.deepEqual(inside.hitBoxes.map(h=>h.userData.id),IDS);assert.ok(inside.hitBoxes.every(h=>h.visible===false&&h.userData.kind==='item'&&h.geometry.parameters.width>1&&h.geometry.parameters.height>1));
+assert.equal(new Set(inside.hitBoxes.map(h=>h.uuid)).size,20);
 // Locked: a grey medallion with a question mark, never the model; unlocked: the model (or a medallion where there is none).
 assert.ok(inside.slots.every(s=>s.content.locked===true&&count(s.holder)<=3),'all locked: only medallions');
 inside.refresh(list(id=>['cat','colour','taxi','trex'].includes(id)),{pigHidden:true});
@@ -28,10 +28,10 @@ const box=id=>{const b=new T.Box3();slot(id).holder.updateWorldMatrix(true,true)
 for(const id of ['cat','taxi','trex']){const d=box(id);assert.ok(Math.max(d.x,d.y,d.z)<1.25&&Math.max(d.x,d.y,d.z)>.6,id+' fitted to about a metre ('+Math.max(d.x,d.y,d.z).toFixed(2)+')');}
 inside.refresh(list(),{pigHidden:true});assert.ok(slot('cat').content.locked===true&&count(slot('cat').holder)<=3,'locked again: the model is gone');
 inside.refresh(list(()=>true),{pigHidden:true});
-const models=IDS.filter(id=>!['colour','trail','bubbles','horn','hover'].includes(id));assert.equal(models.length,14);
+const models=IDS.filter(id=>!['colour','trail','bubbles','horn','hover'].includes(id));assert.equal(models.length,15);
 for(const id of models)assert.ok(count(slot(id).holder)>12,id+' has a mini model ('+count(slot(id).holder)+' parts)');
 for(const id of ['colour','trail','bubbles','horn','hover'])assert.ok(count(slot(id).holder)<=3&&slot(id).content.medal,id+' is a medallion');
-console.log('Inside: 19 invisible hit boxes, question marks where locked, mini models and medallions where unlocked, fitted to a metre: OK');
+console.log('Inside: 20 invisible hit boxes, question marks where locked, mini models and medallions where unlocked, fitted to a metre: OK');
 
 // Taps: the centre of every place picks it (landscape and portrait), the whole podium is on the screen.
 for(const [w,h] of [[1024,768],[768,1024],[820,1180],[390,844],[844,390]]){
@@ -41,7 +41,7 @@ for(const [w,h] of [[1024,768],[768,1024],[820,1180],[390,844],[844,390]]){
  // the room's front corners and its wall tops show too
  for(const c of [[-4.5,0,3],[4.5,0,3],[-4.5,3.6,-3.5],[4.5,3.6,-3.5]]){const p=project(new T.Vector3(...c));assert.ok(Math.abs(p.x)<1&&Math.abs(p.y)<1,'the room fits at '+w+'×'+h+': '+c);}}
 canvas.clientWidth=1024;canvas.clientHeight=768;inside.enter(list(),{pigHidden:true});
-console.log('Inside: a tap at the middle of each of the 19 places picks it, at five screen sizes, the whole room in view: OK');
+console.log('Inside: a tap at the middle of each of the 20 places picks it, at five screen sizes, the whole room in view: OK');
 
 // The pig hides behind the sofa: its rump is a tap on the pig; walls, the podium and the sofa pick nothing; the door leads out; the floor walks the girl.
 {const rump=new T.Vector3();inside.pig.group.getWorldPosition(rump);rump.add(new T.Vector3(0,.3,.25));const [x,y]=screen(rump);assert.deepEqual({...inside.pick(x,y)},{type:'pig'},'the pig while it hides');

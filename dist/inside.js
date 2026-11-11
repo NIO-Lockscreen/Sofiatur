@@ -1,5 +1,5 @@
 // Inside the house (5 October 2026): the "Gå inn" button on the start screen opens a cosy room, drawn with the world's renderer (game.js hands it over, so the
-// WebGL renderer and the software one both work). A podium, "pallen", against the back wall has a place for each of the 19 unlocks: a little turning model of the real
+// WebGL renderer and the software one both work). A podium, "pallen", against the back wall has a place for each of the 20 unlocks: a little turning model of the real
 // one, a medallion with its emoji where it has no model, a grey "?" where it is still locked. Tapping a place is picked here (pick) and told to game.js, which says how
 // it was unlocked or gives a hint; the girl (girl.js) walks to where you tap, and a pig hides behind the sofa until it is tapped (game.js findPig).
 // A separate scene and camera, lit by a hemisphere light and one warm light, no shadows. Solid colours only: the software renderer skips see-through things and ignores lights.
@@ -14,12 +14,13 @@ import {createDog,createRideDuck,createRocket,createUnicorn,createFireTruck,crea
 import {createBoyModel} from './boy.js';
 import {createDuckRunnerModel} from './duck-runner.js';
 import {createDream} from './dream.js';
+import {createSpider,SPIDER_PURPLE} from './spider.js';
 
 // The three steps of the podium, from the front (low) to the back (high): item ids in order, the height of the step's top, its middle z and its width. 1 m is a slot.
-export const STEPS=[{ids:['colour','cat','trail','horn','dog','duck','rocket'],top:.35,z:-.5,w:8.6},{ids:['unicorn','bubbles','firetruck','rainbow','balloon','trex'],top:.7,z:-1.7,w:7.4},{ids:['kiwi','ludvig','duckRunner','taxi','pig','hover'],top:1.05,z:-2.9,w:7.4}];
+export const STEPS=[{ids:['colour','cat','trail','horn','dog','duck','rocket'],top:.35,z:-.5,w:8.6},{ids:['unicorn','bubbles','firetruck','rainbow','balloon','trex'],top:.7,z:-1.7,w:7.4},{ids:['kiwi','ludvig','duckRunner','taxi','pig','hover','spider'],top:1.05,z:-2.9,w:8.6}];
 const SLOT=1.2,TARGET=1,ROOM={x:4.5,front:3,back:-3.5,height:3.6}; // slot spacing; the size a model is fitted to (m); the room's half width, front and back edges, wall height
 // What each model is dressed in on the podium (the colour its ride would take; the cars and the rainbow have their own; the pig is always pig-pink).
-const PAINT={pig:PIG_SKIN,cat:'#e07b39',dog:'#b9824a',duck:'#8a7a68',rocket:'#d94a4a',unicorn:'#f4efff',firetruck:'#c62828',balloon:'#e5528f',trex:'#4caf50'};
+const PAINT={pig:PIG_SKIN,cat:'#e07b39',dog:'#b9824a',duck:'#8a7a68',rocket:'#d94a4a',unicorn:'#f4efff',firetruck:'#c62828',balloon:'#e5528f',trex:'#4caf50',spider:SPIDER_PURPLE};
 const RIM={colour:'#ff6b6b',trail:'#5ccf66',bubbles:'#41a7f4',horn:'#ffc83d',hover:'#8b6cf0'}; // a medallion's rim
 const HIDE={x:-4.2,z:2.65},OUT={x:.95,z:1.95,yaw:Math.PI-.5}; // the pig behind the sofa, and on the rug once found
 // The sofa bed: where she takes hold of the seat, facing the sofa, and where she stands once she has pulled it out (PULL m); how she lies (her feet towards the open front, her head on the pillow at the back, propped up
@@ -30,7 +31,7 @@ const GRAB={x:-2.82,z:1.55,yaw:Math.PI/2},SIDE={x:-2.47,z:1.55},PULL=.35,LIE={x:
 // pressing the cushions down for its first part and in the air for the rest, and hops down again to where she pulled the bed out.
 const JUMP={x:-3.38,y:.65,z:1.5,yaw:Math.atan2(-.42,-1),climb:.55,period:.64,press:.22,heights:[.42,.52,.62,.52,.66,.82,.45],spin:5,down:.5};
 JUMP.off=JUMP.climb+JUMP.heights.length*JUMP.period;JUMP.end=JUMP.off+JUMP.down;
-const MODELS=new Set(['cat','dog','duck','rocket','unicorn','firetruck','rainbow','balloon','trex','kiwi','ludvig','duckRunner','taxi','pig']); // the podium's places with a model of their own
+const MODELS=new Set(['cat','dog','duck','rocket','unicorn','firetruck','rainbow','balloon','trex','kiwi','ludvig','duckRunner','taxi','pig','spider']); // the podium's places with a model of their own
 const ease=k=>k*k*(3-2*k);
 
 export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): game.js hears the jump's moments ('boing', 'spin', 'down', 'done') for the sounds and the words
@@ -90,7 +91,7 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
  const door=box(.08,2.1,1.05,std('#9a6a42'),4.45,1.05,1.5,scene,'door'); // tapping it leads out
  {const trim=std('#fffaf0');box(.1,2.2,.07,trim,4.45,1.1,.94);box(.1,2.2,.07,trim,4.45,1.1,2.06);box(.1,.08,1.2,trim,4.45,2.18,1.5);ball(.05,gold,4.38,1.05,1.95);box(.7,.03,.5,std('#b5654a'),3.95,.015,1.5);
   for(const z of [1.2,1.8])box(.02,.7,.34,std('#8a5a3a'),4.4,1.6,z);}
- // ---- The podium: three white steps with gold edges; a round pedestal, a place and an invisible hit box for each of the 19 unlocks ----
+ // ---- The podium: three white steps with gold edges; a round pedestal, a place and an invisible hit box for each of the 20 unlocks ----
  const slots=[];
  for(const step of STEPS){box(step.w,step.top,1.2,white,0,step.top/2,step.z,scene,'block');box(step.w+.06,.05,.07,gold,0,step.top-.02,step.z+.6);box(step.w+.06,.05,.07,gold,0,step.top-.02,step.z-.6);
   step.ids.forEach((id,j)=>{const x=(j-(step.ids.length-1)/2)*SLOT,base=step.top;cyl(.4,.46,.2,cream,x,base+.1,step.z);cyl(.42,.42,.02,gold,x,base+.21,step.z);
@@ -104,7 +105,7 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
  function fitted(model,tick){const spin=new T.Group();spin.add(model.group);const b=visibleBox(model.group),size=b.getSize(new T.Vector3()),c=b.getCenter(new T.Vector3()),k=TARGET/Math.max(size.x,size.y,size.z);
   model.group.position.set(-c.x,-b.min.y,-c.z);spin.scale.setScalar(k);const holder=new T.Group();holder.add(spin);return {group:holder,spin,tick};}
  function build(id){const red=new T.Color(PAINT[id]||'#d93a3a');
-  const rides={cat:createCat,dog:createDog,duck:createRideDuck,rocket:createRocket,unicorn:createUnicorn,firetruck:createFireTruck,balloon:createBalloon,trex:createTRex,pig:createPig};
+  const rides={cat:createCat,dog:createDog,duck:createRideDuck,rocket:createRocket,unicorn:createUnicorn,firetruck:createFireTruck,balloon:createBalloon,trex:createTRex,pig:createPig,spider:(T)=>createSpider(T)}; // the spider without a rider: Sofia walks about in the room herself
   if(rides[id]){const m=rides[id](T);m.update(0,0,0,red);return fitted(m,(dt,time)=>m.update(dt,0,time,red));}
   if(id==='ludvig'){const m=createBoyModel(T);return fitted(m,(dt,time)=>m.update(dt,0,time));}
   if(id==='duckRunner'){const m=createDuckRunnerModel(T);return fitted(m,(dt,time)=>m.update(dt,0,time));}
