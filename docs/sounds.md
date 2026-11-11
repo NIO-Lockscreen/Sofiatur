@@ -42,3 +42,16 @@ change and share, no attribution required; credited here all the same). Each lic
 - **In the game** (`music.js`, `HORNS`; the taxi plays the car's): loaded and decoded with Web Audio from the start button's tap (iOS starts audio only after a gesture), played one
   at a time straight to the speakers, not through the music. While a clip is not loaded yet (or if it fails to load) the voice says the word as
   before. The sound button switches the horn off with everything else.
+
+## Game sound effects (synthesized)
+
+Besides the horns, the game has a few short sounds that are **generated with Web Audio in `dist/music.js`** (`music.effect(name)`): no recordings, no downloads and no licences are involved. They are soft sine tones (the chord of the fanfare is triangle) in F major, like the music, and go straight to the speakers; the game decides whether sound is on.
+
+- `tap`: a road arrow was tapped at a junction. Two quick notes, C6 then F6, 0.13 s in all. Heard many times a trip, so it is gentle.
+- `pick`: a colour, ride or toggle was picked on the start card. One very short, soft blip (A5, 0.09 s), softer than `tap`.
+- `door`: going into or out of the house. A soft "ding-dong", A5 then F5, 0.7 s.
+- `reward`: a secret was unlocked. Three rising chime notes (C6, F6, A6) and a small sparkle (C7, F7, A7), 0.85 s.
+- `fanfare`: arrival at the kindergarten, 2.2 s. Three star notes (F5, A5, C6) at 0.15, 0.45 and 0.75 s, matching the three stars popping in on the finish card, then at 1.05 s a quick F-A-C-F run into a held F major chord with a sparkle on top.
+- `lullaby`, `sparkle`, `pop` and `boing` are the older bedtime and sofa sounds.
+
+Unknown names do nothing. Tested without a browser in `verify-sounds.mjs`.

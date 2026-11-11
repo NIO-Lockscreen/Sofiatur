@@ -22,10 +22,12 @@ export function createMusic({fetch=globalThis.fetch,horns:files=HORNS}={}){
   const reverb=ctx.createConvolver(),length=Math.floor(ctx.sampleRate*2.8),impulse=ctx.createBuffer(2,length,ctx.sampleRate);
   for(let c=0;c<2;c++){const d=impulse.getChannelData(c);for(let i=0;i<length;i++)d[i]=(Math.random()*2-1)*(1-i/length)**3;}
   reverb.buffer=impulse;wet=ctx.createGain();wet.gain.value=.45;wet.connect(reverb).connect(master);
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)ctx.suspend();else if(wanted)ctx.resume();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)hush();else if(wanted)wake();});
   // iOS can interrupt audio (calls, other apps); the next touch resumes it.
-  document.addEventListener('pointerdown',()=>{if(wanted&&ctx.state!=='running')ctx.resume();});
+  document.addEventListener('pointerdown',()=>{if(wanted&&ctx.state!=='running')wake();});
  }
+ // resume() returns a promise (undefined in old Safari) that may reject, e.g. with no gesture yet; swallow that so it is never an unhandled rejection (11 November 2026).
+ const wake=()=>{try{ctx.resume()?.catch?.(()=>{});}catch{}},hush=()=>{try{ctx.suspend()?.catch?.(()=>{});}catch{}};
  function tone(freq,start,length,peak,{type='sine',attack=.02,release=1.2,cutoff=0,echo=0}={}){
   const osc=ctx.createOscillator(),env=ctx.createGain();osc.type=type;osc.frequency.value=freq;
   env.gain.setValueAtTime(0,start);env.gain.linearRampToValueAtTime(peak,start+attack);env.gain.setTargetAtTime(0,start+length,release/4);
@@ -51,27 +53,38 @@ export function createMusic({fetch=globalThis.fetch,horns:files=HORNS}={}){
  // The horns: loaded (fetched and decoded) when first wanted, from a tap (iOS only starts audio after a gesture); played straight to the speakers, past
  // the music's filter, one at a time. horn(name) is false while that clip is not loaded (yet), or failed to load: the game then says the word.
  const horns=new Map();let hornOut=null,hornSource=null;
- function hornContext(){if(!ctx)setup();if(ctx.state!=='running')ctx.resume();if(!hornOut){hornOut=ctx.createGain();hornOut.gain.value=.9;hornOut.connect(ctx.destination);}return ctx;}
- function loadHorn(name){if(horns.has(name)||!files[name])return;horns.set(name,null);
-  fetch(files[name]).then(r=>{if(!r.ok)throw new Error(r.status);return r.arrayBuffer();}).then(data=>new Promise((ok,no)=>ctx.decodeAudioData(data,ok,no))).then(b=>horns.set(name,b),()=>horns.set(name,false));}
+ function hornContext(){if(!ctx)setup();if(ctx.state!=='running')wake();if(!hornOut){hornOut=ctx.createGain();hornOut.gain.value=.9;hornOut.connect(ctx.destination);}return ctx;}
+ // A failed download or decode is no longer final (11 November 2026): a later press (or preloadHorns) tries again, at most once every RETRY ms (so a missing file is not
+ // fetched on every press) and never with two requests in flight for one clip (null = in flight). horn() stays false until the clip is loaded, so the voice still says the word.
+ const failedAt=new Map(),RETRY=5000;
+ function loadHorn(name){const v=horns.get(name);if(!files[name]||v===null||v||(v===false&&Date.now()-failedAt.get(name)<RETRY))return;horns.set(name,null);
+  fetch(files[name]).then(r=>{if(!r.ok)throw new Error(r.status);return r.arrayBuffer();}).then(data=>new Promise((ok,no)=>ctx.decodeAudioData(data,ok,no))).then(b=>horns.set(name,b),()=>{failedAt.set(name,Date.now());horns.set(name,false);});}
  // Little sounds for bedtime in the house (4 November 2026, as in Sofia's space game): a lullaby when she goes to bed (the start of Brahms' Wiegenlied, in F like
  // the music), a sparkle when she wakes up or a comet is caught, and a pop for a tap on something in the dream. Sine tones straight to the speakers, like the horns.
  // A boing (9 November 2026) each time she lands jumping on the sofa bed.
  let fxOut=null;
- function fx(freq,delay,length,peak,to=freq){const t=ctx.currentTime+delay,o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.setValueAtTime(freq,t);if(to!==freq)o.frequency.exponentialRampToValueAtTime(to,t+length);
-  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+.015);g.gain.exponentialRampToValueAtTime(.0001,t+length);o.connect(g).connect(fxOut);o.start(t);o.stop(t+length+.05);}
+ function fx(freq,delay,length,peak,to=freq,type='sine',attack=.015){const t=ctx.currentTime+delay,o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);if(to!==freq)o.frequency.exponentialRampToValueAtTime(to,t+length);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+attack);g.gain.exponentialRampToValueAtTime(.0001,t+length);o.connect(g).connect(fxOut);o.start(t);o.stop(t+length+.05);}
  const LULLABY=[[440,0],[440,.36],[523.25,.72],[440,1.3],[440,1.66],[523.25,2.02],[440,2.6],[523.25,2.96],[698.46,3.32],[659.26,3.9],[587.33,4.26],[587.33,4.62],[523.25,4.98]];
+ // Game sounds (11 November 2026), synthesized like the rest, all in F major, soft sine/triangle: tap (road arrow: C6 F6), pick (start card: a faint blip), door (ding-dong A5 F5),
+ // reward (a secret: C6 F6 A6 and a sparkle) and fanfare (arrival: three star notes at .15/.45/.75 s, then an F-A-C-F run into an F chord with sparkle). Each entry is [freq,delay,length,peak,type].
+ const sound=(f,d,l,p,type='sine')=>{fx(f,d,l,p,f,type,.01);if(type==='sine'&&p>.03)fx(f*2,d,l*.7,.012,f*2,'sine',.01);};
+ const SOUNDS={tap:[[1046.5,0,.07,.06],[1396.9,.06,.07,.06]],pick:[[880,0,.09,.04]],door:[[880,0,.3,.06],[698.46,.3,.4,.06]],
+  reward:[[1046.5,0,.35,.05],[1396.9,.14,.35,.05],[1760,.28,.35,.05],[2093,.45,.25,.02],[2793.8,.52,.25,.02],[3520,.59,.25,.02]],
+  fanfare:[[698.46,.15,.5,.05],[880,.45,.5,.05],[1046.5,.75,.5,.05],[698.46,1.05,.18,.045],[880,1.11,.18,.045],[1046.5,1.17,.18,.045],[1396.9,1.23,.18,.045],
+   [349.23,1.29,.88,.035,'triangle'],[440,1.29,.88,.035,'triangle'],[523.25,1.29,.88,.035,'triangle'],[698.46,1.29,.88,.035,'triangle'],[1760,1.35,.2,.02],[2093,1.41,.2,.02],[2793.8,1.47,.2,.02]]};
  return {
   effect(name){hornContext();if(!fxOut){fxOut=ctx.createGain();fxOut.gain.value=.9;fxOut.connect(ctx.destination);}
    if(name==='lullaby')LULLABY.forEach(([f,d],i)=>{fx(f,d,i===12?1.2:.62,.05);fx(f*2,d,.4,.012);});
    else if(name==='sparkle')[1319,1568,2093].forEach((f,i)=>fx(f,i*.05,.16,.05));
    else if(name==='pop')fx(520,0,.09,.08,1150);
-   else if(name==='boing')fx(210,0,.42,.07,640);},
+   else if(name==='boing')fx(210,0,.42,.07,640);
+   else if(Array.isArray(SOUNDS[name]))for(const [f,d,l,p,t] of SOUNDS[name])sound(f,d,l,p,t);},
   preloadHorns(){hornContext();for(const name in files)loadHorn(name);},
   horn(name){hornContext();const b=horns.get(name);if(!b){loadHorn(name);return false;}try{hornSource?.stop();}catch{}const s=ctx.createBufferSource();s.buffer=b;s.connect(hornOut);s.start();hornSource=s;return true;},
   // Call from a tap or click: browsers only start audio after a user gesture.
-  play(){wanted=true;if(!ctx)setup();ctx.resume();fade(level,2.5);if(!timer){nextBar=Math.max(nextBar,ctx.currentTime+.1);tick();timer=setInterval(tick,300);}},
-  stop(){if(!ctx||!wanted)return;wanted=false;fade(0,1);clearInterval(timer);timer=null;setTimeout(()=>{if(!wanted)ctx.suspend();},1200);},
+  play(){wanted=true;if(!ctx)setup();wake();fade(level,2.5);if(!timer){nextBar=Math.max(nextBar,ctx.currentTime+.1);tick();timer=setInterval(tick,300);}},
+  stop(){if(!ctx||!wanted)return;wanted=false;fade(0,1);clearInterval(timer);timer=null;setTimeout(()=>{if(!wanted)hush();},1200);},
   // Lower the music while the voice speaks.
   duck(on){if(ctx&&wanted)fade(on?level*.35:level,on?.25:1.2);}
  };
