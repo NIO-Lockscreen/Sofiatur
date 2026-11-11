@@ -6,6 +6,7 @@ import {createET5} from './car-model.js';
 import {createCat} from './cat-model.js';
 import {createDog,createRideDuck,createRocket,createUnicorn,createFireTruck,createBalloon,createTRex,createPig} from './rides.js';
 import {createGirlModel} from './girl.js';
+import {createSpider} from './spider.js';
 import {createBubbles} from './bubbles.js';
 import {createDuck} from './duck.js';
 import {createLakes,inRing} from './lakes.js';
@@ -177,7 +178,7 @@ const wallBase=new Map(); // Wall base and height per footprint, for details add
  // The dog, the duck and the rocket (rides.js, the rewards for the fifth, sixth and seventh trip) ride in it the same way: model 'dog', 'duck' or 'rocket'.
  // The taxi (5 October 2026) is the car's bodywork with the taxi group on top; the KIWI logos, the taxi group and the hover glow follow rules of their own (showModel).
  const bodywork=[...car.children],skinParts=new Set([...Object.values(skins).flat(),taxi,glow]),logos=Object.fromEntries(Object.entries(skins).map(([k,list])=>[k,list[0].material]));
- const rides={cat:createCat(T,{logos}),dog:createDog(T,{logos}),duck:createRideDuck(T,{logos}),rocket:createRocket(T,{logos}),unicorn:createUnicorn(T,{logos}),firetruck:createFireTruck(T,{logos}),balloon:createBalloon(T,{logos}),trex:createTRex(T,{logos}),pig:createPig(T,{logos})};
+ const rides={cat:createCat(T,{logos}),dog:createDog(T,{logos}),duck:createRideDuck(T,{logos}),rocket:createRocket(T,{logos}),unicorn:createUnicorn(T,{logos}),firetruck:createFireTruck(T,{logos}),balloon:createBalloon(T,{logos}),trex:createTRex(T,{logos}),pig:createPig(T,{logos}),spider:createSpider(T,{logos,rider:createGirlModel(T)})}; // the spider (11 November 2026) always has Sofia on its saddle
  for(const r of Object.values(rides)){r.group.visible=false;car.add(r.group);}
  // An easter egg (5 October 2026): once Sofia has been inside the house, a small girl with brown hair rides in the hot-air balloon's basket (no announcement, not an unlock).
  const balloonGirl=createGirlModel(T);balloonGirl.group.scale.setScalar(1.75);balloonGirl.group.position.x=.5;balloonGirl.group.visible=false;rides.balloon.seat.add(balloonGirl.group);

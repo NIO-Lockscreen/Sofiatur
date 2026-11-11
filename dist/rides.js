@@ -6,7 +6,7 @@ import {hoverGlow} from './car-model.js';
 
 // A logo bent onto an ellipsoid body (centre cy, cz, radii rx, ry, rz), 2 cm off it, one on each flank: tail to head on the right,
 // head to tail on the left, as on the car's doors.
-function flankLogos(T,body,logos,{cy,cz,rx,ry,rz,w,h,y=cy,z=cz}){
+export function flankLogos(T,body,logos,{cy,cz,rx,ry,rz,w,h,y=cy,z=cz}){ // exported for the spider (spider.js)
  const skins={};
  for(const [name,material] of Object.entries(logos))skins[name]=[-1,1].map(s=>{const g=new T.PlaneGeometry(w,h,16,4),p=g.attributes.position;
   for(let i=0;i<p.count;i++){const yy=y+p.getY(i),zz=z-s*p.getX(i),e=1-((yy-cy)/ry)**2-((zz-cz)/rz)**2;p.setXYZ(i,s*(rx*Math.sqrt(Math.max(0,e))+.02),yy,zz);}
