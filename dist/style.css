@@ -194,3 +194,10 @@ header{top:var(--st);left:max(14px,env(safe-area-inset-left));right:max(14px,env
 }
 @media(max-width:700px){#turnHint{width:max-content;max-width:calc(100% - 28px);text-align:center}}
 @media(max-width:700px){body.arrived #horn{top:calc(var(--st) + 56px);bottom:auto}}
+/* Trip progress track in the header pill, so a child who cannot read "740 m igjen" can see the car travel (11 November 2026). It lies in the pill's own bottom padding,
+   so the pill and the header keep their size when it appears, and the marker stays inside the track's ends (the insets are half the marker). */
+.destination{position:relative}
+.trip-track{display:block;position:absolute;left:28px;right:28px;bottom:4px;height:4px;border-radius:2px;background:#e4ede0}
+.trip-track i{display:block;position:relative;height:100%;width:0;border-radius:2px;background:#f5c656;transition:width .3s linear}
+.trip-track i::after{content:"";position:absolute;right:-5px;top:50%;width:9px;height:9px;margin-top:-4.5px;border-radius:50%;background:#174e48;box-shadow:0 0 0 1.5px #fff}
+@media(max-width:1000px){.trip-track{left:22px;right:22px;bottom:3px}}
