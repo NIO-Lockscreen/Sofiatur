@@ -49,7 +49,7 @@ export function fitPath(points,halfWidth,index){
 // The island in the middle of a roundabout is one more such segment, a point with the island's diameter as its width.
 export function indexStreetDetails({paths,central},index){for(const [a,b,w] of [...paths,...central.map(c=>[c.p,c.p,2*c.rad])]){const len=Math.hypot(b[0]-a[0],b[1]-a[1]),seg=[a,b,w-5];for(let d=0;d<=len;d+=15){const t=len?d/len:0;index(a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,{road:seg});}index(b[0],b[1],{road:seg});}}
 
-export function addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,box,ribbon,groundPoly,segments,ground=height}){
+export function addStreetDetails({T,scene,data,height,roadTop,bucket,quad,tri,box,ribbon,groundPoly,segments,ground=height,surfaceAt=()=>null,lakeAt=()=>null,groundColour=null,turning=[]}){
  const S=data.street,out={paths:[],lamps:[],bars:[],islands:[],turning:[],central:[],signs:0};if(!S)return out;
  const roads=new Map(data.roads.map(r=>[String(r.id),r])),widthOf=id=>roadWidth(roads.get(id)||{type:'residential'});
  const segs=segments||streetSegments(data.roads),index=segmentIndex(segs); // the drawn (smoothed) centre lines when world.js passes them
@@ -105,12 +105,55 @@ sign('vikeplikt',x-d[0]*.8+r[0]*(w/2+1.2),z-d[1]*.8+r[1]*(w/2+1.2),-d[0],-d[1]);
  }
 
  // ---- Turning circles: a round asphalt area at the end of a cul-de-sac, with a light kerb -------------------------------------
+ // 12 November 2026: the disc used to follow the slope of the ground at the height of the road end. Where the road runs on a bank, as
+ // by Lianvannet (1.8 m over the ground), it floated with an open edge, and where the roads in it rose faster than the ground, their
+ // kerbs showed through it. Now the disc lies in the plane of its roads (fitted to the road surfaces in it, through the road end), is
+ // never below a road or the ground, and where its edge stands over the ground a grass bank runs down at 1:1.5; towards a lake it is
+ // a bank of stones at 1:1.2 with boulders along its top, as at a lakeside turning place.
+ const vtri=(b,p,q,r,cp,cq,cr)=>{if(!b.p)return;let n=b.n; // a colour per corner, straight into the bucket (a test's stand-in bucket gets none)
+ if(n+9>b.p.length){const a=new Float32Array(b.p.length*2),c=new Float32Array(b.p.length*2);a.set(b.p);c.set(b.c);b.p=a;b.c=c;}
+  b.p.set(p,n);b.p.set(q,n+3);b.p.set(r,n+6);b.c.set(cp,n);b.c.set(cq,n+3);b.c.set(cr,n+6);b.n=n+9;};
+ const linear=h=>{const c=new T.Color(h);return [c.r,c.g,c.b];},GRASS_LIN=linear(ROAD_LOOK.island),STONE=[linear('#a39e91'),linear('#857f72')];
+ const jitter=(x,z,k)=>{const n=Math.sin(x*12.9898+z*78.233+k*37.719)*43758.5453;return n-Math.floor(n);};
+ const stoneAt=(x,z,k)=>{const j=jitter(x,z,0);return [0,1,2].map(i=>(STONE[0][i]*(1-j)+STONE[1][i]*j)*k);};
+ const grassAt=(x,z,k)=>{const g=groundColour?groundColour(x,z,[0,0,0]):GRASS_LIN.slice();return [g[0]*k,g[1]*k,g[2]*k];};
+ // a boulder: an icosahedron, flattened and pushed in and out a little
+ const ICO=(()=>{const t=(1+Math.sqrt(5))/2,v=[[-1,t,0],[1,t,0],[-1,-t,0],[1,-t,0],[0,-1,t],[0,1,t],[0,-1,-t],[0,1,-t],[t,0,-1],[t,0,1],[-t,0,-1],[-t,0,1]].map(p=>{const l=Math.hypot(...p);return p.map(c=>c/l);});
+  return {v,f:[[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]]};})();
+ function boulder(b,x,y,z,r){const v=ICO.v.map((p,i)=>{const k=r*(.8+.4*jitter(x+i,z,1));return [x+p[0]*k,y+Math.max(-.35,p[1])*k*.68,z+p[2]*k];});
+  for(const [i,j,k] of ICO.f){const ny=(v[i][1]+v[j][1]+v[k][1])/3-y,shade=.82+.3*Math.max(0,ny/r);vtri(b,v[i],v[j],v[k],stoneAt(x+i,z,shade),stoneAt(x+j,z,shade),stoneAt(x+k,z,shade));}}
  for(const c of S.turning_circles){
-  const [px,pz]=c.p,R=c.rad,y0=roadTop(px,pz),h0=height(px,pz),gravel=['gravel','compacted','unpaved'].includes((roads.get(c.r)||{}).surface);
-  const Y=(x,z,l)=>y0+(height(x,z)-h0)+l,ring=(r,l)=>Array.from({length:24},(_,i)=>{const a=i/24*Math.PI*2,x=px+Math.cos(a)*r,z=pz+Math.sin(a)*r;return [x,Y(x,z,l),z];}),b=bucket(px,pz);
-  const mid=ring(R*.5,.03),edge=ring(R,.03),kerb=ring(R+.7,-.09),colour=gravel?GRAVEL:ROAD;
-  for(let i=0;i<24;i++){const j=(i+1)%24;tri(b,[px,y0+.03,pz],mid[i],mid[j],colour);quad(b,mid[i],mid[j],edge[j],edge[i],colour);quad(b,edge[i],edge[j],kerb[j],kerb[i],ROAD_KERB);}
-  out.turning.push({p:c.p,rad:R});
+  const [px,pz]=c.p,R=c.rad,y0=roadTop(px,pz),gravel=['gravel','compacted','unpaved'].includes((roads.get(c.r)||{}).surface),b=bucket(px,pz);
+  // the plane through the road end that fits the road surfaces within the circle best (least squares on the two slopes)
+  let sxx=0,szz=0,sxz=0,sxh=0,szh=0,n=0;
+  for(let r=1;r<=R+1;r+=.5)for(let i=0;i<48;i++){const a=i/48*Math.PI*2,dx=Math.cos(a)*r,dz=Math.sin(a)*r,h=surfaceAt(px+dx,pz+dz);if(h===null)continue;
+   sxx+=dx*dx;szz+=dz*dz;sxz+=dx*dz;sxh+=dx*(h-y0);szh+=dz*(h-y0);n++;}
+  const det=sxx*szz-sxz*sxz,fit=n>=12&&det>1e-6,shared=turning.find(t=>t.o===c.o),B=shared?shared.B:fit?(sxh*szz-szh*sxz)/det:0,C=shared?shared.C:fit?(szh*sxx-sxh*sxz)/det:0; // the plane road-surface.js keeps the ground under
+  const Y=(x,z)=>{let y=y0+B*(x-px)+C*(z-pz);const s=surfaceAt(x,z);if(s!==null&&s>y)y=s;const g=ground(x,z)+.03;if(g>y)y=g;return y+.04;};
+  const N=48,radii=[.13,.26,.38,.5,.62,.75,.87,1].map(f=>R*f),ring=r=>Array.from({length:N},(_,i)=>{const a=i/N*Math.PI*2,x=px+Math.cos(a)*r,z=pz+Math.sin(a)*r;return [x,Y(x,z),z];});
+  const rings=radii.map(ring),colour=gravel?GRAVEL:ROAD,edge=rings.at(-1);
+  // Smoothed: where the disc rides over a road's crest or kerb it would be a zigzag of facets between its vertices. The rise over the plane is
+  // spread to the neighbours (the largest of each vertex's neighbours, then their mean), which never lowers a vertex; the rim stays as sampled.
+  {const pl=(x,z)=>y0+B*(x-px)+C*(z-pz)+.04,K=rings.length,o=rings.map(r=>r.map(v=>v[1]-pl(v[0],v[2]))),at=(k,i)=>o[Math.max(0,Math.min(K-1,k))][(i+N)%N];
+   const dil=o.map((r,k)=>r.map((_,i)=>{let m=-Infinity;for(let a=-1;a<=1;a++)for(let c=-1;c<=1;c++)m=Math.max(m,at(k+a,i+c));return m;}));
+   for(let k=0;k<K-1;k++)for(let i=0;i<N;i++){let sum=0;for(let a=-1;a<=1;a++)for(let c=-1;c<=1;c++)sum+=dil[Math.max(0,Math.min(K-1,k+a))][(i+c+N)%N];const v=rings[k][i];v[1]=Math.max(v[1],pl(v[0],v[2])+sum/9);}}
+  const kerb=edge.map(([x0,y,z0],i)=>{const a=i/N*Math.PI*2,x=px+Math.cos(a)*(R+.7),z=pz+Math.sin(a)*(R+.7);return [x,Math.max(y-.09,ground(x,z)+.02),z];});
+  for(let i=0;i<N;i++){const j=(i+1)%N;tri(b,[px,y0+.03,pz],rings[0][i],rings[0][j],colour);
+   for(let k=0;k+1<rings.length;k++)quad(b,rings[k][i],rings[k][j],rings[k+1][j],rings[k+1][i],colour);
+   quad(b,edge[i],edge[j],kerb[j],kerb[i],ROAD_KERB);}
+  // the bank below the kerb, where the disc stands over the ground (not where a road leads on: it has its own verge)
+  const lakeward=[],foot=kerb.map(([x,y,z],i)=>{const a=i/N*Math.PI*2,dx=Math.cos(a),dz=Math.sin(a);
+   const wet=lakeAt(x+dx*4,z+dz*4)||lakeAt(x+dx*8,z+dz*8),s=wet?1/1.2:1/1.5;lakeward.push(!!wet);
+   if(y-ground(x,z)<.12||surfaceAt(x+dx*.8,z+dz*.8)!==null)return null;
+   for(let d=.5;d<=10;d+=.5){const X=x+dx*d,Z=z+dz*d,g=ground(X,Z),yS=y-d*s;if(yS<=g)return [X,g-.04,Z];}
+   return [x+dx*10,y-10*s,z+dz*10];});
+  for(let i=0;i<N;i++){const j=(i+1)%N,A=foot[i],C=foot[j];if(!A&&!C)continue;
+   const a=A||[kerb[i][0],kerb[i][1]-.02,kerb[i][2]],e=C||[kerb[j][0],kerb[j][1]-.02,kerb[j][2]],wet=lakeward[i]||lakeward[j],top=(v,k)=>wet?stoneAt(v[0],v[2],k):grassAt(v[0],v[2],k);
+   vtri(b,kerb[i],kerb[j],e,top(kerb[i],1),top(kerb[j],1),top(e,.88));vtri(b,kerb[i],e,a,top(kerb[i],1),top(e,.88),top(a,.88));}
+  // boulders along the top of a stone bank, a little more than a car's length apart
+  if(lakeward.some(Boolean))for(let i=0;i<N;i+=2){if(!lakeward[i]||!foot[i])continue;const a=i/N*Math.PI*2,x=px+Math.cos(a)*(R+1.3),z=pz+Math.sin(a)*(R+1.3);
+   boulder(b,x,Math.max(kerb[i][1]-.45,ground(x,z)),z,.5+.25*jitter(x,z,2));}
+  out.turning.push({p:c.p,rad:R,plane:[B,C],foot:foot.filter(Boolean).length,boulders:lakeward.filter((w,i)=>w&&foot[i]&&i%2===0).length});
  }
 
  // ---- Traffic islands ----------------------------------------------------------------------------------------------------------

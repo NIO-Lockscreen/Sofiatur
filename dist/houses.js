@@ -22,7 +22,7 @@ export function createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly
   K[n]=x.r;K[n+1]=x.g;K[n+2]=x.b;K[n+3]=y.r;K[n+4]=y.g;K[n+5]=y.b;K[n+6]=z.r;K[n+7]=z.g;K[n+8]=z.b;b.n=n+9;}
  function ftri(b,p,q,r,cp,cq,cr){let n=b.n;if(n+9>b.p.length){const a=new Float32Array(b.p.length*2),c=new Float32Array(b.p.length*2);a.set(b.p);c.set(b.c);b.p=a;b.c=c;}
   const P=b.p,K=b.c;P.set(p,n);P.set(q,n+3);P.set(r,n+6);K.set(cp,n);K.set(cq,n+3);K.set(cr,n+6);b.n=n+9;}
- const LAWN=new T.Color('#6f8e57'),lawn=[LAWN.r,LAWN.g,LAWN.b],soil=(x,z,dark=1)=>{const c=groundColour?groundColour(x,z,[0,0,0]):lawn.slice();return [c[0]*dark,c[1]*dark,c[2]*dark];};
+ const LAWN=new T.Color('#6f8e57'),lawn=[LAWN.r,LAWN.g,LAWN.b],STONE_A=new T.Color('#a19c8f'),STONE_B=new T.Color('#8a8578'),soil=(x,z,dark=1)=>{const c=groundColour?groundColour(x,z,[0,0,0]):lawn.slice();return [c[0]*dark,c[1]*dark,c[2]*dark];};
  // a, c at the bottom, e, d at the top (same order as quad): bottom colour low, top colour high
  const gquad=(b,a,c,d,e,low,high)=>{vtri(b,a,c,d,low,low,high);vtri(b,a,d,e,low,high,high);};
 
@@ -59,7 +59,7 @@ export function createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly
  const insidePoly=(poly,x,z)=>{let ins=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const [ax,az]=poly[j],[bx,bz]=poly[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)ins=!ins;}return ins;};
  const isConvex=poly=>{let s=0;for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length],c=poly[(i+2)%poly.length],z=(b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]);if(Math.abs(z)<1e-6)continue;if(s&&Math.sign(z)!==s)return false;s=Math.sign(z);}return true;};
 
- const stats={buildings:0,lod:[0,0,0],doors:0,windows:0,chimneys:0,verandas:0,balconies:0,seams:0,tris:{}};
+ const stats={buildings:0,lod:[0,0,0],doors:0,windows:0,chimneys:0,verandas:0,balconies:0,seams:0,tris:{},gardenWalls:[],steepBanks:0}; // gardenWalls: [x, z, height, length] per piece of wall below a terrace
 
  function add({building,p,cx,cz,area,wallBase,houseBounds}){
   const id=String(building.id),t=building.t,style=styleOf(building);
@@ -76,7 +76,10 @@ export function createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly
   // concrete plinth only PLINTH high along the ground, above it a basement storey (sokkeletasje) clad like the house or in rendered
   // concrete, with windows; at most one storey of it (two under a block), and below that the ground is filled up to a terrace round the
   // house: a flat shelf by the wall, then a grass bank down to the natural ground, or a retaining wall where a road is in the way.
-  const SOKKEL=garage?1.25:kind==='block'?5.6:3,PLINTH=.45,SHELF=.7,BATTER=1.6,FILL_MAX=7,padY=y+.5-SOKKEL;
+  // Steep sites (12 November 2026): where the ground falls more than about four metres across the footprint, as on the slope down to
+  // Lianvannet, the basement is two storeys (a garage gets a store room under it), as such houses are built, so the terrace needs less fill.
+  const fall=y-heights[0];
+  const SOKKEL=garage?Math.min(2.6,Math.max(1.25,fall-1)):kind==='block'?5.6:Math.min(5.6,Math.max(3,fall-1.2)),PLINTH=.45,SHELF=.7,BATTER=1.6,FILL_MAX=7,padY=y+.5-SOKKEL;
   const visGround=(x,z,o)=>Math.max(height(x,z),padY-Math.max(0,o-SHELF)/BATTER); // the ground as drawn, o metres out from a wall
   wallBase.set(id,{y,h});
   const b=bucket(cx,cz);
@@ -123,23 +126,35 @@ export function createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly
    if(sokkelCol===wallCol&&w.exposed>PLINTH+.8&&w.lod>=1)panel(w,w.len/2,top-.08,w.len,.16,trim,.03);
   }
   const fills=[]; // per wall: the outer edge of the fill at each sample (or null where the ground needs none)
+  // The bank below the shelf (12 November 2026): it used to keep to 1:1.6 and, where that had not met the ground within FILL_MAX or
+  // before a road, end in a light concrete wall as high as the gap, up to 12 m on the slopes down to Lianvannet, drawn only between two
+  // samples that both had one (so the bank showed its underside in the gaps). Now the bank steepens before any wall is needed: 1:1.6,
+  // then 1:1.1, then 1:0.75, all grass like the ground round it (stone faces read as cliffs under the houses); only where even that has not
+  // met the ground does a dry-stone garden wall take the rest, and the gap under a bank is always closed down to the ground, along the
+  // wall and round the corners.
+  const SLOPES=[1/BATTER,1/1.1,1/.75],stone=(x,z,k)=>{const n=Math.sin(x*12.9898+z*78.233)*43758.5453,j=n-Math.floor(n),t=STONE_A.r*(1-j)+STONE_B.r*j;
+   return [t*k,(STONE_A.g*(1-j)+STONE_B.g*j)*k,(STONE_A.b*(1-j)+STONE_B.b*j)*k];};
+  function bank(w,u,s){let o=SHELF;
+   for(;;o+=.5){const X=F(w,u,0,o),gn=height(X[0],X[2]),sY=padY-(o-SHELF)*s;
+    if(sY<=gn+.02)return {o,top:gn,ground:gn,met:true};
+    if(o+.5>FILL_MAX)return {o,top:sY,ground:gn,met:false};
+    const Y=F(w,u,0,o+1.2);if(onRoad(Y[0],Y[2]))return {o,top:sY,ground:gn,met:false};}}
   function fill(w){
    const pts=w.sokkel;if(!pts||!pts.some(q=>height(q.P[0],q.P[2])<padY-.05)){fills.push(null);return;}
    const out=pts.map(q=>{const g0=height(q.P[0],q.P[2]);if(g0>=padY-.05)return null;
-    let o=SHELF,top=padY,ground=g0,wall=false;
-    for(;o<=FILL_MAX;o+=.5){const X=F(w,q.u,0,o),gn=height(X[0],X[2]),sY=padY-(o-SHELF)/BATTER;top=sY;ground=gn;
-     if(sY<=gn+.02){top=gn;break;}
-     const Y=F(w,q.u,0,o+1.2);if(onRoad(Y[0],Y[2])){wall=true;break;}}
-    if(o>FILL_MAX){o=FILL_MAX;wall=true;}
-    const X=F(w,q.u,0,o);return {inner:F(w,q.u,padY,.02),shelf:F(w,q.u,padY,SHELF),outer:[X[0],top,X[2]],foot:[X[0],ground-.05,X[2]],wall:wall&&top-ground>.1};});
+    let r=null,s=0;for(s of SLOPES){r=bank(w,q.u,s);if(r.met)break;}
+    const X=F(w,q.u,0,r.o);return {inner:F(w,q.u,padY,.02),shelf:F(w,q.u,padY,SHELF),outer:[X[0],r.top,X[2]],foot:[X[0],Math.min(r.top,r.ground)-.05,X[2]],steep:s>1,wall:r.top-r.ground>.1};});
    fills.push(out);
    for(let j=0;j<out.length-1;j++){const A=out[j],C=out[j+1];if(!A&&!C)continue;
-    const a=A||{inner:F(w,pts[j].u,padY,.02),shelf:F(w,pts[j].u,padY,SHELF),outer:F(w,pts[j].u,padY,SHELF),foot:null,wall:false},
-     c=C||{inner:F(w,pts[j+1].u,padY,.02),shelf:F(w,pts[j+1].u,padY,SHELF),outer:F(w,pts[j+1].u,padY,SHELF),foot:null,wall:false};
+    const flat=k=>{const sh=F(w,pts[k].u,padY,SHELF);return {inner:F(w,pts[k].u,padY,.02),shelf:sh,outer:sh,foot:[sh[0],Math.min(padY,height(sh[0],sh[2]))-.05,sh[2]],steep:false,wall:false};},
+     a=A||flat(j),c=C||flat(j+1);
     const col=v=>soil(v[0],v[2]),dim=v=>soil(v[0],v[2],.9);
     ftri(b,a.inner,c.inner,c.shelf,col(a.inner),col(c.inner),col(c.shelf));ftri(b,a.inner,c.shelf,a.shelf,col(a.inner),col(c.shelf),col(a.shelf));
+    // the bank: grass like the ground round it, a little darker at its foot
     ftri(b,a.shelf,c.shelf,c.outer,col(a.shelf),col(c.shelf),dim(c.outer));ftri(b,a.shelf,c.outer,a.outer,col(a.shelf),dim(c.outer),dim(a.outer));
-    if(a.wall&&c.wall)quad(b,a.foot,c.foot,c.outer,a.outer,'#a8a79f');}
+    if(a.wall||c.wall){ftri(b,a.foot,c.foot,c.outer,stone(a.foot[0],a.foot[2],.8),stone(c.foot[0],c.foot[2],.8),stone(c.outer[0],c.outer[2],.95));ftri(b,a.foot,c.outer,a.outer,stone(a.foot[0],a.foot[2],.8),stone(c.outer[0],c.outer[2],.95),stone(a.outer[0],a.outer[2],.95));
+     stats.gardenWalls.push([(a.outer[0]+c.outer[0])/2,(a.outer[2]+c.outer[2])/2,Math.max(a.outer[1]-a.foot[1],c.outer[1]-c.foot[1])-.05,Math.hypot(c.outer[0]-a.outer[0],c.outer[2]-a.outer[2])]);}
+    if(a.steep||c.steep)stats.steepBanks++;}
    stats.fills=(stats.fills||0)+1;
   }
 
@@ -173,7 +188,8 @@ export function createHouses({T,scene,data,height,bucket,tri,quad,box,groundPoly
   }
   for(const w of walls)fill(w);
   for(let i=0;i<walls.length;i++){const A=fills[i],C=fills[(i+1)%walls.length];if(!A||!C)continue;const a=A.at(-1),c=C[0];if(!a||!c)continue;
-   const P=walls[i].sokkel.at(-1).P,corner=[P[0],padY,P[2]],col=v=>soil(v[0],v[2]);ftri(b,corner,a.outer,c.outer,col(corner),col(a.outer),col(c.outer));}
+   const P=walls[i].sokkel.at(-1).P,corner=[P[0],padY,P[2]],col=v=>soil(v[0],v[2]);ftri(b,corner,a.outer,c.outer,col(corner),soil(a.outer[0],a.outer[2],.9),soil(c.outer[0],c.outer[2],.9));
+   if(a.wall||c.wall)ftri(b,a.foot,c.foot,c.outer,stone(a.foot[0],a.foot[2],.8),stone(c.foot[0],c.foot[2],.8),stone(c.outer[0],c.outer[2],.95)),ftri(b,a.foot,c.outer,a.outer,stone(a.foot[0],a.foot[2],.8),stone(c.outer[0],c.outer[2],.95),stone(a.outer[0],a.outer[2],.95));}
   mark('sokkel fill');
 
   // ---- windows ----

@@ -307,6 +307,24 @@ console.log('Easter egg: visiting the duck as the duck and honking sets a duck r
  g.element('reAwardRollback').onclick();g.element('reAwardRollback').onclick();assert.equal(g.world.duckRunner,true,'the old game is back, with its small duck');assert.equal(g.world.duckling,false,'but not the smaller one: it was never saved');
  assert.ok(!/ducklingOn/.test(fs.readFileSync('dist/game.js','utf8').match(/function snapshot\(\)\{[^\n]*/)[0]),'it is not part of the saved progress');}
 console.log('The double duck: a smaller duck follows the small duck after a second honk at the lake, as the duck; it is not saved and goes with a reload or a new game: OK');
+// The duckling on the start card (12 November 2026): found once in this visit, it keeps following the small duck whatever the ride, through trips and arrivals, and has a
+// row of its own under the small duck's: ticking it puts the small duck behind the car too, unticking it leaves the small duck alone. A reload, RE-ward and the rollback take it away.
+{const duckStore=extra=>{store.clear();store.set('sofiatur.fremgang',JSON.stringify({arrivals:13,model:'duck',duck:'on',behind:'duck',...extra}));};let g;
+ duckStore();g=await launch(()=>storage);assert.equal(g.element('ducklingRow').hidden,true,'No row before it is found');
+ g.test.visit('lake');g.test.honkKey();assert.equal(g.world.duckling,true);assert.equal(g.element('ducklingRow').hidden,false,'Found: a row under the small duck');assert.equal(g.element('duckling').checked,true);
+ for(const ride of ['car','trex','dog','balloon','cat']){g.element('model-'+ride).onclick();assert.equal(g.world.model,ride);assert.equal(g.world.duckling,true,`It stays with another ride (${ride})`);assert.equal(g.world.duckRunner,true);}
+ g.test.arrive();assert.equal(g.world.duckling,true,'and after an arrival');g.element('again').onclick();assert.equal(g.world.duckling,true,'and on the start screen');assert.equal(g.element('ducklingRow').hidden,false);
+ g.test.start();assert.equal(g.world.duckling,true,'and on the next trip, as the cat');
+ g.element('bubbles').onchange({target:{checked:true}});assert.equal(g.world.duckling,false,'The small duck switched off: nothing to follow');assert.equal(g.element('duckling').checked,false);assert.equal(g.element('ducklingRow').hidden,false,'but the row stays for this visit');
+ g.element('duckling').onchange({target:{checked:true}});assert.equal(g.world.duckRunner,true,'Ticking the duckling puts the small duck back behind the car');assert.equal(g.world.duckling,true);assert.equal(g.element('duckRunner').checked,true);assert.equal(g.world.bubbles,false);
+ g.element('duckling').onchange({target:{checked:false}});assert.equal(g.world.duckling,false,'Unticked: the small duck runs alone');assert.equal(g.world.duckRunner,true);
+ g.element('trail').onchange({target:{checked:true}});g.element('duckRunner').onchange({target:{checked:true}});assert.equal(g.world.duckling,false,'unticked, it stays away when the small duck comes back');
+ g.element('duckling').onchange({target:{checked:true}});assert.equal(g.world.duckling,true);
+ assert.ok(!/duckling/i.test(store.get('sofiatur.fremgang')),'never saved');
+ g=await launch(()=>storage);assert.equal(g.element('ducklingRow').hidden,true,'A reload: the row is gone');assert.equal(g.world.duckling,false);
+ duckStore();g=await launch(()=>storage);g.test.visit('lake');g.test.honkKey();g.element('reAward').onclick();g.element('reAward').onclick();assert.equal(g.element('ducklingRow').hidden,true,'RE-ward: gone');
+ assert.ok(fs.readFileSync('dist/index.html','utf8').includes('id="ducklingRow" class="trail-row" hidden'),'The row is in the start card, hidden to begin with');}
+console.log('The duckling stays behind the small duck with every ride, through trips, and has its own row on the start card for this visit only: OK');
 // The horn button by the water: shown at a choice of road (hidden elsewhere) and above the free-driving buttons, and only once the horn is unlocked.
 {const css=fs.readFileSync('dist/style.css','utf8');assert.ok(css.includes('body.choosing .horn{visibility:hidden}'),'hidden at a choice of road, as before');
  assert.ok(css.includes('body.choosing.at-lake .horn:not([hidden]){visibility:visible}'),'but shown at the lake');

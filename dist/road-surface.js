@@ -9,6 +9,7 @@ import {createRoadGeometry,KERB,KERB_DROP} from './road-geometry.js';
 const QS=[[.5,.6],[.5,1],[.2,1],[.8,1]],GRID=8,SLOPE=.6,CLEAR=.16; // ground grid, verge batter (rise per metre out), how far below the kerb top the ground must lie
 const WARP=4,STEEP=1,WEDGE=24,CUT_AT=[1.2,3.6];
 const FILL_FLAT=4,FILL_SLOPE=.18,FILL_REACH=12,FILL_MAX=3.5,FILL_LAKE=20; // raising the ground beside a road: flat shoulder, then the fall per metre, its reach, the most it is raised, and how far it stays off a lake
+const CUT_FLAT=1.5,CUT_LIP=.3,CUT_SLOPE=.9,CUT_REACH=10; // a cutting beside a road: the shoulder beyond the half width, how far over the road it may stand, the rise per metre, its reach
 const inPoly=(p,x,z)=>{let c=false;for(let i=0,j=p.length-1;i<p.length;j=i++){const [ax,az]=p[j],[bx,bz]=p[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)c=!c;}return c;};
 const edgeDist=(p,x,z)=>{let m=Infinity;for(let i=0;i<p.length-1;i++){const [ax,az]=p[i],[bx,bz]=p[i+1],dx=bx-ax,dz=bz-az,t=Math.max(0,Math.min(1,((x-ax)*dx+(z-az)*dz)/(dx*dx+dz*dz||1)));m=Math.min(m,Math.hypot(x-ax-t*dx,z-az-t*dz));}return m;}; // ribbon tilt length at a steep corner, its slope limit, wedge reach from the node, and the lateral offsets checked beside an arm
 // Least-squares plane through the patches of one cluster (node levels and every arm's mouth level): the fans' heights follow it, so overlapping patches
@@ -87,7 +88,16 @@ export function createRoadSurface(roads,height,data,tune={}){
   for(const r of R){if(r.bridge||!r.pts)continue;const reach=r.hw+FILL_FLAT+FILL_REACH;
    for(let k=0;k<r.pts.length;k+=2){const [x,z]=r.pts[k],y=r.y[k],i0=Math.max(0,Math.ceil((x-reach-tr.x0)/GRID)),i1=Math.min(LX-1,Math.floor((x+reach-tr.x0)/GRID)),j0=Math.max(0,Math.ceil((z-reach-tr.z0)/GRID)),j1=Math.min(LZ-1,Math.floor((z+reach-tr.z0)/GRID));
     for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const d=Math.hypot(tr.x0+i*GRID-x,tr.z0+j*GRID-z);if(d>reach)continue;const a=j*LX+i,up=y-CLEAR-Math.max(0,d-r.hw-FILL_FLAT)*FILL_SLOPE-vT(a);if(up>raise[a])raise[a]=up;}}}
-  for(let a=0;a<LX*LZ;a++)if(raise[a]>0&&!under[a]&&!nearLake(tr.x0+(a%LX)*GRID,tr.z0+Math.floor(a/LX)*GRID))delta[a]=Math.min(raise[a],FILL_MAX);}
+  for(let a=0;a<LX*LZ;a++)if(raise[a]>0&&!under[a]&&!nearLake(tr.x0+(a%LX)*GRID,tr.z0+Math.floor(a/LX)*GRID))delta[a]=Math.min(raise[a],FILL_MAX);
+  // Cuttings (12 November 2026). Where a road lies below the ground, only the vertices under it were lowered, so the next one out, 8 m on,
+  // kept its full height: a cut face of up to 5 m in one mesh step, near vertical, beside the roads climbing from Lianvannet (Per Sivles veg,
+  // the lane beside it, Vetle Vislies veg), and a ridge between two roads cut on both sides. Now the ground beside a road rises at most
+  // CUT_SLOPE per metre beyond a CUT_FLAT shoulder: a cut slope, as a road is dug into a hillside. Not under or beside a bridge deck.
+  const cut=new Float32Array(LX*LZ);
+  for(const r of R){if(r.bridge||!r.pts)continue;const reach=r.hw+CUT_FLAT+CUT_REACH;
+   for(let k=0;k<r.pts.length;k+=2){const [x,z]=r.pts[k],y=r.y[k],i0=Math.max(0,Math.ceil((x-reach-tr.x0)/GRID)),i1=Math.min(LX-1,Math.floor((x+reach-tr.x0)/GRID)),j0=Math.max(0,Math.ceil((z-reach-tr.z0)/GRID)),j1=Math.min(LZ-1,Math.floor((z+reach-tr.z0)/GRID));
+    for(let j=j0;j<=j1;j++){const dz=tr.z0+j*GRID-z;for(let i=i0;i<=i1;i++){const dx=tr.x0+i*GRID-x,d2=dx*dx+dz*dz;if(d2>reach*reach)continue;const a=j*LX+i,over=vT(a)+delta[a]-(y+CUT_LIP+Math.max(0,Math.sqrt(d2)-r.hw-CUT_FLAT)*CUT_SLOPE);if(over>cut[a])cut[a]=over;}}}}
+  for(let a=0;a<LX*LZ;a++)if(cut[a]>0&&!under[a])delta[a]-=cut[a];}
  // A carriageway quad between two sections is a little twisted on a steep bend; it is split along the diagonal that leaves the two halves closer to one plane (flip: the other diagonal).
  const nrm=new Float64Array(12);
  function tilt(k,ax,ay,az,bx,by,bz,cx,cy,cz){const ux=bx-ax,uy=by-ay,uz=bz-az,vx=cx-ax,vy=cy-ay,vz=cz-az,nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,l=Math.hypot(nx,ny,nz)||1;nrm[k]=nx/l;nrm[k+1]=ny/l;nrm[k+2]=nz/l;}
@@ -217,7 +227,8 @@ export function createRoadSurface(roads,height,data,tune={}){
   const yc=ey.reduce((a,v)=>a+v,0)/ey.length;
   for(let i=0;i<n;i++){tri(stores.patch,2,r.ri,cx,yc,cz,ex[i],ey[i],ez[i],ex[i+1],ey[i+1],ez[i+1]);need(ex[i],ez[i],ey[i]-CLEAR);need((cx+ex[i]+ex[i+1])/3,(cz+ez[i]+ez[i+1])/3,(yc+ey[i]+ey[i+1])/3-CLEAR);need((cx+ex[i])/2,(cz+ez[i])/2,(yc+ey[i])/2-CLEAR);}
   rings.push({cx,cz,radius:Math.max(...ex.map((x,i)=>Math.hypot(x-cx,ez[i]-cz)))});}
- const inner=(x,z,nx,nz)=>{for(const g of rings){const dx=x-g.cx,dz=z-g.cz,r=g.radius+4;if(dx*dx+dz*dz<r*r&&-dx*nx-dz*nz>0)return true;}return false;};
+ const inner=(x,z,nx,nz)=>{for(const g of rings){const dx=x-g.cx,dz=z-g.cz,r=g.radius+4;if(dx*dx+dz*dz<r*r&&-dx*nx-dz*nz>0)return true;}
+  for(const t of turning){const dx=x-t.cx,dz=z-t.cz,r=t.rad+KERB+.2;if(dx*dx+dz*dz<r*r)return true;}return false;}; // a turning circle's disc covers this edge
  // Junction wedges: beside an arm, within WEDGE m of its node and 5 m of its kerb, wherever the point lies between this arm and its neighbour (arms 8 to 100 degrees apart),
  // the ground stays just below that arm's level. Otherwise a hillside between two roads rises over both and hides the side road from the one you drive on.
  const armLevel=(pt,a,s)=>s<a.t?pt.level+(a.mouthY-pt.level)*s/a.t:a.chain?a.chain.at(a.chain.s[a.ci]+a.sign*s):a.mouthY;
@@ -231,6 +242,16 @@ export function createRoadSurface(roads,height,data,tune={}){
      const vl=Math.hypot(dx,dz)*.02;if(A.d[0]*dz-A.d[1]*dx<vl||dx*B.d[1]-dz*B.d[0]<vl)continue; // not between the two arms
      const along=dx*other.d[0]+dz*other.d[1];if(along>-1&&Math.abs(dx*other.d[1]-dz*other.d[0])<other.w+KERB+.2)continue; // on the other arm's kerb band
      need(x,z,y);}}}}}
+ // Turning circles (12 November 2026). street-details.js draws each as a disc in the plane of its roads; the plane is fitted here, through
+ // the road end, to the drawn road surfaces within the circle, and the ground under the disc and its kerb is kept below it as under a road
+ // (on a slope the hillside rose through the disc between its vertices, by Lianvannet). Verges stop at its kerb, as at a roundabout's island.
+ const turning=[];
+ for(const c of data?.street?.turning_circles||[]){const [px,pz]=c.p,rad=c.rad,y0=heightAt(px,pz);if(y0===null)continue;let sxx=0,szz=0,sxz=0,sxh=0,szh=0,n=0;
+  for(let r=1;r<=rad+1;r+=.5)for(let i=0;i<48;i++){const a=i/48*Math.PI*2,dx=Math.cos(a)*r,dz=Math.sin(a)*r,h=heightAt(px+dx,pz+dz);if(h===null)continue;
+   sxx+=dx*dx;szz+=dz*dz;sxz+=dx*dz;sxh+=dx*(h-y0);szh+=dz*(h-y0);n++;}
+  const det=sxx*szz-sxz*sxz,fit=n>=12&&det>1e-6,B=fit?(sxh*szz-szh*sxz)/det:0,C=fit?(szh*sxx-sxh*sxz)/det:0;
+  turning.push({o:c.o,cx:px,cz:pz,rad,y0,B,C});
+  for(let r=0;r<=rad+KERB+.6;r+=1.2)for(let i=0;i<(r?32:1);i++){const a=i/32*Math.PI*2,x=px+Math.cos(a)*r,z=pz+Math.sin(a)*r;need(x,z,y0+B*(x-px)+C*(z-pz)-CLEAR);}}
  // Lower the ground grid: every violated constraint pulls its three vertices down by its excess (one pass is enough, lowering never undoes an earlier constraint).
  if(tr)for(let k=0;k<cl.length;k++){const a=ci[3*k],b=ci[3*k+1],d=ci[3*k+2],wa=cw[3*k],wb=cw[3*k+1],wc=cw[3*k+2],e=wa*(tv[a]+delta[a])+wb*(tv[b]+delta[b])+wc*(tv[d]+delta[d])-cl[k];
   if(e>0){const s=wa*wa+wb*wb+wc*wc;delta[a]-=e*wa/s;delta[b]-=e*wb/s;delta[d]-=e*wc/s;}}
@@ -294,7 +315,7 @@ if(tr)buildGrid();
  function paint(fn,which=['ribbon','patch','verge']){for(const w of which){const s=stores[w].a,N=stores[w].n;for(let o=0;o<N;){const cls=s[o]&7,flip=(s[o]&8)>0,ri=s[o+1],n=s[o+2];for(let k=0;k<n*3;k++)scratch[k]=s[o+3+k];fn(cls,R[ri].road,n,scratch,flip,w);o+=3+n*3;}}}
  const view=w=>{const out=[];paint((cls,road,n,c,flip)=>{const corners=[];for(let k=0;k<n;k++)corners.push([c[3*k],c[3*k+1],c[3*k+2]]);out.push({road,kerb:cls===1||cls===4,grass:cls===2,flip,x:c[0],z:c[2],corners});},[w]);return out;};
  const lazy=(w)=>{let v=null;return {get:()=>v||(v=view(w))};};
- const surface={dashes,heightAt,meshAt,lowerAt,groundTop,edgeLine,paint,geometry:geo};
+ const surface={dashes,heightAt,meshAt,lowerAt,groundTop,edgeLine,paint,geometry:geo,turning};
  Object.defineProperties(surface,{quads:lazy('ribbon'),extra:lazy('patch'),verges:lazy('verge')});
  return surface;
 }
