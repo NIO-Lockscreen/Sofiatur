@@ -201,3 +201,15 @@ header{top:var(--st);left:max(14px,env(safe-area-inset-left));right:max(14px,env
 .trip-track i{display:block;position:relative;height:100%;width:0;border-radius:2px;background:#f5c656;transition:width .3s linear}
 .trip-track i::after{content:"";position:absolute;right:-5px;top:50%;width:9px;height:9px;margin-top:-4.5px;border-radius:50%;background:#174e48;box-shadow:0 0 0 1.5px #fff}
 @media(max-width:1000px){.trip-track{left:22px;right:22px;bottom:3px}}
+
+/* Mealtime and tooth brushing (23 November 2026): the three everyday buttons under «Gå ut» (and during a meal what she can do next), how full her tummy is,
+   and the brushing game over the whole screen, with «Tilbake» where «Gå ut» was and the step's text at the bottom. */
+.routine-bar{position:absolute;left:28px;top:164px;display:flex;flex-direction:column;gap:8px;z-index:32}.routine-bar[hidden]{display:none}
+.routine{min-height:50px;padding:8px 18px;border:2px solid white;border-radius:16px;background:#ffe3ee;color:#7a2350;box-shadow:0 4px 0 #7a235033;font-size:16px;font-weight:800;text-align:left;white-space:nowrap;touch-action:manipulation}
+.routine.main{background:#fffdf1;color:#174e48;box-shadow:0 4px 0 #174e4840;font-size:18px}.routine:active{transform:translateY(3px)}
+.tummy{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;font-size:12px;font-weight:800;color:#7a2350}.tummy[hidden]{display:none}
+.tummy i{display:block;width:150px;height:10px;border-radius:6px;background:#7a23501f;overflow:hidden}.tummy b{display:block;height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,#ffc83d,#ff8fb6);transition:width .4s}
+.teeth-canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:pointer}.teeth-canvas[hidden]{display:none}
+#insideHud.brushing .routine-bar,#insideHud.brushing #goOut,#insideHud.brushing #wakeUp,#insideHud.brushing .unlock-info{display:none}
+@media(max-width:700px){.routine-bar{left:14px;top:142px;gap:6px}.routine{min-height:44px;padding:6px 14px;font-size:14px}.routine.main{font-size:16px}}
+@media(max-height:500px){.routine-bar{top:134px;gap:5px}.routine{min-height:38px;padding:4px 12px;font-size:13px}}

@@ -73,6 +73,11 @@ export function createMusic({fetch=globalThis.fetch,horns:files=HORNS}={}){
   reward:[[1046.5,0,.35,.05],[1396.9,.14,.35,.05],[1760,.28,.35,.05],[2093,.45,.25,.02],[2793.8,.52,.25,.02],[3520,.59,.25,.02]],
   fanfare:[[698.46,.15,.5,.05],[880,.45,.5,.05],[1046.5,.75,.5,.05],[698.46,1.05,.18,.045],[880,1.11,.18,.045],[1046.5,1.17,.18,.045],[1396.9,1.23,.18,.045],
    [349.23,1.29,.88,.035,'triangle'],[440,1.29,.88,.035,'triangle'],[523.25,1.29,.88,.035,'triangle'],[698.46,1.29,.88,.035,'triangle'],[1760,1.35,.2,.02],[2093,1.41,.2,.02],[2793.8,1.47,.2,.02]]};
+ // Mealtime and tooth brushing (23 November 2026): a happy «nam», the click of the tube, the pump's beeps, a soft brushing sound, toothpaste, rinsing,
+ // and ding0..ding15, a note higher for each clean tooth (C major from C5).
+ Object.assign(SOUNDS,{nam:[[330,0,.12,.07],[392,.14,.15,.06]],click:[[1500,0,.035,.025,'square'],[950,.05,.05,.022,'square']],beep:[[1760,0,.13,.05]],pumpdone:[[1760,0,.13,.05],[1760,.24,.13,.05],[1760,.48,.13,.05]],
+  scrub:[[2400,0,.05,.012,'triangle'],[1900,.06,.05,.01,'triangle']],squeeze:[[230,0,.3,.05,'triangle'],[180,.12,.25,.03,'triangle']],rinse:[[240,.3,.12,.04],[280,.52,.12,.04],[320,.74,.12,.04],[360,.96,.12,.04]]});
+ [0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26].forEach((s,i)=>{SOUNDS['ding'+i]=[[523.25*2**(s/12),0,.3,.045]];});
  return {
   effect(name){hornContext();if(!fxOut){fxOut=ctx.createGain();fxOut.gain.value=.9;fxOut.connect(ctx.destination);}
    if(name==='lullaby')LULLABY.forEach(([f,d],i)=>{fx(f,d,i===12?1.2:.62,.05);fx(f*2,d,.4,.012);});

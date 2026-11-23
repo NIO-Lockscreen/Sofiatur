@@ -6,6 +6,8 @@
 // Bedtime (4 November 2026, copied from Sofia's space game): the sofa is a sofa bed. A tap on it (game.js calls sleep) walks the girl over; she pulls the bed out,
 // hops in and lies down under the duvet with her eyes shut. The camera glides in, night falls in the window, and she dreams (dream.js). wake() gets her up again.
 // Jumping on the bed (9 November 2026, as in the space game): the first tap on the sofa each time the game is opened (game.js keeps count) calls jump() instead.
+// Mealtime (23 November 2026, as in the space game): a little table with her chair and a bowl in the front right corner, and her PEG backpack on the floor beside it
+// (meal.js). She walks round them, not through them; a tap on the table or the backpack starts a meal (game.js), and the camera glides in to it.
 // She walks over and pulls the bed out as at bedtime, climbs up and jumps on it, then hops down and the sofa is made again. sleep() halfway puts her straight to bed.
 import {createGirlModel} from './girl.js';
 import {createET5} from './car-model.js';
@@ -15,6 +17,7 @@ import {createBoyModel} from './boy.js';
 import {createDuckRunnerModel} from './duck-runner.js';
 import {createDream} from './dream.js';
 import {createSpider,SPIDER_PURPLE} from './spider.js';
+import {createMeal} from './meal.js';
 
 // The three steps of the podium, from the front (low) to the back (high): item ids in order, the height of the step's top, its middle z and its width. 1 m is a slot.
 export const STEPS=[{ids:['colour','cat','trail','horn','dog','duck','rocket'],top:.35,z:-.5,w:8.6},{ids:['unicorn','bubbles','firetruck','rainbow','balloon','trex'],top:.7,z:-1.7,w:7.4},{ids:['kiwi','ludvig','duckRunner','taxi','pig','hover','spider'],top:1.05,z:-2.9,w:8.6}];
@@ -133,9 +136,22 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
  const pig=createPig(T);pig.group.scale.setScalar(.18);scene.add(pig.group);
  const pigHit=box(1.4,1,1.1,new T.MeshBasicMaterial({color:'#ff00ff'}),-3.95,.5,3,scene,'pig');pigHit.visible=false;
  let gx=0,gz=1.4,yaw=Math.PI,walk=null,arrive=null,waveLeft=0,pigOut=false,hop=-1;
+ const meal=createMeal({T,scene,girl,walkTo:(x,z,face,free)=>walkTo(x,z,face,free),arrived:()=>!walk&&!!arrive&&Math.abs(Math.atan2(Math.sin(arrive.yaw-yaw),Math.cos(arrive.yaw-yaw)))<.12,
+  setHere:(x,z,y)=>{gx=x;gz=z;yaw=y;walk=null;arrive=null;},on:name=>on('meal:'+name)});
+ const OBST=meal.obstacles;pickables.push(...meal.hits); // where she cannot walk (walkTo, below)
  // Where the girl may walk: the free floor in front of the podium, clear of the sofa, the lamp, the plant and the door. (Going to bed she goes closer, to take hold of it.)
  const clamp=(x,z)=>[Math.min(3.45,Math.max(-2.7,x)),Math.min(2.85,Math.max(.6,z))];
- function walkTo(x,z,face=null,free=false){if(!free)[x,z]=clamp(x,z);walk={x,z};arrive=face;waveLeft=0;}
+ function walkTo(x,z,face=null,free=false){if(!free)[x,z]=clamp(x,z);[x,z]=outside(x,z);const path=route(gx,gz,x,z);walk={...path.shift(),via:path};arrive=face;waveLeft=0;}
+ // The table (with the chair) and the backpack are in the way (meal.obstacles, set below): a target inside one is moved to its edge, and a straight line through one
+ // goes round it by its corners (one corner if that is clear, else two).
+ const inRect=(r,x,z)=>x>r.x0&&x<r.x1&&z>r.z0&&z<r.z1;
+ function outside(x,z){for(const r of OBST)if(inRect(r,x,z)){const e=.06,d=[[x-r.x0,r.x0-e,z],[r.x1-x,r.x1+e,z],[z-r.z0,x,r.z0-e],[r.z1-z,x,r.z1+e]].sort((p,q)=>p[0]-q[0])[0];
+  if(d[0]===x-r.x0||d[0]===r.x1-x)x=d[1];else z=d[2];}return [x,z];}
+ function crosses(r,ax,az,bx,bz){let t0=0,t1=1;const dx=bx-ax,dz=bz-az;for(const [p,q] of [[-dx,ax-r.x0],[dx,r.x1-ax],[-dz,az-r.z0],[dz,r.z1-az]]){if(p===0){if(q<=0)return false;continue;}const t=q/p;if(p<0){if(t>t1)return false;if(t>t0)t0=t;}else{if(t<t0)return false;if(t<t1)t1=t;}}return t1-t0>1e-6;}
+ function route(ax,az,bx,bz,depth=0){const r=OBST.find(r=>crosses(r,ax,az,bx,bz));if(!r||depth>2)return [{x:bx,z:bz}];const e=.06,cs=[[r.x0-e,r.z0-e],[r.x1+e,r.z0-e],[r.x1+e,r.z1+e],[r.x0-e,r.z1+e]],len=(...p)=>p.slice(1).reduce((s,q,i)=>s+Math.hypot(q[0]-p[i][0],q[1]-p[i][1]),0);
+  let best=null,bl=Infinity;for(const c of cs)if(!crosses(r,ax,az,...c)&&!crosses(r,...c,bx,bz)){const l=len([ax,az],c,[bx,bz]);if(l<bl){bl=l;best=[c];}}
+  if(!best)for(let i=0;i<4;i++)for(const j of [(i+1)%4,(i+3)%4]){const c=cs[i],c2=cs[j];if(crosses(r,ax,az,...c)||crosses(r,...c2,bx,bz))continue;const l=len([ax,az],c,c2,[bx,bz]);if(l<bl){bl=l;best=[c,c2];}}
+  if(!best)return [{x:bx,z:bz}];const pts=best.map(([x,z])=>({x,z}));const last=pts[pts.length-1];return [...pts,...route(last.x,last.z,bx,bz,depth+1)];}
  // ---- Bedtime: on (told to sleep), u (0 a sofa .. 1 a bed), k (in bed, 0 standing by it .. 1 lying), night (0..1, eases with on), view (the camera at the bed, 0..1:
  // it stays there until the sofa is a sofa again), dream (seconds dreamt) ----
  // jumping (told to jump: on her way, making the bed, or on it), play (seconds since the bed was open for the jump, −1 before and after), from (where she flops into
@@ -146,14 +162,14 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
  function dreamList(){return ['car','arc',...items.filter(i=>i.unlocked&&MODELS.has(i.id)).map(i=>i.id)];}
  // To bed: she walks to the sofa (or, already by it, stays), makes the bed of it and lies down (bedtime, below). Already on her way or asleep: nothing.
  // Told while jumping: on her way or making the bed, she carries on and lies down; up on the bed, she flops down under the duvet from where she is.
- function sleep(){if(bed.on)return false;
+ function sleep(){if(bed.on||meal.active)return false;
   if(bed.jumping){if(bed.play>=0){bed.from=here();bed.blend={...bed.from,at:bed.clock};gx=GRAB.x+PULL;gz=GRAB.z;yaw=GRAB.yaw;}bed.jumping=false;bed.play=-1;}
   bed.on=true;bed.dream=0;dream.reset();dream.setList(dreamList());waveLeft=0;if(bed.k===0&&bed.u===0)walkTo(GRAB.x,GRAB.z,{yaw:GRAB.yaw,bed:true},true);return true;}
  // Up again: a burst of sparkles where the dream was, then she climbs out and makes the bed a sofa again. On her way to bed, she just stops.
  // She always climbs out beside the bed, wherever she flopped in from (woken halfway, she glides over).
  function wake(){if(!bed.on)return false;if(bed.dream>1.5)dream.burst(bubbleAt,22,3);bed.on=false;bed.dream=0;if(bed.from){bed.blend={...here(),at:bed.clock};bed.from=null;}if(bed.k===0){walk=null;arrive=null;}return true;}
  // Jump on the bed: only from awake with the sofa a sofa. She walks over and pulls the bed out exactly as at bedtime, but by day; then she jumps (bedtime, below).
- function jump(){if(bed.on||bed.jumping||bed.u>0||bed.k>0)return false;bed.jumping=true;bed.play=-1;waveLeft=0;walkTo(GRAB.x,GRAB.z,{yaw:GRAB.yaw,bed:true},true);return true;}
+ function jump(){if(bed.on||bed.jumping||bed.u>0||bed.k>0||meal.active)return false;bed.jumping=true;bed.play=-1;waveLeft=0;walkTo(GRAB.x,GRAB.z,{yaw:GRAB.yaw,bed:true},true);return true;}
  const here=()=>({x:girl.group.position.x,y:girl.group.position.y,z:girl.group.position.z,rx:girl.group.rotation.x,ry:girl.group.rotation.y});
  const atGrab=()=>!walk&&Math.hypot(gx-GRAB.x,gz-GRAB.z)<.06&&Math.abs(Math.atan2(Math.sin(GRAB.yaw-yaw),Math.cos(GRAB.yaw-yaw)))<.2;
  // Making the bed takes 3.2 s, making the sofa again 2.6 s; she lies down in 1.5 s and gets up in 1.2 s. The dream starts once she lies still.
@@ -232,14 +248,14 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
  // Found now (hidden before): the pig hops out onto the rug. Already out, or still hidden: it stays where it is.
  function refresh(list,opts={}){items=list;dream.setList(dreamList());if(opts.pigHidden!==false){pigOut=false;hop=-1;}else if(!pigOut){pigOut=true;hop=0;}if(hop<0)placePig();for(const s of slots)content(s);}
  function enter(list,opts={}){pigOut=opts.pigHidden===false;hop=-1;items=[];for(const s of slots)s.key='';refresh(list,opts);gx=0;gz=1.4;yaw=Math.PI;walk=null;arrive=null;waveLeft=2.2;
-  Object.assign(bed,{on:false,u:0,k:0,night:0,view:0,dream:0,open:true,jumping:false,play:-1,from:null,blend:null});mo=motion();dream.reset();dressBed(0);dressNight();pose();fit(true);} // she always comes in awake, with the bed folded in
+  Object.assign(bed,{on:false,u:0,k:0,night:0,view:0,dream:0,open:true,jumping:false,play:-1,from:null,blend:null});meal.reset();mo=motion();dream.reset();dressBed(0);dressNight();pose();fit(true);} // she always comes in awake, with the bed folded in
  // ---- The camera: from the front and a little above (the narrower the screen, the higher), as close as lets the whole room show, the front corners of the floor included ----
  const corners=[[-4.5,0,3],[4.5,0,3],[-4.5,3.6,-3.5],[4.5,3.6,-3.5],[0,0,3],[0,3.6,-3.5]].map(p=>new T.Vector3(...p)),probe=new T.Vector3();let aspect=0;
  function fit(force){const w=canvas.clientWidth||1,h=canvas.clientHeight||1,a=w/h;if(!force&&a===aspect)return;aspect=a;camera.aspect=a;
   const el=(38-14*Math.min(1,Math.max(0,(a-.55)/.7)))*Math.PI/180;let d=6;
   for(let i=0;i<90;i++,d*=1.03){camera.position.set(0,1.3+Math.sin(el)*d,-.4+Math.cos(el)*d);camera.lookAt(0,1.3,-.4);camera.updateProjectionMatrix();camera.updateMatrixWorld(true);
    if(corners.every(p=>{probe.copy(p).project(camera);return Math.abs(probe.x)<.97&&Math.abs(probe.y)<.95;}))break;}
-  roomEye.copy(camera.position);fitBed(a);aim();}
+  roomEye.copy(camera.position);fitBed(a);fitMeal();aim();}
  // At bedtime the camera glides in to the sofa bed and the dream (and stays while she makes the bed and, getting up, the sofa again), from the front and a little to the right, so it sees her face from the foot end. It comes as close
  // as lets the bed, her Z's and the whole bubble show, clear of the buttons at the top and the title at the bottom.
  const roomEye=new T.Vector3(),roomAt=new T.Vector3(0,1.3,-.4),bedEye=new T.Vector3(),bedAt=new T.Vector3(),lookAt=new T.Vector3(),bedDir=new T.Vector3(.42,.62,1).normalize();
@@ -250,13 +266,21 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
    const rim=[[1,1],[1,-1],[-1,1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]].map(([x,y])=>bubbleAt.clone().addScaledVector(camRight,x*1.38*BUBBLE.size).addScaledVector(camUp,y*1.03*BUBBLE.size));
    if([...bedPoints,...rim].every(p=>{probe.copy(p).project(camera);return Math.abs(probe.x)<.94&&probe.y<top&&probe.y>bottom;}))break;}
   bedEye.copy(camera.position);}
- function aim(){const e=ease(bed.view);camera.position.lerpVectors(roomEye,bedEye,e);lookAt.lerpVectors(roomAt,bedAt,e);camera.lookAt(lookAt);camera.updateMatrixWorld(true);}
+ // At a meal the camera glides in to the table, or to her and the backpack, from the front and a little to the left, as close as lets it all show under the buttons.
+ const mealEye={spoon:new T.Vector3(),peg:new T.Vector3()},mealAt={spoon:new T.Vector3(),peg:new T.Vector3()},mealDir={spoon:new T.Vector3(-.3,.62,1).normalize(),peg:new T.Vector3(-.6,.62,1).normalize()},mealKind=()=>meal.st.kind||meal.st.last||'spoon';
+ function fitMeal(){const h=canvas.clientHeight||1,top=1-2*110/h,bottom=-1+2*115/h,keep=meal.st.kind,last=meal.st.last;
+  for(const kind of ['spoon','peg']){meal.st.kind=kind;const pts=meal.viewPoints().map(p=>new T.Vector3(...p)),at=mealAt[kind].set(0,0,0);for(const p of pts)at.add(p);at.divideScalar(pts.length);at.y+=.1;let d=2;
+   for(let i=0;i<90;i++,d*=1.03){camera.position.copy(at).addScaledVector(mealDir[kind],d);camera.lookAt(at);camera.updateMatrixWorld(true);if(pts.every(p=>{probe.copy(p).project(camera);return Math.abs(probe.x)<.86&&probe.y<top&&probe.y>bottom;}))break;}
+   mealEye[kind].copy(camera.position);}meal.st.kind=keep;meal.st.last=last;}
+ function aim(){const e=ease(bed.view),m=ease(Math.min(1,meal.st.view)),k=mealKind();camera.position.lerpVectors(roomEye,bedEye,e);lookAt.lerpVectors(roomAt,bedAt,e);
+  if(m>0){camera.position.lerp(mealEye[k],m);lookAt.lerp(mealAt[k],m);}camera.lookAt(lookAt);camera.updateMatrixWorld(true);}
  // ---- Taps: the nearest of the hit boxes, the door and the walls and furniture decides; a tap on the floor walks the girl there ----
  const ray=new T.Raycaster(),ndc=new T.Vector2(),floor=new T.Plane(new T.Vector3(0,1,0),0),at=new T.Vector3();
  function pick(clientX,clientY){const r=canvas.getBoundingClientRect();ndc.set((clientX-r.left)/(r.width||1)*2-1,-((clientY-r.top)/(r.height||1))*2+1);fit();aim();scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);ray.setFromCamera(ndc,camera);
   const dreaming=dream.targets(),resting=bed.on||bed.k>0||bed.jumping; // resting: on her way to bed, in it or getting up, or jumping on it; then only the bed and the dream answer
   const hit=ray.intersectObjects([...pickables,...blockers,...dreaming],false)[0],onFloor=ray.ray.intersectPlane(floor,at),floorAt=onFloor?ray.ray.origin.distanceTo(at):Infinity;
   if(hit&&dreaming.includes(hit.object)){const found=dream.hit(hit.object,hit.point);return found&&found.type!=='sky'?found:null;}
+  if(meal.active)return {type:'meal'}; // at a meal a tap anywhere is the next spoonful, starts the pump or makes her dance (game.js)
   if(hit&&hit.object.userData.kind==='bed')return {type:'bed'}; // to bed, or up again: game.js decides
   if(resting)return null;
   if(hit&&hit.distance<floorAt){const o=hit.object,kind=o.userData.kind;
@@ -264,18 +288,19 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
    if(kind==='item'){const slot=slots.find(s=>s.id===o.userData.id);walkTo(slot.x,.65,{yaw:0});return {type:'item',id:slot.id};}
    if(kind==='pig'){walkTo(-2.7,2.6,{yaw:Math.PI*.7});return {type:'pig'};}
    if(kind==='door'){walkTo(3.45,1.5,{yaw:-Math.PI/2});return {type:'door'};}
+   if(kind==='table'||kind==='bag')return {type:kind};
    return null;}
   if(onFloor&&Math.abs(at.x)<ROOM.x&&at.z>ROOM.back&&at.z<ROOM.front){walkTo(at.x,at.z);return {type:'floor'};}
   return null;}
  // ---- Every frame: the girl walks and waves (or goes to bed and dreams), the models turn, the pig wiggles or hops out, then draw ----
  const turn=(from,to,k)=>from+Math.atan2(Math.sin(to-from),Math.cos(to-from))*k;
  function update(dt,time){
-  fit();let speed=0;bedtime(dt);mo=motion();
+  fit();let speed=0;bedtime(dt);mo=motion();meal.update(dt,time);
   if(walk){const dx=walk.x-gx,dz=walk.z-gz,d=Math.hypot(dx,dz);
-   if(d<.04){walk=null;if(arrive&&!arrive.bed){waveLeft=2.6;}}else{const step=Math.min(d,1.4*dt);gx+=dx/d*step;gz+=dz/d*step;yaw=turn(yaw,Math.atan2(-dx,-dz),Math.min(1,dt*10));speed=1.4;}}
+   if(d<.04){if(walk.via?.length){walk={...walk.via.shift(),via:walk.via};}else{walk=null;if(arrive&&!arrive.bed&&!arrive.meal){waveLeft=2.6;}}}else{const step=Math.min(d,1.4*dt);gx+=dx/d*step;gz+=dz/d*step;yaw=turn(yaw,Math.atan2(-dx,-dz),Math.min(1,dt*10));speed=1.4;}}
   else if(arrive){yaw=turn(yaw,arrive.yaw,Math.min(1,dt*8));}
   let wave=0;if(waveLeft>0){waveLeft=Math.max(0,waveLeft-dt);wave=Math.min(1,waveLeft*3,(2.6-waveLeft)*3);if(waveLeft===0)arrive=null;}
-  pose();girl.update(dt,bed.u>0&&bed.k===0&&mo.B>0&&mo.B<1?.6:speed,time,Math.max(0,wave));arms();dressBed(time);dressNight();aim();
+  pose();girl.update(dt,bed.u>0&&bed.k===0&&mo.B>0&&mo.B<1?.6:speed,time,Math.max(0,wave));arms();meal.pose(time);dressBed(time);dressNight();aim();
   girl.head.getWorldPosition(head);dream.update(dt,time,{t:bed.on&&bed.k===1?bed.dream:0,head,at:bubbleAt,size:BUBBLE.size,camera,side:zSide});
   slots.forEach((s,i)=>{const c=s.content;if(!c)return;if(c.locked){c.spin.position.y=.5+Math.sin(time*2+i)*.05;c.spin.rotation.y=Math.sin(time*.8+i)*.35;}else c.spin.rotation.y=time*(c.medal?.9:.7)+i;});
   for(const c of cache.values())if(c!=='none'&&c.group.parent)c.tick(dt,time); // the ones on show come alive
@@ -284,5 +309,7 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
   else if(!pigOut)pig.group.rotation.y=Math.max(0,Math.sin(time*.9)-.6)*Math.sin(time*16)*.35;
   pig.update(dt,0,time);
   renderer.render(scene,camera);}
- return {scene,camera,girl,pig,slots,pigHit,door,enter,refresh,update,pick,sleep,wake,jump,get asleep(){return bed.on;},get jumping(){return bed.jumping;},bed,dream,sofaBed,hitBoxes:slots.map(s=>s.hit),JUMP};
+ // Mealtime: only from awake and standing, with the sofa a sofa.
+ function startMeal(kind){if(bed.on||bed.jumping||bed.u>0||bed.k>0)return false;return meal.start(kind);}
+ return {meal,startMeal,mealTap:()=>meal.tap(),finishMeal:()=>meal.finish(),setBrushed:n=>meal.setBrushed(n),route,scene,camera,girl,pig,slots,pigHit,door,enter,refresh,update,pick,sleep,wake,jump,get asleep(){return bed.on;},get jumping(){return bed.jumping;},bed,dream,sofaBed,hitBoxes:slots.map(s=>s.hit),JUMP};
 }

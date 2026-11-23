@@ -51,11 +51,12 @@ console.log('Inside: a tap at the middle of each of the 20 places picks it, at f
  assert.deepEqual({...inside.pick(...screen(new T.Vector3(-3.55,.8,1.45)))},{type:'bed'},'the sofa is a sofa bed, no floor');assert.equal(inside.pick(5,5),null,'nor is the backdrop');
  // a tap on the floor starts the girl walking at about 1.4 m/s, turned to where she goes
  const girl=inside.girl.group;assert.ok(Math.abs(girl.position.x)<.01&&Math.abs(girl.position.z-1.4)<.01,'she starts on the rug');
- assert.deepEqual({...inside.pick(...screen(new T.Vector3(3,0,2)))},{type:'floor'});let t=0;const frame=dt=>{t+=dt;inside.update(dt,t);};
+ // (to the right of the rug and in front of the podium; since 23 November 2026 the little table stands further forward, see verify-meal.mjs)
+ assert.deepEqual({...inside.pick(...screen(new T.Vector3(3.2,0,.8)))},{type:'floor'});let t=0;const frame=dt=>{t+=dt;inside.update(dt,t);};
  for(let i=0;i<30;i++)frame(1/30);assert.ok(Math.abs(girl.position.distanceTo(new T.Vector3(0,0,1.4))-1.4)<.15,'one second at 1.4 m/s ('+girl.position.distanceTo(new T.Vector3(0,0,1.4)).toFixed(2)+' m)');
- assert.ok(new T.Vector3(0,0,-1).applyQuaternion(girl.quaternion).dot(new T.Vector3(3,0,.6).normalize())>.98,'turned to where she walks');
+ assert.ok(new T.Vector3(0,0,-1).applyQuaternion(girl.quaternion).dot(new T.Vector3(3.2,0,-.6).normalize())>.98,'turned to where she walks');
  const legs=inside.girl.legs.map(l=>l.rotation.x);assert.ok(legs.some(a=>Math.abs(a)>.05),'and her legs swing');
- for(let i=0;i<150;i++)frame(1/30);assert.ok(girl.position.distanceTo(new T.Vector3(3,0,2))<.05,'she arrives');assert.ok(inside.girl.legs.every(l=>Math.abs(l.rotation.x)<.01),'and stops');
+ for(let i=0;i<150;i++)frame(1/30);assert.ok(girl.position.distanceTo(new T.Vector3(3.2,0,.8))<.05,'she arrives');assert.ok(inside.girl.legs.every(l=>Math.abs(l.rotation.x)<.01),'and stops');
  // not through the sofa, not into the podium: the target is kept on the free floor
  assert.deepEqual({...inside.pick(...screen(new T.Vector3(-3,0,2.95)))},{type:'floor'});for(let i=0;i<400;i++)frame(1/30);assert.ok(girl.position.x>=-2.7-.01&&girl.position.z>=.6-.01,`clamped to the free floor (${girl.position.x.toFixed(2)}, ${girl.position.z.toFixed(2)})`);
  // an item: she walks to just in front of its place and waves

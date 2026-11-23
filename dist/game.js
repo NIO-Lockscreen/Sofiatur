@@ -4,6 +4,8 @@ import {roundaboutChoices} from './roundabouts.js';
 import {createDrivingLines} from './driving-line.js';
 import {createMusic} from './music.js';
 import {createInside} from './inside.js';
+import {createToothGame} from './teeth.js';
+import {FOODS,BITES,PUMP} from './meal.js';
 const $=id=>document.getElementById(id);
 let world,data,state='loading',sound=true,current,previous=null,active=null,distance=0,speed=0,travelled=0,turns=0,heading=new T.Vector3(0,0,1),position=new T.Vector3(),choices=[],best=null,totalInitial=0,maxKmh=200,camMode='follow',lastTime=performance.now(),time=0,mapClock=0,leavingHome=false,lastEdge=null,lines=null;
 let roundaboutUndo=null,freeMode=false,free=null,carHeight,showDeadEnds=false,choicesStale=false,musicOn=true,queue=[],preview=null,picked=null,pickedUntil=-9,aheadShown=false,planKey='';
@@ -41,7 +43,7 @@ function incomingEdge(){if(lastEdge&&lastEdge.to===current)return lastEdge;if(pr
 function endDirection(e,start=true){const p=e.path.map(n=>data.nodes[n]),i=start?e.stub||0:p.length-2;const a=p[i],b=p[i+1];return new T.Vector3(b[0]-a[0],0,b[1]-a[1]).normalize();}
 function routeFrom(n){const route=[];const visited=new Set();while(n!==data.goal&&!visited.has(n)){visited.add(n);const e=optimal.get(n);if(!e)break;route.push(e);n=e.to;}return route;}
 function computeRoutes(){const reverse=incoming;for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);if(!reverse.has(e.to))reverse.set(e.to,[]);reverse.get(e.to).push(e);}distances.set(data.goal,0);const todo=[data.goal];while(todo.length){todo.sort((a,b)=>distances.get(b)-distances.get(a));const n=todo.pop(),d=distances.get(n);for(const e of reverse.get(n)||[]){const nd=d+(e.cost||e.length);if(nd<(distances.get(e.from)??Infinity)){distances.set(e.from,nd);optimal.set(e.from,e);if(!todo.includes(e.from))todo.push(e.from);}}}}
-function reset(){clearInputs();tripBar(null);homeAt=0;$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;picked=null;$('undoRoundabout').hidden=true;maxKmh=200;current=data.start;previous=null;lastEdge=null;active=null;distance=0;speed=0;travelled=0;turns=0;state='intro';position.copy(point(current));heading.copy(endDirection(optimal.get(current)));totalInitial=routeFrom(current).reduce((n,e)=>n+e.length,0);ui.welcome.hidden=false;ui.drive.hidden=true;ui.decision.hidden=true;ui.finish.hidden=true;document.body.classList.remove('choosing');document.body.classList.remove('arrived');world.resetCamera();clearWorldChoices();world.setTurnArrow(null);$('remaining').textContent='Herlofsons veg → Skjermvegen';newReward=null;$('insideHud').hidden=true;sleepHud(false);$('goInside').hidden=false;hintTurn++;showRewards();}
+function reset(){if(brushing)stopBrushing(true);clearInputs();tripBar(null);homeAt=0;$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;picked=null;$('undoRoundabout').hidden=true;maxKmh=200;current=data.start;previous=null;lastEdge=null;active=null;distance=0;speed=0;travelled=0;turns=0;state='intro';position.copy(point(current));heading.copy(endDirection(optimal.get(current)));totalInitial=routeFrom(current).reduce((n,e)=>n+e.length,0);ui.welcome.hidden=false;ui.drive.hidden=true;ui.decision.hidden=true;ui.finish.hidden=true;document.body.classList.remove('choosing');document.body.classList.remove('arrived');world.resetCamera();clearWorldChoices();world.setTurnArrow(null);$('remaining').textContent='Herlofsons veg → Skjermvegen';newReward=null;$('insideHud').hidden=true;sleepHud(false);$('goInside').hidden=false;hintTurn++;showRewards();}
 function start(){if(state!=='intro')return;$('goInside').hidden=true;$('hornHome').hidden=true;lakeVisit=false;if(sound&&musicOn)music.play();if(sound&&arrivals>=HORN_AT)music.preloadHorns?.();if(freeMode){startFree();return;}tripBar(0);ui.welcome.hidden=true;ui.drive.hidden=false;state='decision';const rexCarries=model==='trex'&&arrivals>=MODEL_AT.trex&&ludvigUnlocked&&behind==='ludvig'; // the easter egg (world.js)
  if(rexCarries)toast('🦖 Oi! T-rexen har tatt Ludvig i munnen!');say('Hei Sofia! Nå kjører vi til barnehagen. Ved hvert kryss velger du vei med en pil.'+(rexCarries?' Oi! T-rexen har tatt Ludvig i munnen!':''));leavingHome=true;showDecision();}
 // A roundabout exit's arrow shows where its road goes, seen from the circle (roundaboutLabels); without that, where its
@@ -344,9 +346,9 @@ function podiumItems(){
   other('spider','🕷️','Edderkoppen',spiderUnlocked,'Du kjørte til barnehagen etter at du fikk svevebilen.','Hint: Når bilen kan sveve, kjører du til barnehagen én gang til. Da venter en venn med åtte bein!')];
  return items.map(i=>i.unlocked?i:{...i,icon:'❓',title:'Hemmelig overraskelse'});}
 function goInside(){if(state!=='intro'||!world)return;fx('door');if(!inside)inside=createInside({T,renderer:world.renderer,canvas:$('world'),on:bedEvent});state='inside';ui.welcome.hidden=true;$('goInside').hidden=true;$('hornHome').hidden=true;$('insideHud').hidden=false;$('unlockInfo').hidden=true;
- const first=!beenInside;beenInside=true;saveProgress();applyRewards();inside.enter(podiumItems(),{pigHidden:!pigUnlocked});
+ const first=!beenInside;beenInside=true;saveProgress();applyRewards();inside.enter(podiumItems(),{pigHidden:!pigUnlocked});inside.setBrushed?.(brushCount);sleepHud(false);
  say(first?'Velkommen inn, Sofia! På pallen står alle overraskelsene dine. Trykk på dem!':'Velkommen hjem igjen, Sofia!');}
-function goOutside(){if(state==='inside'){fx('door');reset();}}
+function goOutside(){if(state==='inside'){stopBrushing(true);fx('door');reset();}}
 // The spider (11 November 2026): comes at an arrival at the kindergarten once the hover car is unlocked and announced (finish()), as the ride to choose on the start card.
 function unlockSpider(){spiderUnlocked=true;switchRide('spider');saveProgress();applyRewards();showRewards();}
 function findSpider(){if(spiderUnlocked)return;unlockSpider();fx('reward');toast('🕷️ En edderkopp! Nå kan du ri på en edderkopp');say('Se! En stor, snill edderkopp! Nå kan du ri på den. Du velger den på startskjermen.');} // the debug key (X) in the house; the real unlock is in finish()
@@ -383,11 +385,11 @@ function lockSecret({id,title}){
 // sofa, while she jumps or after, puts her to bed as usual. bedJumped is not saved: it starts again with the page.
 const DREAM_NAMES={car:'Bilen',arc:'Regnbuen'};let bedTapAt=-1e9,bedJumped=false;
 function sleepHud(on){$('wakeUp').hidden=!on;$('insideHud').classList.toggle('sleeping',on);$('insideName').textContent=on?'Sofia sover':'Hjemme hos Sofia';
- $('insideTip').textContent=on?'Trykk på drømmen, eller på sofaen for å vekke henne':'Trykk på premiene, eller på sofaen når du er trøtt';if(on)$('unlockInfo').hidden=true;}
-function jumpHud(){$('wakeUp').hidden=true;$('insideHud').classList.remove('sleeping');$('insideName').textContent='Sofia hopper i senga!';$('insideTip').textContent='Trykk på sofaen igjen, så legger hun seg';$('unlockInfo').hidden=true;}
+ $('insideTip').textContent=on?'Trykk på drømmen, eller på sofaen for å vekke henne':'Trykk på premiene, eller på sofaen når du er trøtt';if(on)$('unlockInfo').hidden=true;routineHud();}
+function jumpHud(){$('wakeUp').hidden=true;$('insideHud').classList.remove('sleeping');$('insideName').textContent='Sofia hopper i senga!';$('insideTip').textContent='Trykk på sofaen igjen, så legger hun seg';$('unlockInfo').hidden=true;routineHud();}
 function jumpOnBed(){if(state!=='inside'||!inside)return;bedJumped=true;if(!inside.jump()){goToBed();return;}jumpHud();say('Hopp, hopp, hopp! Sofia hopper i senga!');}
 // What the house tells of the jump: a boing at each bounce, a sparkle at the top of the spin, a word as she climbs down, and the room as before once she is down.
-function bedEvent(name){if(state!=='inside')return;if(name==='boing'||name==='spin'){if(sound)music.effect?.(name==='spin'?'sparkle':'boing');}
+function bedEvent(name){if(state!=='inside')return;if(name.startsWith('meal:')){mealEvent(name.slice(5));return;}if(name==='boing'||name==='spin'){if(sound)music.effect?.(name==='spin'?'sparkle':'boing');}
  else if(name==='down')say('Det var gøy! Trykk på sofaen igjen når du er trøtt, Sofia.');else if(name==='done'&&!inside?.asleep)sleepHud(false);}
 function goToBed(){if(state!=='inside'||!inside||!inside.sleep())return;sleepHud(true);if(sound)music.effect?.('lullaby');say('God natt, Sofia! Sov godt, og drøm søtt om bilturer og regnbuer.');}
 function wakeUp(){if(state!=='inside'||!inside?.wake())return;sleepHud(false);if(sound)music.effect?.('sparkle');say('God morgen, Sofia! Nå er du uthvilt og klar for en ny biltur.');}
@@ -396,11 +398,52 @@ function wakeUp(){if(state!=='inside'||!inside?.wake())return;sleepHud(false);if
 function houseTap(x,y){const hit=inside.pick(x,y);$('unlockInfo').hidden=true;if(!hit)return;
  if(hit.type==='item'){const it=podiumItems().find(i=>i.id===hit.id);if(!it)return;fx('pop');$('unlockInfoIcon').textContent=it.icon;$('unlockInfoTitle').textContent=it.title;$('unlockInfoText').textContent=it.text;$('unlockInfo').hidden=false;say((it.unlocked?it.title+'. ':'')+it.text);}
  else if(hit.type==='pig')findPig();else if(hit.type==='door')goOutside();
+ else if(hit.type==='table')startMeal('spoon');else if(hit.type==='bag')startMeal('peg');else if(hit.type==='meal')mealTap();
  else if(hit.type==='bed'){const now=performance.now();if(now-bedTapAt<600)return;bedTapAt=now;if(inside.asleep)wakeUp();else if(!bedJumped)jumpOnBed();else goToBed();}
  else if(hit.type==='dream'){const name=DREAM_NAMES[hit.id]||podiumItems().find(i=>i.id===hit.id&&i.unlocked)?.title;if(sound)music.effect?.('pop');if(name)say(name+'!');}
  else if(hit.type==='comet'){if(sound)music.effect?.('sparkle');say('En komet!');}}
 {let down=null;const canvas=$('world');canvas.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,t:performance.now()};});
  canvas.addEventListener('pointerup',e=>{const d=down;down=null;if(state==='inside'&&d&&Math.hypot(e.clientX-d.x,e.clientY-d.y)<12&&performance.now()-d.t<600)houseTap(e.clientX,e.clientY);});}
+// Mealtime (23 November 2026, as in the space game): «🥄 Spise» or a tap on the table, «🎒 Mat med PEG» or a tap on the backpack (inside.js, meal.js).
+// With the spoon each tap (or «🥄 En skje til») is the next spoonful until the bowl is empty; with the PEG backpack a tap starts the pump, and while it runs a tap
+// makes her dance with it on. «Ferdig å spise» stops early. The bed, the podium and «Gå ut» wait until she has eaten; a bar under the title shows how full she is.
+const MEAL_SAY={eat:'Trykk, så tar Sofia en skje!',full:'Ferdig! Skåla er tom. Nå er magen god og mett, Sofia! Etter maten pusser vi tennene.',thanks:'Takk for maten!',
+ ready:'Klikk! Slangen er koblet til knappen på magen. Trykk på sekken for å starte pumpen.',pump:'Pip! Pumpen går. Maten renner gjennom slangen og rett i magen. Med sekken på ryggen kan Sofia leke mens hun spiser. Trykk på henne, så danser hun!',
+ beep:'Pip, pip, pip! Ferdig! Nå er magen god og mett, Sofia. Etter maten pusser vi tennene.'};
+const MEAL_FX={bite:'nam',full:'reward',plug:'click',pump:'beep',dance:'boing',beep:'pumpdone',unplug:'click'};
+let mealTalk=-1e9;
+function startMeal(kind){if(state!=='inside'||!inside?.startMeal||brushing||!inside.startMeal(kind))return;$('unlockInfo').hidden=true;fx('pop');const f=FOODS[inside.meal.st.food]?.name||'mat';
+ say(kind==='spoon'?`Mat! I dag blir det ${f}. Sofia setter seg ved bordet.`:'Nå skal Sofia få mat gjennom PEG-slangen. Hun tar på seg sekken med pumpen.');routineHud();}
+function mealTap(){const r=inside?.mealTap();if(r==='bite')fx('pop');}
+function mealEvent(step){if(MEAL_FX[step])fx(MEAL_FX[step]);if(MEAL_SAY[step])say(MEAL_SAY[step]);
+ const now=performance.now();if(step==='bite'&&inside.meal.st.bites<BITES&&now-mealTalk>1800){mealTalk=now;say(['Nam!','Mmm, godt!','Nam nam!','Så godt!'][inside.meal.st.bites%4]);}
+ if(step==='dance'&&now-mealTalk>2500){mealTalk=now;say(['Se, Sofia danser med sekken!','Sekken henger med!','Hopp og sprett!','Maten kommer likevel!'][Math.floor(Math.random()*4)]);}
+ if(step==='end')sleepHud(false);else routineHud();}
+// The room's buttons and the title as they should be now: the everyday buttons when she is free, the meal's buttons and words while she eats.
+function routineHud(){if(!inside?.meal)return;const m=inside.meal.st,k=m.kind,busy=inside.asleep||inside.jumping;$('routineBar').hidden=!!(busy||k||brushing);$('mealBar').hidden=!k||brushing;$('goOut').hidden=!!k;
+ $('tummy').hidden=!k;if(!k)return;const s=m.step,f=FOODS[m.food]?.name||'mat',a=$('mealAction');$('unlockInfo').hidden=true;
+ a.hidden=!['eat','ready','pump'].includes(s);a.textContent=s==='eat'?'🥄 En skje til':s==='ready'?'▶ Start pumpen':'💃 Dans med sekken';
+ $('mealDone').hidden=!(k==='spoon'&&['walk','sit','eat'].includes(s)||k==='peg'&&['walk','plug','ready','pump'].includes(s));
+ const [name,tip]=k==='spoon'?(s==='eat'?[`Sofia spiser ${f}`,`Trykk, så tar hun en skje · ${BITES-m.bites} igjen`]:['full','up'].includes(s)?['Skåla er tom!','Nå er magen god og mett']:['Sofia skal spise',`I dag blir det ${f}!`])
+  :s==='ready'?['Slangen er koblet til','Trykk på sekken, så starter pumpen']:s==='pump'?['Pumpen går','Maten renner i slangen · trykk på Sofia, så danser hun']:['beep','unplug','drop'].includes(s)?['Pumpen er ferdig','Nå er magen god og mett']:['Mat med PEG','Sofia tar på seg sekken og kobler slangen til magen'];
+ $('insideName').textContent=name;$('insideTip').textContent=tip;tummyHud();}
+function tummyHud(){const m=inside?.meal?.st;if(!m?.kind)return;const full=m.kind==='peg'?Math.min(1,m.pump/PUMP+(['beep','unplug','drop'].includes(m.step)?1:0)):Math.min(1,m.bites/BITES);
+ $('tummyFill').style.width=Math.round(full*100)+'%';$('tummy').setAttribute('aria-label',`Magen er ${Math.round(full*100)} prosent mett`);}
+$('eatSpoon').onclick=()=>startMeal('spoon');$('eatPeg').onclick=()=>startMeal('peg');$('mealDone').onclick=()=>inside?.finishMeal();$('mealAction').onclick=mealTap;
+// Tooth brushing (23 November 2026, the same game as in the space game, teeth.js): over the whole screen, with «Tilbake» where «Gå ut» was. Clean teeth give a star
+// on the brushing chart on the wall over the podium (ten places). The count is kept on its own ('sofiatur.tannpuss'): it is no unlock, so RE-ward leaves it alone.
+let toothGame=null,brushing=false,brushCount=0;try{brushCount=Math.max(0,Math.floor(Number(localStorage.getItem('sofiatur.tannpuss'))||0));}catch{}
+const TEETH_TEXT={paste:['Tannkrem først','Trykk på tuben'],brush:['Puss alle tennene','Dra tannbørsten over tennene, oppe og nede · husk de bakerste'],rinse:['Skyll munnen','Trykk på koppen med vann'],done:['Så rene tenner!','Du pusset kjempebra']};
+function startBrushing(){if(state!=='inside'||!inside||brushing||inside.asleep||inside.jumping||inside.meal?.active)return;
+ if(!toothGame)toothGame=createToothGame({canvas:$('teeth'),skin:'#f4cba9',hair:'#6b4226',say,sound:(n,i)=>{if(sound)music.effect?.(n==='ding'?'ding'+(i||0):n==='done'?'fanfare':n);},
+  insets:()=>{const t=document.querySelector('#insideHud .inside-title')?.getBoundingClientRect(),h=$('teeth').getBoundingClientRect();return {top:0,bottom:t?Math.max(0,h.bottom-t.top+8):90};},
+  onStep:step=>{const [a,b]=TEETH_TEXT[step]||['Tannpuss',''];$('insideName').textContent=a;$('insideTip').textContent=b;},onDone:brushed});
+ brushing=true;$('unlockInfo').hidden=true;$('teeth').hidden=false;$('teethDone').hidden=false;$('insideHud').classList.add('brushing');routineHud();fx('pop');toothGame.start();}
+function brushed(){brushCount++;try{localStorage.setItem('sofiatur.tannpuss',String(brushCount));}catch{}inside?.setBrushed(brushCount);stopBrushing(true);fx('reward');toast('🪥 En ny stjerne på tannpusskartet!');
+ say(`Så flink du er, Sofia! Nå har du ${brushCount} ${brushCount===1?'stjerne':'stjerner'} på tannpusskartet.`);}
+// Back to the room: «Tilbake», Esc, clean teeth, or leaving the house. quiet: nothing more to say.
+function stopBrushing(quiet=false){if(!brushing)return;brushing=false;toothGame?.stop();$('teeth').hidden=true;$('teethDone').hidden=true;$('insideHud').classList.remove('brushing');if(!quiet)window.speechSynthesis?.cancel();if(state==='inside')sleepHud(!!inside?.asleep);}
+$('brushTeeth').onclick=startBrushing;$('teethDone').onclick=()=>stopBrushing();
 $('goInside').onclick=goInside;$('goOut').onclick=goOutside;$('wakeUp').onclick=wakeUp;$('unlockInfo').onclick=()=>{$('unlockInfo').hidden=true;};
 // RE-ward (4 October 2026, with the taxi, the pig, the hover car and the house from 7 October), a kind of prestige: the button in the settings saves everything unlocked so far
 // (the trips and so the colours and rides; the secrets KIWI, Ludvig, the duck, the places visited, the pig; the hover switch; whether she has been inside) and starts over with
@@ -543,7 +586,7 @@ $('chooseAhead').onchange=e=>{chooseAhead=e.target.value==='on';saveSettings();i
 $('driveMode').onchange=e=>{if(!world)return;freeMode=e.target.value==='free';$('recoverCar').hidden=!freeMode;reset();$('menu').close();start();};
 $('recoverCar').onclick=()=>{recoverFree();$('menu').close();};
 for(const [id,action] of [['freeLeft','left'],['freeRight','right'],['freeBrake','brake'],['freeDrift','drift']]){const el=$(id);el.addEventListener('pointerdown',e=>{if(state!=='free')return;e.preventDefault();el.setPointerCapture?.(e.pointerId);heldPointers.set(e.pointerId,action);touch.add(action);el.classList.add('held');});const release=e=>{heldPointers.delete(e.pointerId);if(![...heldPointers.values()].includes(action)){touch.delete(action);el.classList.remove('held');}};for(const type of ['pointerup','pointercancel','lostpointercapture'])el.addEventListener(type,release);}
-window.addEventListener('keydown',e=>{if($('menu').open)return;
+window.addEventListener('keydown',e=>{if($('menu').open)return;if(brushing){if(e.key==='Escape')stopBrushing();return;}
  const letter=(e.key||'').toLowerCase();if(letter==='h'&&!e.repeat&&!/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName||'')){honk();return;}if((letter==='x'||letter==='z')&&!e.repeat&&!/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName||'')){e.preventDefault();(state==='inside'?debugPodium:debugArrivals)(letter==='x'?1:-1);return;}
  const code=e.code||({' ':'Space',a:'KeyA',d:'KeyD',s:'KeyS',q:'KeyQ',Q:'KeyQ'}[e.key]||e.key);
  if(state==='free'){if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','KeyA','KeyD','KeyS','Space'].includes(code)){e.preventDefault();keys.add(code);}if(code==='KeyQ'&&!e.repeat){e.preventDefault();recoverFree();}return;}
@@ -556,7 +599,7 @@ document.addEventListener('visibilitychange',()=>{lastTime=performance.now();});
 function introShift(){const card=state==='intro'?ui.welcome:state==='finished'?ui.finish:null;if(!card||card.hidden)return [0,0];const r=card.getBoundingClientRect?.(),w=window.innerWidth,h=window.innerHeight;if(!r||!w||!h)return [0,0];
  if(r.right<w*.7)return [r.right/2,0];const top=80;return r.top-top>200?[0,h/2-(top+r.top)/2]:[0,0];}
 function animate(now){requestAnimationFrame(animate);const dt=Math.min(.045,Math.max(0,(now-lastTime)/1000));lastTime=now;time+=dt;if(!world)return;
- if(state==='inside'){inside.update(dt,time);return;} // the world is not drawn while Sofia is inside the house
+ if(state==='inside'){if(!brushing){inside.update(dt,time);if(inside.meal?.active)tummyHud();}return;} // the world is not drawn while Sofia is inside the house
  if(state==='free'){if(!homeAt)travelled+=free.step(dt,freeInput());const c=free.car;speed=c.speed;position.set(c.x,free.altitude,c.z);const hx=Math.sin(c.yaw),hz=-Math.cos(c.yaw),slope=(carHeight(c.x+hx,c.z+hz)-carHeight(c.x-hx,c.z-hz))/2;heading.set(hx,slope,hz).normalize();$('freeDrift').classList.toggle('held',c.drifting);if(!homeAt)freeVisits();}
  if(state==='driving'&&active){const remaining=active.len-distance;
   // The limit at this point already includes braking for whatever lies ahead (planAhead); the car catches up to it at ACCEL and follows it down at DECEL, or BRAKE at most.
