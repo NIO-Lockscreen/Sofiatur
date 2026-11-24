@@ -383,7 +383,9 @@ function lockSecret({id,title}){
 // Jumping on the bed (9 November 2026, as in the space game): the first tap on the sofa each time the game is opened makes her jump on it instead: she pulls the
 // bed out, climbs up and jumps with her arms in the air, "Hopp, hopp, hopp!", a boing at each bounce, then hops down and the sofa is made again. The next tap on the
 // sofa, while she jumps or after, puts her to bed as usual. bedJumped is not saved: it starts again with the page.
-const DREAM_NAMES={car:'Bilen',arc:'Regnbuen'};let bedTapAt=-1e9,bedJumped=false;
+// Jumping again (24 November 2026): after that first jump, each later tap on the sofa while she is awake and not jumping has a JUMP_AGAIN (20 %) chance
+// of another jump instead of bedtime. A tap in the middle of a jump still puts her to bed.
+const DREAM_NAMES={car:'Bilen',arc:'Regnbuen'},JUMP_AGAIN=.2;let bedTapAt=-1e9,bedJumped=false;
 function sleepHud(on){$('wakeUp').hidden=!on;$('insideHud').classList.toggle('sleeping',on);$('insideName').textContent=on?'Sofia sover':'Hjemme hos Sofia';
  $('insideTip').textContent=on?'Trykk på drømmen, eller på sofaen for å vekke henne':'Trykk på premiene, eller på sofaen når du er trøtt';if(on)$('unlockInfo').hidden=true;routineHud();}
 function jumpHud(){$('wakeUp').hidden=true;$('insideHud').classList.remove('sleeping');$('insideName').textContent='Sofia hopper i senga!';$('insideTip').textContent='Trykk på sofaen igjen, så legger hun seg';$('unlockInfo').hidden=true;routineHud();}
@@ -399,7 +401,7 @@ function houseTap(x,y){const hit=inside.pick(x,y);$('unlockInfo').hidden=true;if
  if(hit.type==='item'){const it=podiumItems().find(i=>i.id===hit.id);if(!it)return;fx('pop');$('unlockInfoIcon').textContent=it.icon;$('unlockInfoTitle').textContent=it.title;$('unlockInfoText').textContent=it.text;$('unlockInfo').hidden=false;say((it.unlocked?it.title+'. ':'')+it.text);}
  else if(hit.type==='pig')findPig();else if(hit.type==='door')goOutside();
  else if(hit.type==='table')startMeal('spoon');else if(hit.type==='bag')startMeal('peg');else if(hit.type==='meal')mealTap();
- else if(hit.type==='bed'){const now=performance.now();if(now-bedTapAt<600)return;bedTapAt=now;if(inside.asleep)wakeUp();else if(!bedJumped)jumpOnBed();else goToBed();}
+ else if(hit.type==='bed'){const now=performance.now();if(now-bedTapAt<600)return;bedTapAt=now;if(inside.asleep)wakeUp();else if(!bedJumped||!inside.jumping&&Math.random()<JUMP_AGAIN)jumpOnBed();else goToBed();}
  else if(hit.type==='dream'){const name=DREAM_NAMES[hit.id]||podiumItems().find(i=>i.id===hit.id&&i.unlocked)?.title;if(sound)music.effect?.('pop');if(name)say(name+'!');}
  else if(hit.type==='comet'){if(sound)music.effect?.('sparkle');say('En komet!');}}
 {let down=null;const canvas=$('world');canvas.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,t:performance.now()};});

@@ -17,13 +17,14 @@ import {createGirlModel} from './dist/girl.js';
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8'));
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
 // Starts a fresh game (as after a page reload) with the given browser storage; the world records paint, boy and model calls.
-async function launch(localStorage){
+async function launch(localStorage,{random}={}){ // random: what Math.random gives inside the game, for the bed's chance of another jump
  const els=new Map(),world={colour:null,trail:null,boy:null,bubbles:null,honks:0,skin:null,model:null};let callbacks=[],now=0;const canvasContext=new Proxy({},{get:()=>()=>{}});
  const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',value:'',checked:false,style:{},children:[],attrs:{},classes:new Set(),classList:{add(){},remove(){},toggle(c,on){on?this.owner.classes.add(c):this.owner.classes.delete(c);}},setAttribute(k,v){this.attrs[k]=v;},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(type,fn){(this.listeners??={})[type]=fn;},close(){this.open=false;},getContext(){return canvasContext}});const el=els.get(id);el.classList.owner=el;return el;};
  const listeners=new Map(),spoken=[],tts={cancel(){},speak:u=>spoken.push(u.text),getVoices:()=>[]},inside={created:0,enters:[],refreshes:[],picks:[],asleep:false,sleeps:0,wakes:0,jumping:false,jumps:0,on:null}; // spoken: every text say() speaks; inside: what game.js asks of the house (inside.js, stubbed here)
  const env={T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener:(type,fn)=>listeners.set(type,fn),speechSynthesis:tts},speechSynthesis:tts,SpeechSynthesisUtterance:class{constructor(text){this.text=text;}},createInside:opts=>{inside.created++;inside.on=opts?.on;return {enter:(items,o)=>{inside.asleep=false;inside.jumping=false;inside.enters.push({items,o});},refresh:(items,o)=>inside.refreshes.push({items,o}),update(){},pick:()=>inside.picks.length?inside.picks.shift():null,get asleep(){return inside.asleep;},get jumping(){return inside.jumping;},jump:()=>!inside.asleep&&!inside.jumping&&(inside.jumping=true,++inside.jumps),sleep:()=>!inside.asleep&&(inside.asleep=true,inside.jumping=false,++inside.sleeps),wake:()=>inside.asleep&&!(inside.asleep=false)&&++inside.wakes};},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),
   createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on,setBoy:on=>world.boy=on,setDuckRunner:on=>world.duckRunner=on,setDuckling:on=>world.duckling=on,setBubbles:on=>world.bubbles=on,setHover:on=>world.hover=on,setBalloonGirl:on=>world.balloonGirl=on,honk:()=>world.honks++})};
  if(localStorage)Object.defineProperty(env,'localStorage',{get:localStorage});
+ if(random)env.Math=Object.assign(Object.create(Math),{random});
  const ctx=vm.createContext(env);
  const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={arrive(){start();finish();},park(){parkAtKiwi();},home(){start();current=data.start;state='decision';parkAtHome();},ludvig(){parkAtLudvig();},freeDrive(x,z,v){if(state!=='free'){freeMode=true;start();}free.reset(x,z,0,v);freeVisits();},ishall(){parkAtIshall();},rema(){parkAtRema();},visit(n){start();active={e:{from:data.start,to:{kiwi:kiwiParking,ludvig:ludvigParking,lake:data.lakeside}[n]},line:{at(l,p){if(n==='lake'){const q=data.nodes[data.lakeside];p.set(q[0],100,q[1]);}},tangent(){}},len:0};arrive();},start(){start();},honkKey(){honk();},state:()=>state,snap:()=>snapshot(),stash:()=>stash,progress:()=>({arrivals,carColour,trailOn:behind==='trail',catOn:model==='cat'}),model:()=>model,behind:()=>behind};})()`,ctx);
  for(let i=0;i<12;i++){await Promise.resolve();const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}await init;
@@ -729,7 +730,7 @@ console.log('Hover car: only when every other unlock is there; announced once; s
 console.log('Inside the house: the button, the girl in the balloon (no announcement), 19 places with texts and hints, taps, the pig, the way out: OK');
 // Bedtime (4 November 2026): a tap on the sofa (the house answers "bed") sends her to bed with "God natt", night and the "Stå opp" button; the dream's things say their
 // names, the comet "En komet!"; the sofa again (not within 0.6 s) or "Stå opp" wakes her with "God morgen"; leaving the house, she is awake when she comes back.
-{save({arrivals:2,kiwi:'on'});const g=await launch(()=>storage);g.element('goInside').onclick();const hud=g.element('insideHud');
+{save({arrivals:2,kiwi:'on'});const g=await launch(()=>storage,{random:()=>.99});g.element('goInside').onclick();const hud=g.element('insideHud'); // .99: never the 20 % chance of another jump here (tested below)
  assert.equal(g.element('wakeUp').hidden,true,'no Stå opp while she is awake');assert.equal(hud.classes.has('sleeping'),false);assert.equal(g.element('insideName').textContent,'Hjemme hos Sofia');assert.match(g.element('insideTip').textContent,/sofaen når du er trøtt/);
  g.tap({type:'item',id:'cat'});assert.equal(g.element('unlockInfo').hidden,false);
  // The first tap on the sofa each time the game is opened (9 November 2026): she jumps on the bed instead, "Hopp, hopp, hopp!", with a boing at each bounce
@@ -758,10 +759,26 @@ console.log('Inside the house: the button, the girl in the balloon (no announcem
  const spoken=g.spoken.length;g.tap({type:'bed'});assert.equal(g.spoken.length,spoken,'outside the house the sofa is nothing');
  assert.equal(g.inside.jumps,1,'and not again after the restart: once each time the game is opened');
  // Opened again: the first tap jumps again; a tap on the sofa in the middle of the jump puts her to bed.
- {const g2=await launch(()=>storage);g2.element('goInside').onclick();g2.tap({type:'bed'});assert.equal(g2.inside.jumps,1,'a new start, a new jump');
+ {const g2=await launch(()=>storage,{random:()=>.99});g2.element('goInside').onclick();g2.tap({type:'bed'});assert.equal(g2.inside.jumps,1,'a new start, a new jump');
   g2.tick(20);g2.tap({type:'bed'});assert.equal(g2.inside.sleeps,1,'the sofa while she jumps: to bed');assert.equal(g2.inside.jumping,false);assert.equal(g2.element('insideName').textContent,'Sofia sover');assert.match(g2.spoken.at(-1),/^God natt, Sofia!/);
   g2.inside.on('done');assert.equal(g2.element('insideName').textContent,'Sofia sover','a late "done" does not wake the room');}}
 console.log('Bedtime: the first tap on the sofa makes her jump on it ("Hopp, hopp, hopp!", "Det var gøy!"), the next puts her to bed and wakes her, "Stå opp", night in the room, names in the dream, the comet, leaving while asleep: OK');
+// Jumping again (24 November 2026): after the first jump, a later tap on the sofa jumps again when the dice say under 0.2 (a 20 % chance), and goes to bed otherwise;
+// a tap while she jumps always puts her to bed, the dice are not even rolled for it, and the first tap of a visit is always a jump whatever they say.
+{let r=.5,rolls=0;const g=await launch(()=>storage,{random:()=>{rolls++;return r;}});g.element('goInside').onclick();
+ g.tap({type:'bed'});assert.equal(g.inside.jumps,1,'the first tap jumps, whatever the dice say');g.inside.on('done');g.inside.jumping=false;
+ r=.1;g.tick(20);const before=rolls;g.tap({type:'bed'});assert.equal(g.inside.jumps,2,'under 0.2: another jump');assert.ok(rolls>before,'the dice are rolled');assert.equal(g.inside.sleeps,0);
+ assert.equal(g.spoken.at(-1),'Hopp, hopp, hopp! Sofia hopper i senga!');assert.equal(g.element('insideName').textContent,'Sofia hopper i senga!');
+ const mid=rolls;g.tick(20);g.tap({type:'bed'});assert.equal(g.inside.sleeps,1,'a tap in the middle of the jump: to bed');assert.equal(rolls,mid,'without rolling the dice');assert.equal(g.inside.jumps,2);
+ g.tick(20);g.tap({type:'bed'});assert.equal(g.inside.wakes,1,'and the sofa again wakes her');
+ r=.2;g.tick(20);g.tap({type:'bed'});assert.equal(g.inside.sleeps,2,'0.2 is not under 0.2: to bed');assert.equal(g.inside.jumps,2);g.tick(20);g.tap({type:'bed'});
+ r=.95;g.tick(20);g.tap({type:'bed'});assert.equal(g.inside.sleeps,3,'and over it: to bed');g.tick(20);g.tap({type:'bed'});
+ r=.19;g.tick(20);g.tap({type:'bed'});assert.equal(g.inside.jumps,3,'just under: a jump');}
+// With the real dice: about one tap in five, over 2000 trips to the sofa.
+{const g=await launch(()=>storage);g.element('goInside').onclick();g.tap({type:'bed'});g.inside.on('done');g.inside.jumping=false;let jumps=0;
+ for(let i=0;i<2000;i++){const j=g.inside.jumps;g.tick(20);g.tap({type:'bed'});if(g.inside.jumps>j){jumps++;g.inside.on('done');g.inside.jumping=false;}else{g.tick(20);g.tap({type:'bed'});}}
+ assert.ok(jumps>320&&jumps<480,'about 20 % jumps ('+jumps+' of 2000)');console.log('  ('+jumps+' jumps in 2000 later trips to the sofa)');}
+console.log('Bedtime: after the first jump, each later tap on the sofa has a 20 % chance of another jump instead of bed; a tap in the middle of a jump is bed: OK');
 // The debug keys inside the house (6 October 2026): X unlocks the next place on the podium without doing the task, in the podium's order (the 13 trips, then the KIWI car,
 // Ludvig, the running duck, the taxi and the pig, which brings the hover car with it); Z locks the last one again. Outside the house they count trips as before.
 {save({});let g=await launch(()=>storage);g.element('goInside').onclick();
