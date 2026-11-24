@@ -3,13 +3,20 @@
    Four steps: toothpaste on the brush (tap the tube), brushing every tooth clean (drag the brush over the teeth; the little germs let go and float off
    in the foam), rinsing (tap the cup), and a big smile with shining teeth. It cannot be lost: there is no clock, and the voice helps along the way.
    Brushing well means every tooth, the back ones too: each tooth needs a few seconds of brushing, and too fast does not clean faster. */
-export function createToothGame({canvas,say=()=>{},sound=()=>{},onStep=()=>{},onDone=()=>{},reduced=()=>false,insets=()=>({top:0,bottom:0}),skin='#f6d1a8',hair='#77523c'}={}){
+// Two new teeth (24 November 2026): Sofia has lost her two lower front teeth, and the grown-up ones are on their way. On 24 November 2026 they were 5 % out.
+// They grow as real ones do: a permanent tooth comes up about 4 mm in 14 weeks (0.04 mm a day), and a lower front tooth's crown is about 9 mm, so 0.44 % more
+// each real day (counted in whole days on the device's own calendar), fully out about seven months later, at the end of June 2027. Until they are 40 % out
+// they are too small to brush: no plaque, no germ, and they are not counted among the teeth to clean.
+export const NEW_TEETH={from:[2026,10,24],start:.05,perDay:.04/9,brush:.4};
+export function newToothGrowth(date=new Date()){const days=Math.round((Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())-Date.UTC(...NEW_TEETH.from))/864e5);
+ return Math.max(NEW_TEETH.start,Math.min(1,NEW_TEETH.start+days*NEW_TEETH.perDay));}
+export function createToothGame({canvas,say=()=>{},sound=()=>{},onStep=()=>{},onDone=()=>{},reduced=()=>false,insets=()=>({top:0,bottom:0}),skin='#f6d1a8',hair='#77523c',growth=()=>newToothGrowth()}={}){
  // The eight teeth of each row that show from the front, from the viewer's left: first molar, canine, the two incisors, and the same again.
  // u: the middle of the tooth across the mouth (−1..1 of its half width); w: width (of the half width); h: height (of the half height).
  const ROW=[['molar',.724,.21],['canine',.517,.165],['lateral',.327,.176],['central',.114,.209]];
  const HEIGHT={up:{central:.5,lateral:.44,canine:.47,molar:.34},down:{central:.37,lateral:.37,canine:.41,molar:.32}};
  const teeth=[];
- for(const row of ['up','down'])for(const side of [-1,1])for(const [kind,u,w] of ROW)teeth.push({row,kind,u:side*u,w,h:HEIGHT[row][kind],dirt:1,germ:null,clean:false,shine:-9,spots:[]});
+ for(const row of ['up','down'])for(const side of [-1,1])for(const [kind,u,w] of ROW)teeth.push({row,kind,u:side*u,w,h:HEIGHT[row][kind],dirt:1,germ:null,clean:false,shine:-9,spots:[],isNew:row==='down'&&kind==='central',grow:1});
  teeth.sort((p,q)=>p.row===q.row?p.u-q.u:p.row==='up'?-1:1);
  // RATE: how much one tooth-width of brushing cleans; CAP: the most a tooth can be cleaned in a second (so it takes about four seconds of brushing each).
  const RATE=.16,CAP=.3,GERMS=['#7fcf5c','#a873e6','#f39a4a','#5cc6d8'];
@@ -29,24 +36,25 @@ export function createToothGame({canvas,say=()=>{},sound=()=>{},onStep=()=>{},on
  // The inside of the mouth: a rounded shape, a little deeper below than above, whose corners lift as she smiles.
  const S=u=>Math.pow(Math.max(0,1-Math.pow(Math.abs(u),2.6)),1/2.6),lift=(l,u)=>smile*l.b*.32*u*u;
  const topY=(l,u)=>l.cy-l.b*.82*S(u)-lift(l,u),botY=(l,u)=>l.cy+l.b*1.05*S(u)-lift(l,u);
- function rect(l,t){const w=t.w*l.a,h=t.h*l.b,x=l.cx+t.u*l.a-w/2;if(t.row==='up')return {x,y:topY(l,t.u)+l.gum*.45,w,h};return {x,y:botY(l,t.u)-l.gum*.45-h,w,h};}
+ function rect(l,t){const w=t.w*l.a,x=l.cx+t.u*l.a-w/2;let h=t.h*l.b;if(t.grow<1)h=l.gum*.17+(h-l.gum*.17)*t.grow; // a new tooth: grow of what shows over the gum
+  if(t.row==='up')return {x,y:topY(l,t.u)+l.gum*.45,w,h};return {x,y:botY(l,t.u)-l.gum*.45-h,w,h};}
  const centre=(l,t)=>{const r=rect(l,t);return {x:r.x+r.w/2,y:t.row==='up'?r.y+r.h*.58:r.y+r.h*.42};};
  // ---- The steps ----
  function setStep(s){step=s;stepTime=0;hint=null;onStep(s);}
  function talk(text,force=false){if(!force&&time-lastTalk<2.6)return;lastTalk=time;say(text);}
- function start(opts={}){measure();seed=(seed+(opts.seed??Math.floor(Math.random()*1e6)))>>>0||1;time=0;squeeze=-1;rinse=-1;smile=0;popped=0;lastTalk=-9;lastClean=0;hintTalk=-9;half=false;missed=0;scrubSound=0;doneSent=false;brushOut=0;
+ function start(opts={}){measure();seed=(seed+(opts.seed??Math.floor(Math.random()*1e6)))>>>0||1;const g=Math.max(0,Math.min(1,opts.growth??growth()));time=0;squeeze=-1;rinse=-1;smile=0;popped=0;lastTalk=-9;lastClean=0;hintTalk=-9;half=false;missed=0;scrubSound=0;doneSent=false;brushOut=0;
   foam.length=sparks.length=flying.length=0;Object.assign(brush,{held:false,paste:0,side:1,flip:1,scrub:0,move:null,inCup:true,up:false});
-  for(const t of teeth){t.dirt=clamp((t.kind==='molar'?1:t.kind==='canine'?.86:.74)+(rnd()-.5)*.16,.6,1);t.clean=false;t.shine=-9;t.germ=null;
+  for(const t of teeth){t.grow=t.isNew?g:1;t.dirt=!counts(t)?0:clamp((t.kind==='molar'?1:t.kind==='canine'?.86:.74)+(rnd()-.5)*.16,.6,1);t.clean=false;t.shine=-9;t.germ=null;
    t.spots=Array.from({length:3},()=>({x:.2+rnd()*.6,y:.25+rnd()*.55,r:.1+rnd()*.07,crumb:rnd()<.3?(rnd()<.5?'#86b84e':'#e58a44'):null}));}
   // Six germs: one on a back tooth in each row (the ones that are easy to forget), the rest anywhere.
-  const pick=list=>list[Math.floor(rnd()*list.length)],free=()=>teeth.filter(t=>!t.germ);
+  const pick=list=>list[Math.floor(rnd()*list.length)],free=()=>teeth.filter(t=>!t.germ&&counts(t));
   for(const row of ['up','down'])pick(free().filter(t=>t.row===row&&t.kind==='molar')).germ={c:GERMS[Math.floor(rnd()*4)],p:rnd()*6};
   for(let i=0;i<4;i++)pick(free()).germ={c:GERMS[Math.floor(rnd()*4)],p:rnd()*6};
-  setStep('paste');talk('Nå skal vi pusse tennene! Først litt tannkrem på tannbørsten. Trykk på tuben.',true);
+  setStep('paste');talk('Nå skal vi pusse tennene! '+(g<1?'Se, to nye tenner vokser fram nede i midten. ':'')+'Først litt tannkrem på tannbørsten. Trykk på tuben.',true);
   if(opts.loop!==false&&typeof requestAnimationFrame==='function'&&!running){running=true;last=performance.now();raf=requestAnimationFrame(frame);}else running=opts.loop!==false&&running;}
  function stop(){running=false;if(raf&&typeof cancelAnimationFrame==='function')cancelAnimationFrame(raf);raf=0;brush.held=false;step='idle';}
  function frame(now){if(!running)return;const dt=Math.min(.1,Math.max(0,(now-last)/1000));last=now;update(dt);draw();raf=requestAnimationFrame(frame);}
- const cleanCount=()=>teeth.filter(t=>t.clean).length;
+ const counts=t=>!t.isNew||t.grow>=NEW_TEETH.brush,total=()=>teeth.filter(counts).length,cleanCount=()=>teeth.filter(t=>t.clean&&counts(t)).length;
  // ---- Taps and the finger ----
  const near=(x,y,p,r)=>Math.hypot(x-p.x,y-p.y)<r;
  function press(x,y){if(step==='idle')return;const l=L();
@@ -78,22 +86,22 @@ export function createToothGame({canvas,say=()=>{},sound=()=>{},onStep=()=>{},on
    if(squeeze>=1.5&&step==='paste'){squeeze=-1;setStep('brush');lastClean=time;talk('Sånn! Nå pusser vi. Dra tannbørsten over alle tennene, både oppe og nede.',true);}}
   // Brushing: every tooth under the bristles gets cleaner the further the brush moves, up to CAP a second. Foam comes as it moves.
   if(step==='brush'){const tip=bristles(l),reach=l.a*.2,moved=brush.scrub;brush.scrub=0;let cleaned=0;
-   if(moved>0&&brush.held)for(const t of teeth){if(t.clean)continue;const r=rect(l,t),dx=Math.max(r.x-tip.x,0,tip.x-r.x-r.w),dy=Math.max(r.y-tip.y,0,tip.y-r.y-r.h);if(Math.hypot(dx,dy)>reach)continue;
+   if(moved>0&&brush.held)for(const t of teeth){if(t.clean||!counts(t))continue;const r=rect(l,t),dx=Math.max(r.x-tip.x,0,tip.x-r.x-r.w),dy=Math.max(r.y-tip.y,0,tip.y-r.y-r.h);if(Math.hypot(dx,dy)>reach)continue;
     const c=Math.min(moved/(t.w*l.a)*RATE,CAP*dt);t.dirt=Math.max(0,t.dirt-c);cleaned+=c;
     if(t.germ&&!t.germ.gone&&t.dirt<.45)popGerm(l,t);
     if(t.dirt<=.02){t.dirt=0;t.clean=true;t.shine=time;const n=cleanCount();sound('ding',n-1);const p=centre(l,t);for(let i=0;i<6;i++)sparks.push({x:p.x+(rnd()-.5)*t.w*l.a,y:p.y+(rnd()-.5)*t.h*l.b*.6,t:-i*.05,s:.4+rnd()*.5});}}
    if(moved>0&&brush.held&&brush.paste>0){const n=Math.min(4,Math.ceil(moved/(l.a*.06)));for(let i=0;i<n&&foam.length<140;i++)foam.push({u:(tip.x-l.cx)/l.a+(rnd()-.5)*.22,v:(tip.y-l.cy)/l.b+(rnd()-.5)*.25,r:.014+rnd()*.028,life:0,max:4.5+rnd()*4,du:(rnd()-.5)*.02,dv:.01+rnd()*.02});brush.paste=Math.max(.35,brush.paste-moved/(l.a*120));}
    if(cleaned>0){lastClean=time;hint=null;scrubSound-=dt;if(scrubSound<=0){sound('scrub');scrubSound=.2;}}
    const n=cleanCount();
-   if(!half&&n>=8){half=true;talk('Kjempebra, Sofia! Husk tennene helt bak også.',true);}
+   if(!half&&n>=total()/2){half=true;talk('Kjempebra, Sofia! Husk tennene helt bak også.',true);}
    // Stuck for a while: the dirtiest tooth left blinks, and the voice says so now and then.
-   if(time-lastClean>4.5&&n<teeth.length){hint=teeth.filter(t=>!t.clean).sort((p,q)=>q.dirt-p.dirt)[0];if(time-hintTalk>9){hintTalk=time;talk('Se der det blinker. Der er det litt igjen!',true);}}
-   if(n===teeth.length){setStep('rinse');missed=0;brush.held=false;brush.move={from:{x:brush.x,y:brush.y},to:cupBrush(l),t:0,d:.5,lock:true,home:true};talk('Alle tennene er rene! Nå skyller vi munnen. Trykk på koppen.',true);}}
+   if(time-lastClean>4.5&&n<total()){hint=teeth.filter(t=>!t.clean&&counts(t)).sort((p,q)=>q.dirt-p.dirt)[0];if(time-hintTalk>9){hintTalk=time;talk('Se der det blinker. Der er det litt igjen!',true);}}
+   if(n===total()){setStep('rinse');missed=0;brush.held=false;brush.move={from:{x:brush.x,y:brush.y},to:cupBrush(l),t:0,d:.5,lock:true,home:true};talk('Alle tennene er rene! Nå skyller vi munnen. Trykk på koppen.',true);}}
   // Rinsing: the cup comes up to her mouth, the water swirls round and the foam goes with it.
   if(rinse>=0){rinse+=dt;if(rinse>.5)for(const f of foam)f.life=Math.max(f.life,f.max-.6);
    if(rinse>=1.9&&step==='rinse'){rinse=-1;setStep('done');sound('done');talk('Så rene og fine tenner! Du pusset kjempebra, Sofia!',true);for(const t of teeth)t.shine=time+rnd()*.6;}}
   if(step==='done'){smile=Math.min(1,smile+dt/.7);if(!calm&&Math.floor(time*3)!==Math.floor((time-dt)*3)){const t=teeth[Math.floor(rnd()*teeth.length)],p=centre(l,t);sparks.push({x:p.x,y:p.y,t:0,s:.5+rnd()*.4});}
-   if(stepTime>=3.4&&!doneSent){doneSent=true;onDone({teeth:teeth.length});}}
+   if(stepTime>=3.4&&!doneSent){doneSent=true;onDone({teeth:total(),growth:g0()});}}
   for(const f of foam){f.life+=dt;f.u+=f.du*dt;f.v+=f.dv*dt*(rinse>=0?-6:1);}for(let i=foam.length-1;i>=0;i--)if(foam[i].life>=foam[i].max)foam.splice(i,1);
   for(const s of sparks)s.t+=dt;for(let i=sparks.length-1;i>=0;i--)if(sparks[i].t>1)sparks.splice(i,1);
   for(const g of flying){g.t+=dt;g.x+=g.vx*dt;g.y+=g.vy*dt;g.vy-=l.a*.25*dt;}for(let i=flying.length-1;i>=0;i--)if(flying[i].t>1.6)flying.splice(i,1);}
@@ -110,9 +118,10 @@ export function createToothGame({canvas,say=()=>{},sound=()=>{},onStep=()=>{},on
  // ---- Drawing ----
  function rr(g,x,y,w,h,r){r=Math.min(r,w/2,h/2);g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
  function mouthPath(g,l){g.beginPath();for(let i=0;i<=40;i++){const u=-1+i/20;g[i?'lineTo':'moveTo'](l.cx+u*l.a,topY(l,u));}for(let i=40;i>=0;i--){const u=-1+i/20;g.lineTo(l.cx+u*l.a,botY(l,u));}g.closePath();}
- function toothPath(g,l,t){const r=rect(l,t),up=t.row==='up',free=up?r.y+r.h:r.y,root=up?r.y:r.y+r.h,s=up?1:-1,rf=r.w*(t.kind==='molar'?.28:.42);
+ function toothPath(g,l,t){const r=rect(l,t),up=t.row==='up',free=up?r.y+r.h:r.y,root=up?r.y:r.y+r.h,s=up?1:-1,rf=Math.min(r.w*(t.kind==='molar'?.28:.42),t.isNew?r.h*.6:1e9);
   g.beginPath();g.moveTo(r.x,root-s*r.h*.2);g.lineTo(r.x,free-s*rf);g.quadraticCurveTo(r.x,free,r.x+rf,free);
   if(t.kind==='canine'){g.lineTo(r.x+r.w*.5,free+s*r.h*.08);}
+  if(t.isNew&&t.grow<1){const bh=Math.min(r.h*.25,l.b*.025);for(let i=0;i<3;i++){const x0=r.x+rf+(r.w-2*rf)*i/3,x1=r.x+rf+(r.w-2*rf)*(i+1)/3;g.quadraticCurveTo((x0+x1)/2,free+s*bh*1.6,x1,free);}} // a new grown-up tooth has three little bumps on its edge
   if(t.kind==='molar'){g.lineTo(r.x+r.w*.45,free);g.quadraticCurveTo(r.x+r.w*.5,free-s*r.h*.06,r.x+r.w*.55,free);}
   g.lineTo(r.x+r.w-rf,free);g.quadraticCurveTo(r.x+r.w,free,r.x+r.w,free-s*rf);g.lineTo(r.x+r.w,root-s*r.h*.2);g.closePath();return r;}
  function drawTooth(g,l,t){const r=toothPath(g,l,t),up=t.row==='up',edge=Math.abs(t.u)>.5;
@@ -169,6 +178,9 @@ export function createToothGame({canvas,say=()=>{},sound=()=>{},onStep=()=>{},on
   for(const t of teeth)drawTooth(g,l,t);
   g.fillStyle='#f39aaa';for(const row of ['up','down']){g.beginPath();for(let i=0;i<=40;i++){const u=-1+i/20,y=row==='up'?topY(l,u):botY(l,u);g[i?'lineTo':'moveTo'](l.cx+u*l.a,y);}
    for(let i=40;i>=0;i--){const u=-1+i/20,y=row==='up'?topY(l,u)+l.gum*.62:botY(l,u)-l.gum*.62;g.lineTo(l.cx+u*l.a,y);}g.closePath();g.fill();}
+  // The gum a little swollen round the new teeth while they come up.
+  for(const t of teeth)if(t.isNew&&t.grow<1){const r=rect(l,t),y=botY(l,t.u)-l.gum*.62;g.fillStyle=`rgba(232,110,135,${.45*(1-t.grow)+.15})`;g.beginPath();g.ellipse(r.x+r.w/2,y,r.w*.55,l.gum*.32,0,Math.PI,Math.PI*2);g.fill();
+   g.save();g.beginPath();g.rect(r.x-2,r.y-l.b,r.w+4,y-r.y+l.b);g.clip();drawTooth(g,l,t);g.restore();} // the tip in front of the swollen gum
   // Germs sitting on the teeth, waving.
   for(const t of teeth)if(t.germ&&!t.germ.gone){const p=centre(l,t);drawGerm(g,p.x,p.y,t.w*l.a*.27,t.germ.c,time+t.germ.p);}
   // Rinse water rising and swirling.
@@ -177,6 +189,9 @@ export function createToothGame({canvas,say=()=>{},sound=()=>{},onStep=()=>{},on
   // Foam from the toothpaste.
   for(const f of foam){const a=Math.min(1,f.life/.2,(f.max-f.life)/.8);if(a<=0)continue;g.globalAlpha=a*.85;g.fillStyle='#ffffff';g.beginPath();g.arc(l.cx+f.u*l.a,l.cy+f.v*l.b,f.r*l.a,0,Math.PI*2);g.fill();g.strokeStyle='rgba(140,200,240,.6)';g.lineWidth=1;g.stroke();}
   g.globalAlpha=1;g.restore();
+  // How far the new teeth have come, on the chin under the mouth, while they are still growing.
+  {const gr=g0();if(gr<1&&H>260){const fs=Math.max(12,Math.round(Math.min(22,(W-40)/17)*.62)),text=`🦷 Nye tenner: ${Math.round(gr*100)} %`;g.font=`800 ${fs}px system-ui,sans-serif`;g.textAlign='center';g.textBaseline='middle';
+   const tw=g.measureText(text).width+fs*1.4,y=botY(l,0)+l.lip+fs*1.4;g.fillStyle='rgba(255,255,255,.85)';rr(g,l.cx-tw/2,y-fs*.85,tw,fs*1.7,fs*.85);g.fill();g.fillStyle='#5a4a3a';g.fillText(text,l.cx,y+fs*.05);}}
   // The tooth that still needs brushing blinks with a ring.
   if(hint&&step==='brush'){const p=centre(l,hint),pulse=calm?.8:.6+.4*Math.sin(time*7);g.strokeStyle=`rgba(255,214,64,${pulse})`;g.lineWidth=l.a*.025;g.beginPath();g.ellipse(p.x,p.y,hint.w*l.a*.8,hint.h*l.b*.75,0,0,Math.PI*2);g.stroke();}
   // Sparkles on clean teeth, and germs floating away in their bubbles.
@@ -186,10 +201,13 @@ export function createToothGame({canvas,say=()=>{},sound=()=>{},onStep=()=>{},on
   // The tube, the cup with the brush in it (or the brush in her hand), and the tally of clean teeth at the top.
   drawTube(g,l);drawCup(g,l,false);if(brush.inCup||(brush.move&&brush.move.home)){const c=cupPose(l);g.save();g.translate(c.x,c.y);g.rotate(c.tilt);g.beginPath();g.rect(-W*2,-H*2,W*4,H*2-l.cup.h*.3);g.clip();drawBrush(g,l);g.restore();}drawCup(g,l,true);if(!(brush.inCup||(brush.move&&brush.move.home)))drawBrush(g,l);
   if(step==='paste'&&squeeze>=0&&squeeze<1.05){const k=clamp((squeeze-.3)/.5,0,1),t=l.tube,from={x:t.x+l.a*.3,y:t.y-l.a*.06};g.strokeStyle='#ffffff';g.lineWidth=l.a*.045;g.lineCap='round';g.beginPath();g.moveTo(from.x,from.y);g.lineTo(mix(from.x,brush.x,k),mix(from.y,brush.y-l.a*.1,k));g.stroke();}
-  const n=cleanCount(),size=Math.min(22,(W-40)/17),x0=W/2-size*8,y0=l.top+12;g.fillStyle='rgba(255,255,255,.82)';rr(g,x0-10,y0-6,size*16+20,size+12,(size+12)/2);g.fill();
-  teeth.forEach((t,i)=>{const x=x0+i*size+size*.15,w=size*.7,clean=t.clean;g.fillStyle=clean?'#ffffff':`rgb(${mix(255,226,t.dirt)|0},${mix(255,200,t.dirt)|0},${mix(255,110,t.dirt)|0})`;rr(g,x,y0,w,size,w*.35);g.fill();g.strokeStyle=clean?'#ffcf3d':'#d9c9a6';g.lineWidth=clean?2:1;g.stroke();});
-  if(H>260){const text=n===teeth.length?'Alle tennene er rene!':`${n} av ${teeth.length} tenner er rene`,fs=Math.round(size*.62);g.font=`800 ${fs}px system-ui,sans-serif`;g.textAlign='center';g.textBaseline='middle';const tw=g.measureText(text).width+fs*1.4;
+  const n=cleanCount(),all=total(),size=Math.min(22,(W-40)/17),x0=W/2-size*8,y0=l.top+12;g.fillStyle='rgba(255,255,255,.82)';rr(g,x0-10,y0-6,size*16+20,size+12,(size+12)/2);g.fill();
+  teeth.forEach((t,i)=>{const x=x0+i*size+size*.15,w=size*.7,clean=t.clean;
+   if(!counts(t)){const h=size*Math.max(.3,t.grow);g.fillStyle='#eef8ff';rr(g,x,y0+size-h,w,h,w*.35);g.fill();g.strokeStyle='#8ccbf0';g.lineWidth=1.5;g.stroke();return;} // a new tooth still too small to brush
+   g.fillStyle=clean?'#ffffff':`rgb(${mix(255,226,t.dirt)|0},${mix(255,200,t.dirt)|0},${mix(255,110,t.dirt)|0})`;rr(g,x,y0,w,size,w*.35);g.fill();g.strokeStyle=clean?'#ffcf3d':'#d9c9a6';g.lineWidth=clean?2:1;g.stroke();});
+  if(H>260){const text=n===all?'Alle tennene er rene!':`${n} av ${all} tenner er rene`,fs=Math.round(size*.62);g.font=`800 ${fs}px system-ui,sans-serif`;g.textAlign='center';g.textBaseline='middle';const tw=g.measureText(text).width+fs*1.4;
   g.fillStyle='rgba(255,255,255,.82)';rr(g,W/2-tw/2,y0+size+9,tw,fs*1.7,fs*.85);g.fill();g.fillStyle='#5a4a3a';g.fillText(text,W/2,y0+size+9+fs*.87);}}
- return {start,stop,update,draw,press,move:moveTo,release,get step(){return step;},get running(){return running;},teeth,brush,foam,cleanCount,layout:L,rect:t=>rect(L(),t),centre:t=>centre(L(),t),bristles:()=>bristles(L()),
+ function g0(){const t=teeth.find(t=>t.isNew);return t?t.grow:1;}
+ return {start,stop,update,draw,press,move:moveTo,release,get step(){return step;},get growth(){return g0();},total,counts,get running(){return running;},teeth,brush,foam,cleanCount,layout:L,rect:t=>rect(L(),t),centre:t=>centre(L(),t),bristles:()=>bristles(L()),
   measure,canvas};
 }

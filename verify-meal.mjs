@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as T from './dist/vendor/three.js';
 import {createInside,STEPS} from './dist/inside.js';
 import {MEAL,BITES,PUMP} from './dist/meal.js';
-import {createToothGame} from './dist/teeth.js';
+import {createToothGame,newToothGrowth} from './dist/teeth.js';
 // Mealtime and tooth brushing in the house (23 November 2026): dist/meal.js in dist/inside.js with a fake renderer and canvas, as in verify-inside.mjs,
 // and the brushing game (dist/teeth.js) on a canvas stand-in.
 globalThis.document={createElement:()=>({getContext:()=>new Proxy({},{get:(o,p)=>/Gradient$/.test(p)?()=>({addColorStop(){}}):()=>{}}),width:0,height:0})};
@@ -76,10 +76,18 @@ console.log('Meal: the camera glides in to the table and back, and the brushing 
 
 // Tooth brushing (dist/teeth.js): toothpaste first, every tooth needs a few seconds however wild the brushing, germs let go, rinse, done once.
 {const said=[],sounds=[];let done=0,clock=0;const c={clientWidth:1024,clientHeight:600};const game=createToothGame({canvas:c,say:x=>said.push(x),sound:n=>sounds.push(n),onDone:()=>done++,insets:()=>({top:0,bottom:90})});
- const go=(sec,fn)=>{for(let i=0;i<Math.round(sec*60);i++){fn&&fn(clock);game.update(1/60);clock+=1/60;}};game.start({seed:11,loop:false});const L=game.layout(),C=game.teeth.map(x=>game.centre(x));
+ const go=(sec,fn)=>{for(let i=0;i<Math.round(sec*60);i++){fn&&fn(clock);game.update(1/60);clock+=1/60;}};game.start({seed:11,loop:false,growth:1});const L=game.layout(),C=game.teeth.map(x=>game.centre(x));
  assert.ok(L.bottom<=600-90&&L.cup.y<L.bottom&&L.tube.y<L.bottom,'clear of the title at the bottom');game.press(L.tube.x,L.tube.y);go(1.6);assert.equal(game.step,'brush');
  const s0=clock;for(const row of [0,1])for(const [i,j] of [[0,2],[2,5],[5,7]]){const a=C[row*8+i],b=C[row*8+j];game.press(a.x,a.y);const t0=clock;
   while(clock-t0<8&&!game.teeth.slice(row*8+i,row*8+j+1).every(x=>x.clean))go(1/60,cl=>{const k=(Math.sin((cl-t0)*Math.PI*4)+1)/2;game.move(a.x+(b.x-a.x)*k,a.y+(b.y-a.y)*k);});game.release();}
  assert.equal(game.step,'rinse');assert.ok(clock-s0>15&&clock-s0<45,'brushed in '+(clock-s0).toFixed(1)+' s');assert.equal(sounds.filter(n=>n==='pop').length,6);
  game.press(L.cup.x,L.cup.y-L.cup.h*.4);go(6);assert.equal(game.step,'done');assert.equal(done,1);go(4);assert.equal(done,1);}
 console.log('Teeth: toothpaste, every tooth brushed clean in well under a minute, the germs gone, rinse and done once, clear of the title: OK');
+
+// The two new lower front teeth (24 November 2026, dist/teeth.js): 5 % out that day, 0.44 % more each real day, fully out at the end of June 2027;
+// until 40 % they are not brushed, so 14 clean teeth are all clean. The game takes today's growth by itself.
+{const g=(y,m,d)=>newToothGrowth(new Date(y,m-1,d,12));assert.equal(g(2026,11,24),.05);assert.ok(g(2026,11,25)>.05&&g(2026,11,25)<.06);assert.equal(g(2027,6,25)<1,true);assert.equal(g(2027,6,27),1);
+ const c={clientWidth:1024,clientHeight:600},game=createToothGame({canvas:c,growth:()=>g(2026,11,24)});game.start({seed:4,loop:false});assert.equal(game.growth,.05,'today, by itself');assert.equal(game.total(),14);
+ const L=game.layout();for(const t of game.teeth)if(game.counts(t)){t.dirt=0;t.clean=true;}game.press(L.tube.x,L.tube.y);for(let i=0;i<100;i++)game.update(1/60);game.press(L.cx,L.cy);game.move(L.cx+5,L.cy);game.update(1/60);assert.equal(game.step,'rinse');
+ game.start({seed:4,loop:false,growth:.5});assert.equal(game.total(),16,'from 40 %: all 16');}
+console.log('Teeth: the two new lower front teeth, 5 % out on 24 November 2026 and growing each real day, not brushed until 40 %: OK');
