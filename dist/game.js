@@ -400,7 +400,7 @@ function wakeUp(){if(state!=='inside'||!inside?.wake())return;sleepHud(false);if
 function houseTap(x,y){const hit=inside.pick(x,y);$('unlockInfo').hidden=true;if(!hit)return;
  if(hit.type==='item'){const it=podiumItems().find(i=>i.id===hit.id);if(!it)return;fx('pop');$('unlockInfoIcon').textContent=it.icon;$('unlockInfoTitle').textContent=it.title;$('unlockInfoText').textContent=it.text;$('unlockInfo').hidden=false;say((it.unlocked?it.title+'. ':'')+it.text);}
  else if(hit.type==='pig')findPig();else if(hit.type==='door')goOutside();
- else if(hit.type==='table')startMeal('spoon');else if(hit.type==='bag')startMeal('peg');else if(hit.type==='meal')mealTap();
+ else if(hit.type==='table')startMeal('spoon');else if(hit.type==='bag')startMeal('peg');else if(hit.type==='meal')mealTap();else if(hit.type==='glass')glassTap();
  else if(hit.type==='bed'){const now=performance.now();if(now-bedTapAt<600)return;bedTapAt=now;if(inside.asleep)wakeUp();else if(!bedJumped||!inside.jumping&&Math.random()<JUMP_AGAIN)jumpOnBed();else goToBed();}
  else if(hit.type==='dream'){const name=DREAM_NAMES[hit.id]||podiumItems().find(i=>i.id===hit.id&&i.unlocked)?.title;if(sound)music.effect?.('pop');if(name)say(name+'!');}
  else if(hit.type==='comet'){if(sound)music.effect?.('sparkle');say('En komet!');}}
@@ -409,16 +409,21 @@ function houseTap(x,y){const hit=inside.pick(x,y);$('unlockInfo').hidden=true;if
 // Mealtime (23 November 2026, as in the space game): «🥄 Spise» or a tap on the table, «🎒 Mat med PEG» or a tap on the backpack (inside.js, meal.js).
 // With the spoon each tap (or «🥄 En skje til») is the next spoonful until the bowl is empty; with the PEG backpack a tap starts the pump, and while it runs a tap
 // makes her dance with it on. «Ferdig å spise» stops early. The bed, the podium and «Gå ut» wait until she has eaten; a bar under the title shows how full she is.
-const MEAL_SAY={eat:'Trykk, så tar Sofia en skje!',full:'Ferdig! Skåla er tom. Nå er magen god og mett, Sofia! Etter maten pusser vi tennene.',thanks:'Takk for maten!',
+const MEAL_SAY={eat:'Trykk, så tar Sofia en skje! Trykk på glasset, så drikker hun.',full:'Ferdig! Skåla er tom. Nå er magen god og mett, Sofia! Etter maten pusser vi tennene.',thanks:'Takk for maten!',
  ready:'Klikk! Slangen er koblet til knappen på magen. Trykk på sekken for å starte pumpen.',pump:'Pip! Pumpen går. Maten renner gjennom slangen og rett i magen. Med sekken på ryggen kan Sofia leke mens hun spiser. Trykk på henne, så danser hun!',
  beep:'Pip, pip, pip! Ferdig! Nå er magen god og mett, Sofia. Etter maten pusser vi tennene.'};
-const MEAL_FX={bite:'nam',full:'reward',plug:'click',pump:'beep',dance:'boing',beep:'pumpdone',unplug:'click'};
+const MEAL_FX={bite:'nam',full:'reward',plug:'click',pump:'beep',dance:'boing',beep:'pumpdone',unplug:'click',gulp:'glugg'};
 let mealTalk=-1e9;
 function startMeal(kind){if(state!=='inside'||!inside?.startMeal||brushing||!inside.startMeal(kind))return;$('unlockInfo').hidden=true;fx('pop');const f=FOODS[inside.meal.st.food]?.name||'mat';
  say(kind==='spoon'?`Mat! I dag blir det ${f}. Sofia setter seg ved bordet.`:'Nå skal Sofia få mat gjennom PEG-slangen. Hun tar på seg sekken med pumpen.');routineHud();}
 function mealTap(){const r=inside?.mealTap();if(r==='bite')fx('pop');}
+// A tap on the glass of water (24 November 2026): at the table she drinks; before a meal she goes to the table and drinks as soon as she has sat down;
+// with the PEG backpack on it is a tap like any other.
+let sips=0;
+function glassTap(){const m=inside?.meal?.st;if(!m)return;if(m.kind==='peg'){mealTap();return;}if(!m.kind){startMeal('spoon');if(!inside.meal.st.kind)return;}inside.mealDrink();}
 function mealEvent(step){if(MEAL_FX[step])fx(MEAL_FX[step]);if(MEAL_SAY[step])say(MEAL_SAY[step]);
  const now=performance.now();if(step==='bite'&&inside.meal.st.bites<BITES&&now-mealTalk>1800){mealTalk=now;say(['Nam!','Mmm, godt!','Nam nam!','Så godt!'][inside.meal.st.bites%4]);}
+ if(step==='ahh'&&now-mealTalk>1800){mealTalk=now;say(['Ahh, godt med vann!','Glugg, glugg!','Mmm, deilig vann!'][sips++%3]);}
  if(step==='dance'&&now-mealTalk>2500){mealTalk=now;say(['Se, Sofia danser med sekken!','Sekken henger med!','Hopp og sprett!','Maten kommer likevel!'][Math.floor(Math.random()*4)]);}
  if(step==='end')sleepHud(false);else routineHud();}
 // The room's buttons and the title as they should be now: the everyday buttons when she is free, the meal's buttons and words while she eats.
@@ -426,7 +431,7 @@ function routineHud(){if(!inside?.meal)return;const m=inside.meal.st,k=m.kind,bu
  $('tummy').hidden=!k;if(!k)return;const s=m.step,f=FOODS[m.food]?.name||'mat',a=$('mealAction');$('unlockInfo').hidden=true;
  a.hidden=!['eat','ready','pump'].includes(s);a.textContent=s==='eat'?'🥄 En skje til':s==='ready'?'▶ Start pumpen':'💃 Dans med sekken';
  $('mealDone').hidden=!(k==='spoon'&&['walk','sit','eat'].includes(s)||k==='peg'&&['walk','plug','ready','pump'].includes(s));
- const [name,tip]=k==='spoon'?(s==='eat'?[`Sofia spiser ${f}`,`Trykk, så tar hun en skje · ${BITES-m.bites} igjen`]:['full','up'].includes(s)?['Skåla er tom!','Nå er magen god og mett']:['Sofia skal spise',`I dag blir det ${f}!`])
+ const [name,tip]=k==='spoon'?(s==='eat'?[`Sofia spiser ${f}`,`Trykk, så tar hun en skje · trykk på glasset, så drikker hun · ${BITES-m.bites} igjen`]:['full','up'].includes(s)?['Skåla er tom!','Nå er magen god og mett']:['Sofia skal spise',`I dag blir det ${f}!`])
   :s==='ready'?['Slangen er koblet til','Trykk på sekken, så starter pumpen']:s==='pump'?['Pumpen går','Maten renner i slangen · trykk på Sofia, så danser hun']:['beep','unplug','drop'].includes(s)?['Pumpen er ferdig','Nå er magen god og mett']:['Mat med PEG','Sofia tar på seg sekken og kobler slangen til magen'];
  $('insideName').textContent=name;$('insideTip').textContent=tip;tummyHud();}
 function tummyHud(){const m=inside?.meal?.st;if(!m?.kind)return;const full=m.kind==='peg'?Math.min(1,m.pump/PUMP+(['beep','unplug','drop'].includes(m.step)?1:0)):Math.min(1,m.bites/BITES);

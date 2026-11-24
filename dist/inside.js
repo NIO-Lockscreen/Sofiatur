@@ -278,9 +278,10 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
  const ray=new T.Raycaster(),ndc=new T.Vector2(),floor=new T.Plane(new T.Vector3(0,1,0),0),at=new T.Vector3();
  function pick(clientX,clientY){const r=canvas.getBoundingClientRect();ndc.set((clientX-r.left)/(r.width||1)*2-1,-((clientY-r.top)/(r.height||1))*2+1);fit();aim();scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);ray.setFromCamera(ndc,camera);
   const dreaming=dream.targets(),resting=bed.on||bed.k>0||bed.jumping; // resting: on her way to bed, in it or getting up, or jumping on it; then only the bed and the dream answer
-  const hit=ray.intersectObjects([...pickables,...blockers,...dreaming],false)[0],onFloor=ray.ray.intersectPlane(floor,at),floorAt=onFloor?ray.ray.origin.distanceTo(at):Infinity;
+  const hits=ray.intersectObjects([...pickables,...blockers,...dreaming],false),onFloor=ray.ray.intersectPlane(floor,at),floorAt=onFloor?ray.ray.origin.distanceTo(at):Infinity;
+  let hit=hits[0];if(hit?.object.userData.kind==='table')hit=hits.find(h=>h.object.userData.kind==='glass')||hit; // the glass stands inside the table's box
   if(hit&&dreaming.includes(hit.object)){const found=dream.hit(hit.object,hit.point);return found&&found.type!=='sky'?found:null;}
-  if(meal.active)return {type:'meal'}; // at a meal a tap anywhere is the next spoonful, starts the pump or makes her dance (game.js)
+  if(meal.active)return hit?.object.userData.kind==='glass'?{type:'glass'}:{type:'meal'}; // at a meal a tap anywhere is the next spoonful, starts the pump or makes her dance, and the glass is a drink (game.js)
   if(hit&&hit.object.userData.kind==='bed')return {type:'bed'}; // to bed, or up again: game.js decides
   if(resting)return null;
   if(hit&&hit.distance<floorAt){const o=hit.object,kind=o.userData.kind;
@@ -288,7 +289,7 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
    if(kind==='item'){const slot=slots.find(s=>s.id===o.userData.id);walkTo(slot.x,.65,{yaw:0});return {type:'item',id:slot.id};}
    if(kind==='pig'){walkTo(-2.7,2.6,{yaw:Math.PI*.7});return {type:'pig'};}
    if(kind==='door'){walkTo(3.45,1.5,{yaw:-Math.PI/2});return {type:'door'};}
-   if(kind==='table'||kind==='bag')return {type:kind};
+   if(kind==='table'||kind==='bag'||kind==='glass')return {type:kind};
    return null;}
   if(onFloor&&Math.abs(at.x)<ROOM.x&&at.z>ROOM.back&&at.z<ROOM.front){walkTo(at.x,at.z);return {type:'floor'};}
   return null;}
@@ -311,5 +312,5 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
   renderer.render(scene,camera);}
  // Mealtime: only from awake and standing, with the sofa a sofa.
  function startMeal(kind){if(bed.on||bed.jumping||bed.u>0||bed.k>0)return false;return meal.start(kind);}
- return {meal,startMeal,mealTap:()=>meal.tap(),finishMeal:()=>meal.finish(),setBrushed:n=>meal.setBrushed(n),route,scene,camera,girl,pig,slots,pigHit,door,enter,refresh,update,pick,sleep,wake,jump,get asleep(){return bed.on;},get jumping(){return bed.jumping;},bed,dream,sofaBed,hitBoxes:slots.map(s=>s.hit),JUMP};
+ return {meal,startMeal,mealTap:()=>meal.tap(),mealDrink:()=>meal.drink(),finishMeal:()=>meal.finish(),setBrushed:n=>meal.setBrushed(n),route,scene,camera,girl,pig,slots,pigHit,door,enter,refresh,update,pick,sleep,wake,jump,get asleep(){return bed.on;},get jumping(){return bed.jumping;},bed,dream,sofaBed,hitBoxes:slots.map(s=>s.hit),JUMP};
 }

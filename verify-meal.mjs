@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as T from './dist/vendor/three.js';
 import {createInside,STEPS} from './dist/inside.js';
-import {MEAL,BITES,PUMP} from './dist/meal.js';
+import {MEAL,BITES,PUMP,DRINK} from './dist/meal.js';
 import {createToothGame,newToothGrowth} from './dist/teeth.js';
 // Mealtime and tooth brushing in the house (23 November 2026): dist/meal.js in dist/inside.js with a fake renderer and canvas, as in verify-inside.mjs,
 // and the brushing game (dist/teeth.js) on a canvas stand-in.
@@ -49,6 +49,32 @@ assert.equal(inside.pick(...screen(new T.Vector3(MEAL.table.x,MEAL.table.h,MEAL.
 inside.startMeal('spoon');run(4);assert.equal(st.step,'eat');inside.mealTap();run(.2);inside.finishMeal();assert.equal(st.step,'up');run(1);assert.equal(st.kind,null);
 inside.startMeal('spoon');run(.2);inside.finishMeal();assert.equal(st.kind,null,'stopped on the way');
 console.log('Meal: with the spoon she sits on her chair facing the room, the spoon goes from the bowl to her open mouth, five spoonfuls, a full tummy, and «Ferdig» on the way or in the middle: OK');
+
+// The food in the bowl (24 November 2026): a heap that is smaller after each spoonful and only gone with the last one (it used to sink out of sight under the rim
+// after two or three). The glass: a tap on it is a drink, she lifts it to her mouth and puts it back where it stood, and spoonfuls tapped meanwhile come after.
+{inside.enter(list,{pigHidden:true});const food=meal.food,glass=meal.glass,home=glass.position.clone(),rim=()=>meal.food.parent.localToWorld(new T.Vector3(0,.076,0)).y;
+ const sizes=[];inside.startMeal('spoon');for(let i=0;i<200&&st.step!=='eat';i++)frame();assert.equal(st.step,'eat');sizes.push(food.visible?food.scale.y:0);
+ const heapTop=()=>{food.updateMatrixWorld(true);return food.localToWorld(new T.Vector3(0,1,0)).y;};
+ for(let n=1;n<=BITES;n++){inside.mealTap();run(.3);if(n<BITES){assert.ok(food.visible&&heapTop()>rim()+.005,`food still showing above the rim while spoonful ${n} is on its way`);}run(.9);sizes.push(food.visible?food.scale.y:0);}
+ for(let i=1;i<sizes.length;i++)assert.ok(sizes[i]<sizes[i-1],'smaller after each spoonful: '+sizes.map(v=>v.toFixed(3)).join(' '));assert.ok(sizes[BITES-1]>0,'some left before the last');assert.equal(sizes[BITES],0,'empty after the last');
+ run(3);assert.equal(st.kind,null);
+ // a drink at the table: the glass up at her mouth and tipped towards her, held in her hand, then back on the table
+ inside.startMeal('spoon');for(let i=0;i<200&&st.step!=='eat';i++)frame();assert.equal(inside.mealDrink(),'drink');run(1);
+ const lip=glass.localToWorld(new T.Vector3(0,.045,.04));assert.ok(lip.distanceTo(mouth())<.06,'the glass at her mouth ('+lip.distanceTo(mouth()).toFixed(3)+' m)');
+ const up=new T.Vector3(0,1,0).applyQuaternion(glass.quaternion);assert.ok(up.y<.8&&up.y>.3,'tipped');const hand=inside.girl.arms[0].localToWorld(new T.Vector3(0,-.235,0));assert.ok(hand.distanceTo(glass.position)<.08,'in her hand');
+ assert.ok(inside.girl.laughing,'mouth open to drink');assert.equal(inside.mealDrink(),null,'one drink at a time');assert.equal(inside.mealTap(),'bite');assert.equal(st.bite,-1,'the spoonful waits');
+ run(DRINK-.9);assert.equal(st.drink,-1);assert.ok(glass.position.distanceTo(home)<1e-6,'back where it stood');assert.ok(steps().includes('gulp')&&steps().includes('ahh'));assert.ok(st.bite>=0,'then the spoonful');
+ assert.equal(inside.mealDrink(),'later','tapped during a spoonful');run(1.2);assert.ok(st.drink>=0,'drinks after it');run(DRINK);assert.equal(st.drink,-1);
+ inside.finishMeal();run(1);assert.equal(st.kind,null);
+ // tapped on the way to the table: she drinks as soon as she sits down
+ inside.startMeal('spoon');run(.2);assert.equal(inside.mealDrink(),'later');for(let i=0;i<200&&st.step!=='eat';i++)frame();assert.ok(st.drink>=0&&st.drink<.1,'drinks once she sits');inside.finishMeal();run(1);
+ assert.ok(glass.position.distanceTo(home)<1e-6,'«Ferdig» puts it back');assert.ok(Math.abs(inside.girl.arms[0].scale.y-1)<1e-9,'her arm its own length again');
+ // a tap on the glass picks it, before a meal and at one, at five screen sizes; at a meal elsewhere is still the next spoonful
+ for(const [w,h] of [[1024,768],[768,1024],[820,1180],[390,844],[844,390]]){canvas.clientWidth=w;canvas.clientHeight=h;inside.enter(list,{pigHidden:true});frame();
+  const [x,y]=screen(home);assert.ok(x>0&&x<w&&y>0&&y<h,`glass on the screen at ${w}×${h}`);assert.deepEqual({...inside.pick(x,y)},{type:'glass'},`a tap on the glass at ${w}×${h}`);
+  inside.startMeal('spoon');run(4);const [mx,my]=screen(home);assert.deepEqual({...inside.pick(mx,my)},{type:'glass'},`and at the table at ${w}×${h}`);const [bx,by]=screen(new T.Vector3(MEAL.bowl.x,MEAL.table.h,MEAL.bowl.z));assert.deepEqual({...inside.pick(bx,by)},{type:'meal'});}
+ canvas.clientWidth=1024;canvas.clientHeight=768;inside.enter(list,{pigHidden:true});}
+console.log('Meal: the food is a heap that gets smaller with each spoonful and is gone with the last; a tap on the glass, at five screen sizes, and she drinks from it and puts it back, before or after a spoonful or once she sits: OK');
 
 // With the PEG backpack: she walks to it, puts it on (it flies from the floor to her back), the tube is clicked on, she turns round to show the backpack,
 // a tap starts the pump, drops run down the tube for PUMP seconds while a tap makes her dance, three beeps, the tube comes off and the backpack goes back.

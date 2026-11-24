@@ -84,6 +84,7 @@ export function createMusic({fetch=globalThis.fetch,horns:files=HORNS}={}){
    else if(name==='sparkle')[1319,1568,2093].forEach((f,i)=>fx(f,i*.05,.16,.05));
    else if(name==='pop')fx(520,0,.09,.08,1150);
    else if(name==='boing')fx(210,0,.42,.07,640);
+   else if(name==='glugg')[0,.22,.44].forEach((d,i)=>{fx(260-i*25,d,.13,.06,150);fx(520-i*50,d+.02,.06,.015,300);}); // three soft gulps from the glass (24 November 2026)
    else if(Array.isArray(SOUNDS[name]))for(const [f,d,l,p,t] of SOUNDS[name])sound(f,d,l,p,t);},
   preloadHorns(){hornContext();for(const name in files)loadHorn(name);},
   horn(name){hornContext();const b=horns.get(name);if(!b){loadHorn(name);return false;}try{hornSource?.stop();}catch{}const s=ctx.createBufferSource();s.buffer=b;s.connect(hornOut);s.start();hornSource=s;return true;},
