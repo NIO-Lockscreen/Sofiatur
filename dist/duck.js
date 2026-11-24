@@ -3,6 +3,8 @@
 // It is the surprise by the water at the end of Vetle Vislies veg (world.js places it and lets it rise out of the lake
 // the first time the car comes near). Forward is −z and the water line is y = 0. update() bobs it on the water, nods its
 // head, wags its tail, now and then dips its bill, and pulses the ring of ripples round it.
+import {addSantaHat} from './santa-hat.js';
+
 export function createDuck(T){
  const group=new T.Group();group.name='Kjempeand';group.scale.setScalar(1.4);
  const mat=(color,roughness=.7,metalness=0)=>new T.MeshStandardMaterial({color,roughness,metalness});
@@ -20,6 +22,8 @@ export function createDuck(T){
  part(green,[0,.75,-.15],[.75,1.05,.75],head);part(white,[0,.2,-.05],[.8,.18,.8],head);
  part(green,[0,1.75,-.45],[.95,.9,1.05],head);part(bill,[0,1.55,-1.55],[.42,.17,.72],head);part(bill,[0,1.45,-1.45],[.36,.12,.62],head);
  for(const s of [-1,1]){part(black,[s*.72,1.95,-.95],[.13,.15,.13],head);part(white,[s*.8,2.,-1.02],[.04,.05,.04],head);}
+ // In December a Santa hat on the green head (santa-hat.js).
+ const hat=addSantaHat(T,head,{at:[0,2.4,-.4],size:.9,tilt:[.25,0,0]});
  // Ripples: a pale ring on the water round the duck.
  const ripple=new T.Mesh(new T.RingGeometry(1,1.18,48),new T.MeshBasicMaterial({color:'#e9f5f8',transparent:true,opacity:.55,depthWrite:false,side:T.DoubleSide}));
  ripple.rotation.x=-Math.PI/2;ripple.position.y=.03;group.add(ripple);
@@ -29,7 +33,8 @@ export function createDuck(T){
   const dip=Math.max(0,Math.sin(time*.7)-.93)/.07;body.rotation.x=dip*.45;
   head.rotation.x=Math.sin(time*2.3)*.08-dip*.35;head.rotation.y=Math.sin(time*.6)*.18;tail.rotation.y=Math.sin(time*5)*.2;
   const r=3.4+((time*.6)%1)*1.6;ripple.scale.set(r,r,1);ripple.material.opacity=.55*(1-((time*.6)%1));
+  hat.update(time);
  }
  update(0,0);
- return {group,update};
+ return {group,update,head,hat};
 }

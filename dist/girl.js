@@ -2,6 +2,8 @@
 // hot-air balloon's basket (world.js). About 1.05 m tall, with a fringe and two pigtails that bounce when she walks, rosy cheeks, a raspberry top, a purple
 // skirt, white socks and purple shoes. The same API as Ludvig (boy.js): update(dt, speed, time, wave) walks at speed m/s and waves with her right arm
 // (wave 0..1); forward is −z and the ground is y = 0.
+import {addSantaHat} from './santa-hat.js';
+
 export function createGirlModel(T){
  const group=new T.Group();group.name='Sofia';
  const std=(color,roughness=.85)=>new T.MeshStandardMaterial({color,roughness});
@@ -21,6 +23,8 @@ export function createGirlModel(T){
  for(const s of [-1,1]){eyes.push(part(sphere,dark,[s*.045,.002,-.113],[.017,.024,.01],head),part(sphere,glint,[s*.05,.01,-.121],[.006,.008,.004],head));part(sphere,cheek,[s*.07,-.043,-.1],[.027,.018,.01],head);part(sphere,skin,[s*.12,-.005,0],[.022,.03,.022],head);
   const lid=part(smile,dark,[s*.045,.004,-.116],[.02,.016,.012],head);lid.rotation.z=Math.PI;lid.visible=false;lids.push(lid);} // closed eyes, two little arcs, while she sleeps
  const grin=part(smile,mouth,[0,-.043,-.116],[.03,.03,.012],head);grin.rotation.z=Math.PI;
+ // In December a Santa hat, sitting back on her head so the fringe shows (santa-hat.js).
+ const hat=addSantaHat(T,head,{at:[0,.12,.015],size:.125,tilt:[.25,0,0]});
  const laugh=part(sphere,mouth,[0,-.05,-.112],[.028,.022,.01],head);laugh.visible=false; // her mouth open in a laugh, jumping on the bed
  const pigtails=[-1,1].map(s=>{const pivot=new T.Group();pivot.position.set(s*.118,.03,.03);head.add(pivot);
   part(sphere,tie,[0,0,0],[.026,.026,.026],pivot);part(sphere,hair,[s*.01,-.075,0],[.043,.1,.043],pivot);part(sphere,hair,[s*.016,-.155,.004],[.036,.05,.036],pivot);return pivot;});
@@ -44,7 +48,8 @@ export function createGirlModel(T){
   // the pigtails swing out and bounce with each step, and sway a little when she stands
   pigtails.forEach((p,i)=>{const side=i?1:-1;p.rotation.z=side*(.12+.14*Math.abs(Math.cos(phase))*run)+Math.sin(time*1.3+i)*.03*still;p.rotation.x=Math.sin(phase*2+i)*.16*run+Math.sin(time*1.1)*.02*still;});
   if(wave>0){arms[1].rotation.x=-.2*wave;arms[1].rotation.z=2.6*wave+Math.sin(time*9)*.35*wave;}
+  hat.update(time);
  }
  update(0,0,0);
- return {group,update,setAsleep,setLaugh,get asleep(){return asleep;},get laughing(){return laugh.visible;},legs,arms,head,pigtails};
+ return {group,update,setAsleep,setLaugh,get asleep(){return asleep;},get laughing(){return laugh.visible;},legs,arms,head,pigtails,hat};
 }

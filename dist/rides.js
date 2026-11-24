@@ -3,6 +3,7 @@
 // the camera frames it the same way, has forward −z and the ground at y = 0, and update(dt, speed, time, colour) animates it at the
 // car's speed. With the KIWI skin they wear the KIWI logo on both sides (logos: skin name -> material), as the car and the cat do.
 import {hoverGlow} from './car-model.js';
+import {addSantaHat} from './santa-hat.js';
 
 // A logo bent onto an ellipsoid body (centre cy, cz, radii rx, ry, rz), 2 cm off it, one on each flank: tail to head on the right,
 // head to tail on the left, as on the car's doors.
@@ -71,6 +72,7 @@ export function createRideDuck(T,{logos={}}={}){
  // the lower bill (11 October 2026): it hangs on a hinge at the back of the bill, and drops open for each quack of the horn (negative rotation.x drops its front), with a tongue in it
  const beak=new T.Group();beak.position.set(0,.78,-.42);head.add(beak);part(sphere,bill,[0,-.03,-.3],[.19,.055,.32],beak);part(sphere,tongue,[0,0,-.28],[.1,.03,.2],beak);
  for(const s of [-1,1]){part(sphere,black,[s*.36,1.05,-.47],[.07,.08,.07],head);part(sphere,white,[s*.4,1.08,-.51],[.02,.025,.02],head);}
+ const hat=addSantaHat(T,head,{at:[0,1.27,-.15],size:.45,tilt:[.25,0,0]}); // in December a Santa hat (santa-hat.js)
  // legs from the hips, orange webbed feet
  const legs=[-1,1].map(s=>{const hip=new T.Group();hip.position.set(s*.42,.95,.15);body.add(hip);
   part(limb,orange,[0,-.45,0],[.08,.9,.08],hip);const foot=part(new T.ConeGeometry(1,1,3),orange,[0,-.9,-.22],[.32,.44,.06],hip);foot.rotation.x=-Math.PI/2;return hip;});
@@ -86,10 +88,10 @@ export function createRideDuck(T,{logos={}}={}){
   head.position.z=-1.35-.12*Math.sin(phase*2)*run;head.rotation.y=Math.sin(time*.7)*.3*(1-run);head.rotation.x=Math.max(0,Math.sin(time*.9)-.9)*3*(1-run);
   // the quacks of the horn (horn-duck.mp3, 0.94 s: one quack at 0.11-0.36 s and another at 0.60-0.85 s, "kvakk kvakk"): the bill snaps open for each, the head lifts a little
   quackT+=dt;const pulse=(t,a,b)=>t<a||t>b?0:Math.pow(Math.sin(Math.PI*(t-a)/(b-a)),.5),open=Math.max(pulse(quackT,.11,.36),pulse(quackT,.6,.85));beak.rotation.x=-.55*open;head.rotation.x+=.22*open;
-  tail.rotation.y=Math.sin(time*6)*.2;
+  tail.rotation.y=Math.sin(time*6)*.2;hat.update(time);
  }
  update(0,0,0);
- return {group,update,skins,beak,head,honk(){quackT=0;}};
+ return {group,update,skins,beak,head,hat,honk(){quackT=0;}};
 }
 
 // ---- The rocket: a rocket in the car's colour that hovers over the road, white nose, red fins, round windows and a flame behind it ----

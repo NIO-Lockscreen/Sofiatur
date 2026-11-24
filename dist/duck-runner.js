@@ -5,6 +5,7 @@
 // standing by the parked car it flaps them (the "wave" of the follower). Folded, a wing lies along the flank; spread, it is a paddle out to the side.
 // Forward is −z and the ground is y = 0.
 import {createBoy} from './boy.js';
+import {addSantaHat} from './santa-hat.js';
 
 export function createDuckRunnerModel(T){
  const group=new T.Group();group.name='Løpende and';
@@ -24,6 +25,7 @@ export function createDuckRunnerModel(T){
  const head=new T.Group();head.position.set(0,.58,-.28);body.add(head);
  part(sphere,green,[0,.1,-.03],[.075,.13,.075],head);part(sphere,white,[0,.03,-.01],[.088,.03,.088],head);part(sphere,green,[0,.24,-.07],[.125,.115,.135],head);
  part(sphere,bill,[0,.215,-.21],[.058,.027,.1],head);for(const s of [-1,1])part(sphere,black,[s*.09,.26,-.13],[.021,.026,.021],head);
+ const hat=addSantaHat(T,head,{at:[0,.32,-.06],size:.11,tilt:[.25,0,0]}); // in December a Santa hat (santa-hat.js)
  // Orange legs from the hips, each with a flat webbed foot; they swing.
  const legs=[-1,1].map(s=>{const hip=new T.Group();hip.position.set(s*.09,.32,.02);body.add(hip);
   part(limb,orange,[0,-.15,0],[.022,.15,.022],hip);part(box,orange,[0,-.305,-.05],[.09,.015,.13],hip);return hip;});
@@ -38,9 +40,10 @@ export function createDuckRunnerModel(T){
   // The wings: folded along the flank, spread more the faster it runs, and raised and beating when it flaps by the parked car.
   const spread=Math.min(1,run*.6+wave),beat=Math.sin(wave>.2?time*16:phase*2),swing=run*.3+wave*.55;
   wings.forEach((w,i)=>{const side=i?1:-1,m=w.userData.paddle;m.scale.set(.05+spread*.17,.045,.3-spread*.07);m.position.set(side*(.03+spread*.14),-.05*(1-spread),.1);w.rotation.z=side*spread*(.25+swing*(beat*(i?1:.9)));});
+  hat.update(time);
  }
  update(0,0,0);
- return {group,update,legs,wings,head};
+ return {group,update,legs,wings,head,hat};
 }
 
 // The duckling (7 October 2026): the easter egg that follows the small duck. Driving as the duck with the small duck behind the car, honking at the big duck in
@@ -61,6 +64,8 @@ export function createDucklingModel(T){
  const head=new T.Group();head.position.set(0,.31,-.15);body.add(head);
  part(sphere,fluff,[0,.1,0],[.105,.1,.105],head);part(sphere,bill,[0,.07,-.115],[.048,.02,.062],head);part(sphere,fluff,[0,.2,.01],[.02,.03,.02],head);
  for(const s of [-1,1]){part(sphere,black,[s*.065,.13,-.065],[.019,.022,.019],head);part(sphere,glint,[s*.07,.14,-.075],[.007,.007,.007],head);}
+ // In December the smallest duck has a Santa hat too (santa-hat.js), over the tuft.
+ const hat=addSantaHat(T,head,{at:[0,.165,.01],size:.085,tilt:[.2,0,0]});
  // Short orange legs with flat feet; they swing.
  const legs=[-1,1].map(s=>{const hip=new T.Group();hip.position.set(s*.06,.13,.02);body.add(hip);
   part(limb,orange,[0,-.06,0],[.012,.065,.012],hip);part(box,orange,[0,-.125,-.035],[.05,.01,.075],hip);return hip;});
@@ -73,9 +78,10 @@ export function createDucklingModel(T){
   head.rotation.x=.2*run+Math.sin(phase*2)*.07*run;head.rotation.z=-body.rotation.z*.6;head.rotation.y=Math.sin(time*1.1)*.35*(1-run);
   const spread=Math.min(1,run*.5+wave),beat=Math.sin(wave>.2?time*18:phase*2);
   wings.forEach((w,i)=>{const side=i?1:-1;w.userData.paddle.scale.set(.025+spread*.05,.035,.1-spread*.02);w.rotation.z=side*spread*(.3+(run*.3+wave*.5)*beat);});
+  hat.update(time);
  }
  update(0,0,0);
- return {group,update,legs,wings,head};
+ return {group,update,legs,wings,head,hat};
 }
 export function createDuckRunner({T,scene}){return createBoy({T,scene,createModel:createDuckRunnerModel});}
 export function createDucklingRunner({T,scene}){return createBoy({T,scene,createModel:createDucklingModel,extra:1.2});}

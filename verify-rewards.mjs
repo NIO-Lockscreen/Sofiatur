@@ -14,6 +14,8 @@ import {createRainbowTrail} from './dist/rainbow-trail.js';
 import {createCat} from './dist/cat-model.js';
 import {createET5} from './dist/car-model.js';
 import {createGirlModel} from './dist/girl.js';
+import {setSantaSeason} from './dist/santa-hat.js';
+setSantaSeason(false); // the sizes measured here are the ducks' and the children's own, without the Santa hats they wear in December (verify-santa-hats.mjs)
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8'));
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
 // Starts a fresh game (as after a page reload) with the given browser storage; the world records paint, boy and model calls.
