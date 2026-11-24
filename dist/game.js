@@ -455,8 +455,9 @@ function startBrushing(){if(state!=='inside'||!inside||brushing||inside.asleep||
   insets:()=>{const t=document.querySelector('#insideHud .inside-title')?.getBoundingClientRect(),h=$('teeth').getBoundingClientRect();return {top:0,bottom:t?Math.max(0,h.bottom-t.top+8):90};},
   onStep:step=>{const [a,b]=TEETH_TEXT[step]||['Tannpuss',''];$('insideName').textContent=a;$('insideTip').textContent=b;},onDone:brushed});
  brushing=true;$('unlockInfo').hidden=true;$('teeth').hidden=false;$('teethDone').hidden=false;$('insideHud').classList.add('brushing');routineHud();fx('pop');toothGame.start();}
-function brushed(){brushCount++;try{localStorage.setItem('sofiatur.tannpuss',String(brushCount));}catch{}inside?.setBrushed(brushCount);stopBrushing(true);fx('reward');toast('🪥 En ny stjerne på tannpusskartet!');
- say(`Så flink du er, Sofia! Nå har du ${brushCount} ${brushCount===1?'stjerne':'stjerner'} på tannpusskartet.`);}
+function brushed(){brushCount++;try{localStorage.setItem('sofiatur.tannpuss',String(brushCount));}catch{}inside?.setBrushed(brushCount);stopBrushing(true);fx('reward');const n=brushCount; // after ten the chart is full and the stars go on the walls, with no limit (star-wall.js, 24 November 2026)
+ toast(n<=10?'🪥 En ny stjerne på tannpusskartet!':n===11?'🪥 Kartet er fullt! Nå kommer stjernene på veggen.':'🪥 En ny stjerne på veggen!');
+ say(n<=10?`Så flink du er, Sofia! Nå har du ${n} ${n===1?'stjerne':'stjerner'} på tannpusskartet.`:n===11?'Så flink du er, Sofia! Tannpusskartet er fullt, så nå kommer stjernene på veggen. Nå har du 11 stjerner!':`Så flink du er, Sofia! Nå har du ${n} stjerner på veggene.`);}
 // Back to the room: «Tilbake», Esc, clean teeth, or leaving the house. quiet: nothing more to say.
 function stopBrushing(quiet=false){if(!brushing)return;brushing=false;toothGame?.stop();$('teeth').hidden=true;$('teethDone').hidden=true;$('insideHud').classList.remove('brushing');if(!quiet)hush();if(state==='inside')sleepHud(!!inside?.asleep);}
 $('brushTeeth').onclick=startBrushing;$('teethDone').onclick=()=>stopBrushing();

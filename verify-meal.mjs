@@ -98,7 +98,22 @@ console.log('Meal: with the PEG backpack she puts it on, the tube goes on, she s
  assert.ok(near<room.distanceTo(new T.Vector3(MEAL.table.x,.8,MEAL.table.z))*.6,'closer to the table');inside.finishMeal();run(4);assert.ok(inside.camera.position.distanceTo(room)<.1,'and back to the room');}
 // The brushing chart: a star for each time, ten places.
 {const lit=()=>meal.chart.children.filter(o=>o.geometry?.type==='ShapeGeometry'&&o.material.color.getHexString()==='2fbfbc').length;inside.setBrushed(3);assert.equal(lit(),3);inside.setBrushed(14);assert.equal(lit(),10);inside.setBrushed(0);assert.equal(lit(),0);}
-console.log('Meal: the camera glides in to the table and back, and the brushing chart shows a star for each brushing: OK');
+// After ten, no limit (24 November 2026): star 11 and on go on the walls, the back wall first (the nearest the chart first), then the side walls, then the
+// gaps round after round; never on the window and curtains, the pictures, the chart, the podium's top step, the sofa, the lamp, the plant or the door.
+{const wall=()=>{let c=0;inside.scene.traverse(o=>{if(o.isInstancedMesh&&o.name==='Tannpusstjerner')c+=o.count;});return c;};
+ inside.setBrushed(10);assert.equal(wall(),0,'ten: all on the chart');inside.setBrushed(11);assert.equal(wall(),1,'the eleventh on the wall');
+ inside.setBrushed(4010);assert.equal(wall(),4000,'no limit');const spots=meal.starWall.spots;
+ const onBack=spots.findIndex(s=>s.wall!==0);assert.ok(onBack>60,'the back wall fills first: '+onBack);assert.ok(spots.slice(onBack,onBack+50).every(s=>s.wall!==0),'then the side walls');
+ const d=s=>Math.hypot(s.p[0]-MEAL.chart.x,s.p[1]-MEAL.chart.y);for(let i=1;i<onBack;i++)assert.ok(d(spots[i])>=d(spots[i-1])-1e-9,'nearest the chart first');
+ const {BRUSH_WALLS}=await import('./dist/star-wall.js');
+ for(const s of spots){const w=BRUSH_WALLS[s.wall],u=[0,1,2].reduce((a,k)=>a+(s.p[k]-w.o[k])*w.u[k],0),v=s.p[1],m=s.size;assert.ok(u>=m&&u<=w.w-m&&v>=m&&v<=w.h-m);for(const [u0,u1,v0,v1] of w.skip)assert.ok(!(u>u0-m&&u<u1+m&&v>v0-m&&v<v1+m),'clear of what is on the wall');
+  assert.ok(s.wall===0?Math.abs(s.p[2]+3.485)<1e-9:Math.abs(Math.abs(s.p[0])-4.485)<1e-9,'on a wall, just in front of it');}
+ // each star faces into the room, and the newest one twinkles
+ const m=new T.Matrix4(),n=new T.Vector3();for(const mesh of meal.starWall.meshes){mesh.getMatrixAt(0,m);n.set(0,0,1).transformDirection(m);const s=spots[mesh.userData.spots[0]],w=BRUSH_WALLS[s.wall];assert.ok(n.dot(new T.Vector3(...w.n))>.99,'facing into the room');}
+ const last=meal.starWall.meshes.find(x=>x.userData.spots.includes(spots.length-1)),j=last.userData.spots.indexOf(spots.length-1),scale=()=>{last.getMatrixAt(j,m);return new T.Vector3().setFromMatrixScale(m).x;};
+ meal.update(.016,0);const a=scale();meal.update(.016,.5);assert.ok(Math.abs(scale()-a)>.001,'the newest star twinkles');
+ inside.setBrushed(0);assert.equal(wall(),0);}
+console.log('Meal: the camera glides in to the table and back, and the brushing chart shows a star for each brushing; after ten they fill the back wall, then the side walls, with no limit: OK');
 
 // Tooth brushing (dist/teeth.js): toothpaste first, every tooth needs a few seconds however wild the brushing, germs let go, rinse, done once.
 {const said=[],sounds=[];let done=0,clock=0;const c={clientWidth:1024,clientHeight:600};const game=createToothGame({canvas:c,say:x=>said.push(x),sound:n=>sounds.push(n),onDone:()=>done++,insets:()=>({top:0,bottom:90})});

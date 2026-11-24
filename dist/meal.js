@@ -15,6 +15,7 @@ const TIME={sit:.6,full:2,up:.5,pick:1.2,plug:.9,beep:1.5,unplug:.7,drop:1.1};
 export const FOODS=[{name:'grøt med blåbær',color:'#efe0bb',dots:'#4b5fae'},{name:'pasta med tomatsaus',color:'#f2c35b',dots:'#d9452f'},{name:'yoghurt med jordbær',color:'#fff1f3',dots:'#e0304f'}];
 const ease=k=>k*k*(3-2*k),mix=(a,b,k)=>a+(b-a)*k,turn=(from,to,k)=>from+Math.atan2(Math.sin(to-from),Math.cos(to-from))*k;
 
+import {createStarWall} from './star-wall.js';
 export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>false,on=()=>{}}){
  const std=(color,roughness=.8)=>new T.MeshStandardMaterial({color,roughness}),flat=color=>new T.MeshBasicMaterial({color});
  function add(g,m,x,y,z,parent=scene){const o=new T.Mesh(g,m);o.position.set(x,y,z);parent.add(o);return o;}
@@ -71,7 +72,9 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
  box(.82,.64,.02,std('#fffaf0'),0,0,0,chart);box(.82,.14,.022,flat('#79e4e2'),0,.25,.002,chart);const tooth=ball(1,flat('#ffffff'),-.29,.02,.02,chart);tooth.scale.set(.09,.1,.01);for(const x of [-.05,.05]){const r=ball(1,flat('#ffffff'),-.29+x,-.08,.02,chart);r.scale.set(.035,.06,.01);}
  const starShape=new T.Shape();for(let i=0;i<10;i++){const r=i%2?.45:1,a=Math.PI/2+i*Math.PI/5;starShape[i?'lineTo':'moveTo'](Math.cos(a)*r,Math.sin(a)*r);}const starGeo=new T.ShapeGeometry(starShape),starOn=flat('#2fbfbc'),starOff=flat('#e8e0d0');
  const stars=Array.from({length:10},(_,i)=>{const s=add(starGeo,starOff,-.1+(i%5)*.11,.07-Math.floor(i/5)*.17,.015,chart);s.scale.setScalar(.04);return s;});
- function setBrushed(n){stars.forEach((s,i)=>{const on=i<Math.min(10,n);s.material=on?starOn:starOff;s.scale.setScalar(on?.05:.03);});}
+ // After ten the chart is full, and the stars go on the walls, as many as she brushes (star-wall.js).
+ const starWall=createStarWall(T,scene);
+ function setBrushed(n){stars.forEach((s,i)=>{const on=i<Math.min(10,n);s.material=on?starOn:starOff;s.scale.setScalar(on?.05:.03);});starWall.set(n);}
  // ---- The meal, step by step ----
  // kind: null, 'spoon' or 'peg'; s: seconds into the step; bite: seconds into a spoonful (−1 between); queued: taps waiting; pump: seconds the pump has run;
  // dance: seconds into a twirl (−1 when not); view: how far the camera has glided in to the meal; food: today's dish (one after the other);
@@ -94,7 +97,7 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
   if(st.kind==='spoon'&&i<=2){st.step='up';st.s=0;st.bite=-1;st.queued=0;st.drink=-1;st.drinkNext=false;on('thanks');return;}
   if(st.kind==='peg'&&i>=2&&i<=4){st.step=i<=3?'unplug':'beep';st.s=0;on(st.step);}} // before the pump has run the tube just comes off
  const stepTime=()=>TIME[st.step]??Infinity;
- function update(dt,time){st.view+=((st.kind&&st.step!=='walk'?1:0)-st.view)*Math.min(1,dt*2.2);if(!st.kind){dress(time);return;}st.s+=dt;
+ function update(dt,time){starWall.update(time,reduced());st.view+=((st.kind&&st.step!=='walk'?1:0)-st.view)*Math.min(1,dt*2.2);if(!st.kind){dress(time);return;}st.s+=dt;
   if(st.step==='walk'){if(arrived())next();}
   // a drink: «glugg» while the glass is tipped at her mouth, «ahh» as it comes down, then any spoonful tapped meanwhile
   else if(st.step==='eat'&&st.drink>=0){const was=st.drink;st.drink+=dt;if(was<.8&&st.drink>=.8)on('gulp');if(was<1.45&&st.drink>=1.45)on('ahh');
@@ -164,5 +167,5 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
   g.position.set(st0.x,y,st0.z);g.rotation.set(0,yaw,0);return true;}
  // The camera glides in to the table, or to her and the backpack: what it should keep in view.
  function viewPoints(){const k=st.kind||st.last;return k==='spoon'?[[tb.x-.45,.5,tb.z+.1],[tb.x+.45,.5,tb.z+.1],[ch.x-.35,1.1,ch.z-.2],[ch.x+.35,1.1,ch.z-.2]]:[[MEAL.stand.x-.4,1.2,MEAL.stand.z],[MEAL.stand.x+.35,0,MEAL.stand.z],[MEAL.bag.x-.3,0,MEAL.bag.z+.25],[MEAL.bag.x+.3,.5,MEAL.bag.z]];}
- return {st,start,tap,drink,finish,update,pose,reset,setBrushed,viewPoints,hits:[tableHit,bagHit,glassHit],obstacles,bag,spoon,glass,food,worn,tubeOn,chart,get active(){return !!st.kind;},get busy(){return !!st.kind&&st.step!=='walk';}};
+ return {st,start,tap,drink,finish,update,pose,reset,setBrushed,starWall,viewPoints,hits:[tableHit,bagHit,glassHit],obstacles,bag,spoon,glass,food,worn,tubeOn,chart,get active(){return !!st.kind;},get busy(){return !!st.kind&&st.step!=='walk';}};
 }
