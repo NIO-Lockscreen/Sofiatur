@@ -901,3 +901,20 @@ console.log('Every switch of ride gives it its own colour (black, the taxi yello
   const b=createBalloon(T);assert.ok(b.seat&&b.seat.isGroup&&b.seat.parent&&b.seat.position.y>.2&&b.seat.position.y<1.2,'the balloon has a seat on its basket floor');}
  globalThis.document=globalDocument;}
 console.log('Models: the pig (car-sized, pink to begin with, takes the paint, KIWI logos, trots, hops), the car\'s four hinges and taxi group, six hinged fire engine wheels, the girl (1.05 m, brown hair) and the balloon\'s seat: OK');
+
+// On the duck, the voice and the texts say «anda», not «bilen» (24 November 2026): coming home, Ludvig, the small duck at the lake, KIWI, the soap bubbles
+// and the hover car's announcement. On the car (and the other rides) it is «bilen» as before.
+{const words=(g,re,what)=>{assert.match(g.spoken.at(-1),re,what);assert.doesNotMatch(g.spoken.at(-1),/\bbilen\b|\bBilen\b|KIWI-bil\b/,what+': not «bilen»');};
+ store.clear();store.set('sofiatur.fremgang',JSON.stringify({arrivals:11,model:'duck'}));let g=await launch(()=>storage);
+ g.test.home();words(g,/Vil du velge en ny farge på anda\?/,'home');assert.equal(g.element('toast').textContent,'🏠 Hjemme!');
+ g.test.ludvig();words(g,/Nå løper Ludvig etter anda\./,'Ludvig');assert.match(g.element('toast').textContent,/Ludvig etter anda/);
+ g.test.start();g.test.visit('lake');g.tick(6);g.test.honkKey();words(g,/Nå løper en liten and etter anda\./,'the small duck');assert.match(g.element('toast').textContent,/en liten and etter anda/);
+ g.test.park();words(g,/låst opp en hemmelig KIWI-and!/,'KIWI');assert.match(g.element('toast').textContent,/Hemmelig KIWI-and låst opp/);g.test.park();words(g,/Nå kjører vi KIWI-anda\./,'KIWI again');
+ store.clear();store.set('sofiatur.fremgang',JSON.stringify({arrivals:8,model:'duck'}));g=await launch(()=>storage);g.test.arrive();words(g,/Og nå blåser anda såpebobler!/,'the bubbles');assert.match(g.element('unlock').textContent,/Nå blåser anda såpebobler/);
+ // the same on the car
+ store.clear();store.set('sofiatur.fremgang',JSON.stringify({arrivals:11,model:'car'}));g=await launch(()=>storage);
+ g.test.home();assert.match(g.spoken.at(-1),/ny farge på bilen\?/);g.test.ludvig();assert.match(g.spoken.at(-1),/Ludvig etter bilen\./);g.test.park();assert.match(g.spoken.at(-1),/hemmelig KIWI-bil!/);
+ store.clear();store.set('sofiatur.fremgang',JSON.stringify({arrivals:8,model:'car'}));g=await launch(()=>storage);g.test.arrive();assert.match(g.spoken.at(-1),/Og nå blåser bilen såpebobler!/);
+ // the start card: its words in <span class="ride-word"> follow the ride
+ const html=fs.readFileSync('dist/index.html','utf8');assert.equal((html.match(/class="ride-word"/g)||[]).length,6,'six words on the start card follow the ride');assert.match(html,/Du velger veien\. <span class="ride-word" data-cap="1">Bilen<\/span> kjører selv\./);}
+console.log('On the duck, the voice and the texts say «anda» (home, Ludvig, the small duck, KIWI, the bubbles); on the car «bilen»; the start card follows: OK');

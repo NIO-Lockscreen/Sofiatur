@@ -1,0 +1,86 @@
+// Sofias romreise: uttale for spillets egne navn og lånord.
+// espeak-ng (nb) legger trykket på første stavelse i nesten alle ord. Disse følger vanlig bokmål.
+// Format: ord, tab, espeak-fonemer (' = hovedtrykk, , = bitrykk). Bygges inn i tts/espeak-nb.data
+// med tts/build-espeak.sh. Vanlige småord (igjen, også, velkommen) står urørt: stemmen har lært dem.
+// Hvert ord er prøvd med NB-Whisper (med og uten retting, tre opplesninger hver). Ganymedes og asteroide(beltet) ble
+// tatt ut igjen: der forsto NB-Whisper espeaks egen uttale bedre.
+
+// Navn
+sofia	sU'fi:A
+sofias	sU'fi:As
+merkur	maRk'u-:R
+uranus	u-R'A:nu-s
+neptun	nEpt'u-:n
+europa	aUR'u:pA
+phobos	f'u:bOs
+deimos	d'aImOs
+callisto	kA'lIstU
+titan	tIt'A:n
+enceladus	Ens'e:lAdu-s
+titania	tIt'A:ni:A
+miranda	mIR'AndA
+triton	tR'i:tOn
+charon	k'A:ROn
+
+// Verdensrommet
+planet	plA'ne:t
+planeten	plA'ne:t@n
+planeter	plA'ne:t@R
+planetene	plA'ne:t@na#
+planetbesøk	plA'ne:tb@,sWk
+planetlek	plA'ne:t,le:k
+planetleker	plA'ne:t,le:k@R
+planetleser	plA'ne:t,le:s@R
+planetspillet	plA'ne:t,spIl@
+dvergplanet	dv'aRgplA,ne:t
+komet	kU'me:t
+kometen	kU'me:t@n
+kometer	kU'me:t@R
+meteor	me:te'u:R
+meteorer	me:te'u:R@R
+meteorene	me:te'u:R@na#
+krater	kR'A:t@R
+kratere	kR'A:t@Ra#
+astronaut	AstRU'naUt
+astronauter	AstRU'naUt@R
+rakett	RA'kEt:
+raketten	RA'kEt:@n
+raketter	RA'kEt:@R
+rakettene	RA'kEt:@na#
+rakettfarge	RA'kEt:,fARga#
+gullrakett	g'u-lRA,kEt:
+stjernerakett	ss;'aRn@RA,kEt:
+romraketten	R'UmRA,kEt:@n
+romand	R'Um,An
+solsystemet	s'u:lsys,te:m@
+vulkan	vu-l'kA:n
+vulkaner	vu-l'kA:n@R
+diamant	di:A'mAnt
+diamanter	di:A'mAnt@R
+diamantene	di:A'mAnt@na#
+diamantregn	di:A'mAnt,RENn
+iskjempe	'i:s,xEmpa#
+iskald	'i:s,kAl
+isbiter	'i:s,bi:t@R
+isbitene	'i:s,bi:t@na#
+isverden	'i:s,vaRd@n
+fontener	fOn'te:n@R
+
+// Hjemme
+bakterie	bAk'te:Ri:a#
+bakterier	bAk'te:Ri:@R
+bakteriene	bAk'te:Ri:@na#
+tannkrem	t'An,kRe:m
+tomatsaus	tU'mA:t,saUs
+yoghurt	'jOgu-Rt
+potet	pU'te:t
+bilturen	b'i:l,tu-:R@n
+robotbil	R'u:bOt,bi:l
+robotbilen	R'u:bOt,bi:l@n
+roboter	RU'bu:t@R
+graffiti	gRA'fi:ti:
+oransje	O'RANSa#
+fantastisk	fAn'tAstIsk
+studerer	stu-'de:R@R
+supert	su-'pe:Rt
+hurra	hu-'RA
