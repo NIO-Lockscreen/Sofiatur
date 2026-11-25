@@ -920,6 +920,65 @@ console.log('Models: the pig (car-sized, pink to begin with, takes the paint, KI
  const html=fs.readFileSync('dist/index.html','utf8');assert.equal((html.match(/class="ride-word"/g)||[]).length,6,'six words on the start card follow the ride');assert.match(html,/Du velger veien\. <span class="ride-word" data-cap="1">Bilen<\/span> kjører selv\./);}
 console.log('On the duck, the voice and the texts say «anda» (home, Ludvig, the small duck, KIWI, the bubbles); on the car «bilen»; the start card follows: OK');
 
+// Friends in the house (25 November 2026): the duckling follows Ludvig too; whoever runs after the car comes in with Sofia (inside.enter's friends); with a
+// friend in, every tap on the sofa is a jump, never bed, and a tap while they jump does nothing; the words are for all of them; at the table with Ludvig the
+// meal's words are for both. (What they do in the house: verify-friends.mjs.)
+{save({arrivals:13,model:'duck',duck:'on',behind:'duck',ludvig:'on',inside:'on'});let g=await launch(()=>storage,{random:()=>.99});
+ g.test.visit('lake');g.test.honkKey();assert.equal(g.world.duckling,true,'the duckling found');g.element('menu').close=()=>{};g.element('restart').onclick();
+ g.element('ludvig').onchange({target:{checked:true}});assert.equal(g.world.boy,true);assert.equal(g.world.duckRunner,false);assert.equal(g.world.duckling,true,'it follows Ludvig');
+ assert.equal(g.element('duckling').checked,true);assert.equal(g.element('ducklingText').textContent,'🐥 Gul andunge følger Ludvig');
+ g.element('duckling').onchange({target:{checked:false}});assert.equal(g.world.duckling,false);assert.equal(g.world.boy,true,'unticked: Ludvig runs alone');
+ g.element('duckling').onchange({target:{checked:true}});assert.equal(g.test.behind(),'ludvig','ticking it keeps Ludvig');assert.equal(g.world.duckling,true);assert.equal(g.world.duckRunner,false);
+ g.element('bubbles').onchange({target:{checked:true}});assert.equal(g.world.duckling,false,'with the bubbles nobody runs for it to follow');assert.equal(g.element('ducklingText').textContent,'🐥 Gul andunge følger anda');
+ g.element('ludvig').onchange({target:{checked:true}});assert.equal(g.world.duckling,true,'back with Ludvig');g.test.visit('ludvig');assert.equal(g.world.duckling,true,'and after a visit to him');g.element('restart').onclick();
+ assert.ok(!/duckling/i.test(store.get('sofiatur.fremgang')),'still never saved');
+ // both in: the welcome says so, and the sofa is always for jumping
+ g.element('goInside').onclick();let e=g.inside.enters.at(-1).o;assert.deepEqual({...e.friends},{ludvig:true,duckling:true},'Ludvig and the duckling come in');assert.equal(e.place,'home');
+ assert.equal(g.spoken.at(-1),'Velkommen hjem igjen, Sofia! Ludvig og den lille gule anda ble med inn.');assert.equal(g.element('insideTip').textContent,'Ludvig og anda er med inn · trykk på sofaen, så hopper dere');
+ g.tap({type:'bed'});assert.equal(g.inside.jumps,1);assert.equal(g.spoken.at(-1),'Hopp, hopp, hopp! Sofia, Ludvig og den lille gule anda hopper i senga!');assert.equal(g.element('insideName').textContent,'Sofia, Ludvig og anda hopper i senga!');
+ g.tick(20);g.tap({type:'bed'});assert.equal(g.inside.sleeps,0,'a tap while they jump: they jump on');assert.equal(g.inside.jumps,1);
+ g.inside.on('down');assert.equal(g.spoken.at(-1),'Det var gøy! Trykk på sofaen igjen, så hopper dere en gang til.');g.inside.on('done');g.inside.jumping=false;
+ assert.equal(g.element('insideTip').textContent,'Ludvig og anda er med inn · trykk på sofaen, så hopper dere');
+ for(let i=0;i<5;i++){g.tick(20);g.tap({type:'bed'});g.inside.on('done');g.inside.jumping=false;}assert.equal(g.inside.jumps,6,'every tap a jump, though the dice say bed');assert.equal(g.inside.sleeps,0);
+ // at the table with Ludvig, the words are for both
+ for(const [step,line] of [['eat','Trykk, så tar Sofia en skje, og Ludvig hermer etter. Trykk på glasset, så drikker de.'],['full','Ferdig! Skålene er tomme. Nå er magen god og mett, både hos Sofia og Ludvig! Etter maten pusser vi tennene.'],
+  ['ready','Klikk! Slangene er koblet til knappene på magen. Trykk på sekken for å starte pumpene.'],['pump','Pip! Pumpene går. Maten renner gjennom slangene og rett i magen. Trykk på Sofia, så danser hun, og Ludvig hermer etter!'],
+  ['beep','Pip, pip, pip! Ferdig! Nå er magen god og mett, både hos Sofia og Ludvig. Etter maten pusser vi tennene.']]){g.inside.on('meal:'+step);assert.equal(g.spoken.at(-1),line);}
+ g.tick(80);g.inside.on('meal:dance');assert.equal(g.spoken.at(-1),'Maten kommer likevel!');
+ // Ludvig alone; the duckling alone; nobody
+ g.element('goOut').onclick();g.element('duckling').onchange({target:{checked:false}});g.element('goInside').onclick();e=g.inside.enters.at(-1).o;assert.deepEqual({...e.friends},{ludvig:true,duckling:false});
+ assert.equal(g.spoken.at(-1),'Velkommen hjem igjen, Sofia! Ludvig ble med inn.');g.tap({type:'bed'});assert.equal(g.spoken.at(-1),'Hopp, hopp, hopp! Sofia og Ludvig hopper i senga!');assert.equal(g.element('insideName').textContent,'Sofia og Ludvig hopper i senga!');
+ g.element('goOut').onclick();g.element('duckRunner').onchange({target:{checked:true}});g.element('duckling').onchange({target:{checked:true}});g.element('goInside').onclick();e=g.inside.enters.at(-1).o;assert.deepEqual({...e.friends},{ludvig:false,duckling:true});
+ assert.equal(g.spoken.at(-1),'Velkommen hjem igjen, Sofia! Den lille gule anda ble med inn.');g.tick(20);g.tap({type:'bed'});assert.equal(g.spoken.at(-1),'Hopp, hopp, hopp! Sofia og den lille gule anda hopper i senga!');g.inside.on('done');g.inside.jumping=false;
+ g.inside.on('meal:eat');assert.equal(g.spoken.at(-1),'Trykk, så tar Sofia en skje! Trykk på glasset, så drikker hun.','without Ludvig the meal is hers alone');
+ g.element('goOut').onclick();g.element('trail').onchange({target:{checked:true}});g.element('goInside').onclick();e=g.inside.enters.at(-1).o;assert.deepEqual({...e.friends},{ludvig:false,duckling:false},'nobody runs after the car: nobody comes in');
+ assert.equal(g.spoken.at(-1),'Velkommen hjem igjen, Sofia!');assert.equal(g.element('insideTip').textContent,'Trykk på premiene, eller på sofaen når du er trøtt');g.tick(20);g.tap({type:'bed'});assert.equal(g.inside.sleeps,1,'alone, the sofa is bed again (the dice say so)');}
+console.log('Friends: the duckling follows Ludvig too; Ludvig and the duckling come into the house when they run after the car, and then the sofa is always for jumping; the words are for all of them: OK');
+
+// Eating at Ludvig's (25 November 2026): parked at Bøckmans veg 102, «🍽️ Spise hos Ludvig» opens his house (place 'ludvig', Ludvig always in, the duckling if it
+// follows him); «Gå ut» goes back to the car where it was parked, with «Takk for maten» if they ate. In free driving the button shows by his place.
+{save({arrivals:3,ludvig:'on',behind:'trail',inside:'on'});const g=await launch(()=>storage);g.element('menu').close=()=>{};
+ assert.equal(g.element('visitLudvig').hidden,true,'not on the start screen');g.test.visit('kiwi');g.tick(5);assert.equal(g.element('visitLudvig').hidden,true,'not at KIWI');
+ g.element('restart').onclick();g.test.visit('ludvig');g.tick(5);assert.equal(g.test.state(),'decision');assert.equal(g.element('visitLudvig').hidden,false,'parked at Ludvig\'s: the button');
+ g.element('visitLudvig').onclick();assert.equal(g.test.state(),'inside');let e=g.inside.enters.at(-1).o;assert.equal(e.place,'ludvig');assert.deepEqual({...e.friends},{ludvig:true,duckling:false});
+ assert.equal(g.element('insideName').textContent,'Hos Ludvig');assert.equal(g.element('insideHud').hidden,false);assert.equal(g.element('driveHud').hidden,true);assert.equal(g.element('worldArrows').hidden,true);assert.equal(g.element('visitLudvig').hidden,true);
+ assert.equal(g.spoken.at(-1),'Velkommen inn til Ludvig! Trykk på bordet eller sekken, så spiser dere sammen.');
+ g.tap({type:'bed'});assert.equal(g.spoken.at(-1),'Hopp, hopp, hopp! Sofia og Ludvig hopper i senga!','always jumping at his place');g.inside.on('done');g.inside.jumping=false;
+ g.key('x');assert.equal(g.inside.refreshes.length,0,'no podium to step through at his place');
+ g.inside.on('meal:full');g.tick(3);g.element('goOut').onclick();assert.equal(g.test.state(),'decision','back in the car, parked at Ludvig\'s');assert.equal(g.element('insideHud').hidden,true);assert.equal(g.element('driveHud').hidden,false);
+ assert.equal(g.element('worldArrows').hidden,false,'with the arrows to drive on');assert.equal(g.spoken.at(-1),'Ha det, Ludvig! Takk for maten.');g.tick(5);assert.equal(g.element('visitLudvig').hidden,false);
+ g.element('visitLudvig').onclick();g.element('goOut').onclick();assert.equal(g.spoken.at(-1),'Ha det, Ludvig!','without eating: just goodbye');
+ g.element('visitLudvig').onclick();g.element('restart').onclick();assert.equal(g.test.state(),'intro','starting over from his house');assert.equal(g.element('visitLudvig').hidden,true);
+ g.element('goInside').onclick();e=g.inside.enters.at(-1).o;assert.equal(e.place,'home','at home it is Sofia\'s house again');assert.deepEqual({...e.friends},{ludvig:true,duckling:false},'and Ludvig comes along, since the visit put him behind the car');g.element('goOut').onclick();
+ // in free driving: by his place the button shows; inside, the car waits; out again, it drives on
+ const [px,pz]=data.nodes['ludvig-parkering'];g.test.freeDrive(px,pz,0);g.tick(4);assert.equal(g.test.state(),'free');assert.equal(g.element('visitLudvig').hidden,false,'free driving by his place');
+ g.element('visitLudvig').onclick();assert.equal(g.test.state(),'inside');assert.equal(g.element('freeControls').hidden,true);g.tick(10);g.element('goOut').onclick();assert.equal(g.test.state(),'free');assert.equal(g.element('freeControls').hidden,false);
+ g.test.freeDrive(px+60,pz,0);g.tick(4);assert.equal(g.element('visitLudvig').hidden,true,'and not away from it');
+ // with the duckling following Ludvig, it comes along to his place
+ save({arrivals:13,model:'duck',duck:'on',behind:'duck',ludvig:'on'});const h=await launch(()=>storage);h.test.visit('lake');h.test.honkKey();h.test.visit('ludvig');h.tick(5);h.element('visitLudvig').onclick();
+ assert.deepEqual({...h.inside.enters.at(-1).o.friends},{ludvig:true,duckling:true},'the duckling comes along to Ludvig\'s');}
+console.log('Friends: parked at Ludvig\'s (or by his place in free driving) «Spise hos Ludvig» opens his house, always jumping there, and «Gå ut» goes back to the car: OK');
+
 // Every line the game said in these tests has a clip in the new voice (dist/tts/voice/, made by node tts/make-voice.mjs): nothing said here
 // would fall back to the iPad's own voice.
 {const {sentences}=await import('./dist/tts/clips.mjs'),index=JSON.parse(fs.readFileSync('dist/tts/voice/ingrid.json','utf8'));

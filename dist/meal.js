@@ -11,19 +11,55 @@
 export const MEAL={chair:{x:2.2,z:1.62},seat:.3,side:{x:1.56,z:1.62},table:{x:2.2,z:2.3,r:.46,h:.5},bowl:{x:2.12,z:1.98},glass:{x:2.4,z:1.935},bag:{x:3.05,z:2.52},stand:{x:3.05,z:1.9},chart:{x:2.3,y:2.92,z:-3.46}};
 export const BITES=5,PUMP=16,BITE=1.05,DRINK=2;
 export const STEPS={spoon:['walk','sit','eat','full','up'],peg:['walk','pick','plug','ready','pump','beep','unplug','drop']};
-const TIME={sit:.6,full:2,up:.5,pick:1.2,plug:.9,beep:1.5,unplug:.7,drop:1.1};
+export const TIME={sit:.6,full:2,up:.5,pick:1.2,plug:.9,beep:1.5,unplug:.7,drop:1.1};
 export const FOODS=[{name:'grøt med blåbær',color:'#efe0bb',dots:'#4b5fae'},{name:'pasta med tomatsaus',color:'#f2c35b',dots:'#d9452f'},{name:'yoghurt med jordbær',color:'#fff1f3',dots:'#e0304f'}];
 const ease=k=>k*k*(3-2*k),mix=(a,b,k)=>a+(b-a)*k,turn=(from,to,k)=>from+Math.atan2(Math.sin(to-from),Math.cos(to-from))*k;
 
 import {createStarWall} from './star-wall.js';
+// Small builders shared with Ludvig's things at the table (friends.js, 25 November 2026): materials, meshes on a parent, rods between two points, an arm aimed at a point.
+export function meshKit(T){
+ const std=(color,roughness=.8)=>new T.MeshStandardMaterial({color,roughness}),flat=color=>new T.MeshBasicMaterial({color});
+ function add(g,m,x,y,z,parent){const o=new T.Mesh(g,m);o.position.set(x,y,z);parent.add(o);return o;}
+ const box=(w,h,d,m,x,y,z,p)=>add(new T.BoxGeometry(w,h,d),m,x,y,z,p),cyl=(rt,rb,h,m,x,y,z,p,seg=24)=>add(new T.CylinderGeometry(rt,rb,h,seg),m,x,y,z,p),ball=(r,m,x,y,z,p)=>add(new T.SphereGeometry(r,16,10),m,x,y,z,p);
+ const Y=new T.Vector3(0,1,0),va=new T.Vector3(),vb=new T.Vector3();
+ function rod(a,b,r,m,p){va.set(...a);vb.set(...b);const len=va.distanceTo(vb)||1e-4,o=cyl(r,r,len,m,0,0,0,p,8);o.position.copy(va).add(vb).multiplyScalar(.5);o.quaternion.setFromUnitVectors(Y,vb.sub(va).normalize());return o;}
+ function place(o,a,b){va.set(...a);vb.set(...b);const len=va.distanceTo(vb)||1e-4;o.position.copy(va).add(vb).multiplyScalar(.5);o.quaternion.setFromUnitVectors(Y,vb.sub(va).normalize());o.scale.set(1,len,1);}
+ return {std,flat,add,box,cyl,ball,rod,place};}
+// An arm (a shoulder group, the arm hanging along −y) pointed along dx, dy, dz in the body's own coordinates.
+export function aimArm(arm,dx,dy,dz){const l=Math.hypot(dx,dy,dz)||1;arm.rotation.set(Math.atan2(-dz/l,-dy/l),0,Math.asin(Math.max(-1,Math.min(1,dx/l))));}
+// The PEG backpack, built in the space game's sizes and scaled to a child: bottom in the middle at the origin, the front towards +z. Sofia's is made after
+// the photo of hers; Ludvig's (friends.js) is the same backpack in his own colours. light: the pump's lamp (its colour is set while it runs); handle: the carrying strap.
+export const PEG_COLOURS={front:'#d62f35',pocket:'#c9262d',sides:'#3b7fd8',sidePocket:'#2a4f8f',loops:'#f4d22a',cord:'#2b7fe6'};
+export function createPegBag(T,col=PEG_COLOURS){const {std,flat,box,ball,rod}=meshKit(T);
+ const bag=new T.Group(),bagParts=new T.Group();bag.add(bagParts);bagParts.scale.setScalar(.62);
+ {const P=bagParts,blue=std(col.sides),red=std(col.front),black=std('#1c1c22'),yellow=std(col.loops),cord=std(col.cord);
+  const bx=(hx,hy,hz,m,x,y,z)=>box(hx*2,hy*2,hz*2,m,x,y,z,P),bl=(sx,sy,sz,m,x,y,z)=>{const o=ball(1,m,x,y,z,P);o.scale.set(sx,sy,sz);return o;};
+  bx(.17,.21,.1,blue,0,.29,0);bl(.17,.1,.1,blue,0,.5,0);bl(.17,.08,.1,blue,0,.08,0);bx(.014,.1,.075,black,.175,.18,.01);bx(.012,.11,.06,std(col.sidePocket),-.175,.2,.01);
+  bx(.115,.21,.03,red,0,.31,.085);bl(.115,.07,.04,red,0,.52,.075);for(const x of [-1,1])bx(.01,.21,.012,black,x*.12,.31,.1);bx(.08,.012,.012,black,0,.585,.095);
+  bx(.088,.066,.026,std(col.pocket),0,.13,.11);bx(.088,.007,.008,black,0,.197,.132);bx(.012,.03,.006,red,.064,.168,.14);
+  const loops=[.46,.35,.24].flatMap(y=>[[-.075,y,.118],[.075,y,.118]]);for(const p of loops)bx(.024,.013,.013,yellow,...p);
+  for(let r=0;r<2;r++){const a=loops[r*2],b=loops[r*2+1],c=loops[r*2+2],e=loops[r*2+3];rod([a[0],a[1],.124],[e[0],e[1],.124],.007,cord,P);rod([b[0],b[1],.124],[c[0],c[1],.124],.007,cord,P);}
+  rod([-.075,.46,.124],[.075,.46,.124],.007,cord,P);rod([-.075,.24,.124],[-.13,.16,.12],.007,cord,P);bx(.018,.025,.015,black,-.135,.14,.12);}
+ const light=flat('#3a3a40');ball(.022*.62,light,.06*.62,.6*.62,.06*.62,bag);
+ const handle=new T.Group();bag.add(handle);{const black=std('#1c1c22');for(const [a,b] of [[[-.1,.56,0],[-.05,.72,0]],[[-.05,.72,0],[.05,.72,0]],[[.05,.72,0],[.1,.56,0]]])rod(a.map(v=>v*.62),b.map(v=>v*.62),.011,black,handle);}
+ return {bag,light,handle};}
+// The lamp on the pump: amber while it waits to be started, green while it runs and when it is done, dark otherwise.
+export const pumpLight=(step,time)=>step==='ready'?(Math.sin(time*6)>0?'#ffb43d':'#7a5a20'):step==='pump'?(Math.sin(time*5)>-.3?'#5be37a':'#2a7a3a'):step==='beep'?'#5be37a':'#3a3a40';
+// The tube from the backpack's side round to the button on the tummy (curve, in the body's coordinates), with drops of food running down it while the pump runs.
+// dress(grow, flow, time): grow 0..1 is how far it has reached (the button clicks on at 1); flow: the drops run.
+export function createPegTube(T,parent,curve,reduced=()=>false){const {std,flat,cyl,ball,place}=meshKit(T);
+ const mat=std('#c8b4f0',.5),SEG=14,segs=[],group=new T.Group();parent.add(group);for(let i=0;i<SEG;i++)segs.push(cyl(.009,.009,1,mat,0,0,0,group,8));
+ const end=curve.getPoint(1),plug=cyl(.018,.018,.01,std('#9a7fd8'),end.x,end.y,end.z,group,12);plug.rotation.x=Math.PI/2;
+ const drops=Array.from({length:7},()=>ball(.012,flat('#fff3d2'),0,0,0,group));
+ function dress(grow,flow,time){group.visible=grow>0;if(!(grow>0))return;for(let i=0;i<SEG;i++){const u0=i/SEG,u1=(i+1)/SEG,show=u0<grow;segs[i].visible=show;if(show)place(segs[i],curve.getPoint(u0).toArray(),curve.getPoint(Math.min(u1,grow)).toArray());}
+  plug.visible=grow>=1;drops.forEach((d,i)=>{d.visible=flow;if(flow)d.position.copy(curve.getPoint(((reduced()?0:time*.42)+i/7)%1));});}
+ return {group,dress,plug,drops};}
 export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>false,on=()=>{}}){
  const std=(color,roughness=.8)=>new T.MeshStandardMaterial({color,roughness}),flat=color=>new T.MeshBasicMaterial({color});
  function add(g,m,x,y,z,parent=scene){const o=new T.Mesh(g,m);o.position.set(x,y,z);parent.add(o);return o;}
  const box=(w,h,d,m,x,y,z,p)=>add(new T.BoxGeometry(w,h,d),m,x,y,z,p),cyl=(rt,rb,h,m,x,y,z,p,seg=24)=>add(new T.CylinderGeometry(rt,rb,h,seg),m,x,y,z,p),ball=(r,m,x,y,z,p)=>add(new T.SphereGeometry(r,16,10),m,x,y,z,p);
  const Y=new T.Vector3(0,1,0),va=new T.Vector3(),vb=new T.Vector3(),vc=new T.Vector3(),q=new T.Quaternion();
- // A rod from a to b (arrays), r thick: the cord on the backpack, its straps and the tube.
- function rod(a,b,r,m,p){va.set(...a);vb.set(...b);const len=va.distanceTo(vb)||1e-4,o=cyl(r,r,len,m,0,0,0,p,8);o.position.copy(va).add(vb).multiplyScalar(.5);o.quaternion.setFromUnitVectors(Y,vb.sub(va).normalize());return o;}
- function place(o,a,b){va.set(...a);vb.set(...b);const len=va.distanceTo(vb)||1e-4;o.position.copy(va).add(vb).multiplyScalar(.5);o.quaternion.setFromUnitVectors(Y,vb.sub(va).normalize());o.scale.set(1,len,1);}
+ const {rod}=meshKit(T); // a rod from a to b (arrays), r thick: the straps
  // ---- The table, her chair, the bowl, a glass of water and the spoon ----
  const wood=std('#d9a66c'),leg=std('#a8743f'),pink=std('#ff9ec4'),pink2=std('#e07aa3');
  const {table:tb,chair:ch,seat}=MEAL;
@@ -40,27 +76,13 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
  // the spoon: along +y from the hand, a silver handle and bowl, and a little food on it on its way up
  const spoon=new T.Group();scene.add(spoon);const silver=std('#c9ced8',.35);cyl(.006,.007,.11,silver,0,.055,0,spoon,8);const sb=ball(1,silver,0,.125,0,spoon);sb.scale.set(.02,.026,.008);
  const bite=ball(1,std('#efe0bb'),0,.128,-.008,spoon);bite.scale.set(.016,.018,.012);const restSpoon=()=>{spoon.position.set(MEAL.bowl.x+.17,bowlY+.008,MEAL.bowl.z-.02);spoon.quaternion.setFromAxisAngle(new T.Vector3(1,0,0),Math.PI/2);spoon.rotateOnWorldAxis(Y,.4);bite.visible=false;};restSpoon();
- // ---- The PEG backpack, built in the space game's sizes and scaled to her: bottom in the middle at the origin, the front towards +z ----
- const bag=new T.Group(),bagParts=new T.Group();bag.add(bagParts);bagParts.scale.setScalar(.62);scene.add(bag);
- {const P=bagParts,blue=std('#3b7fd8'),red=std('#d62f35'),black=std('#1c1c22'),yellow=std('#f4d22a'),cord=std('#2b7fe6');
-  const bx=(hx,hy,hz,m,x,y,z)=>box(hx*2,hy*2,hz*2,m,x,y,z,P),bl=(sx,sy,sz,m,x,y,z)=>{const o=ball(1,m,x,y,z,P);o.scale.set(sx,sy,sz);return o;};
-  bx(.17,.21,.1,blue,0,.29,0);bl(.17,.1,.1,blue,0,.5,0);bl(.17,.08,.1,blue,0,.08,0);bx(.014,.1,.075,black,.175,.18,.01);bx(.012,.11,.06,std('#2a4f8f'),-.175,.2,.01);
-  bx(.115,.21,.03,red,0,.31,.085);bl(.115,.07,.04,red,0,.52,.075);for(const x of [-1,1])bx(.01,.21,.012,black,x*.12,.31,.1);bx(.08,.012,.012,black,0,.585,.095);
-  bx(.088,.066,.026,std('#c9262d'),0,.13,.11);bx(.088,.007,.008,black,0,.197,.132);bx(.012,.03,.006,red,.064,.168,.14);
-  const loops=[.46,.35,.24].flatMap(y=>[[-.075,y,.118],[.075,y,.118]]);for(const p of loops)bx(.024,.013,.013,yellow,...p);
-  for(let r=0;r<2;r++){const a=loops[r*2],b=loops[r*2+1],c=loops[r*2+2],e=loops[r*2+3];rod([a[0],a[1],.124],[e[0],e[1],.124],.007,cord,P);rod([b[0],b[1],.124],[c[0],c[1],.124],.007,cord,P);}
-  rod([-.075,.46,.124],[.075,.46,.124],.007,cord,P);rod([-.075,.24,.124],[-.13,.16,.12],.007,cord,P);bx(.018,.025,.015,black,-.135,.14,.12);}
- const bagLight=flat('#3a3a40'),lightBall=ball(.022*.62,bagLight,.06*.62,.6*.62,.06*.62,bag);
- const handle=new T.Group();bag.add(handle);{const black=std('#1c1c22');for(const [a,b] of [[[-.1,.56,0],[-.05,.72,0]],[[-.05,.72,0],[.05,.72,0]],[[.05,.72,0],[.1,.56,0]]])rod(a.map(v=>v*.62),b.map(v=>v*.62),.011,black,handle);}
+ // ---- The PEG backpack (createPegBag, above), on the floor beside the table ----
+ const {bag,light:bagLight,handle}=createPegBag(T);scene.add(bag);
  // ---- What she wears with it: the straps over her shoulders and the tube from the backpack's side round to the button on her tummy, with drops of food ----
  const body=girl.group.children[0],worn=new T.Group();body.add(worn);worn.visible=false;
  {const black=std('#1c1c22');for(const s of [-1,1]){rod([s*.07,.77,.11],[s*.1,.81,.01],.012,black,worn);rod([s*.1,.81,.01],[s*.09,.6,-.085],.012,black,worn);}}
- const TUBE=new T.CubicBezierCurve3(new T.Vector3(.11,.5,.12),new T.Vector3(.26,.36,.04),new T.Vector3(.17,.4,-.16),new T.Vector3(.035,.56,-.092)),tubeMat=std('#c8b4f0',.5);
- const SEG=14,segs=[],tubeOn=new T.Group();body.add(tubeOn);for(let i=0;i<SEG;i++)segs.push(cyl(.009,.009,1,tubeMat,0,0,0,tubeOn,8));
- const plug=cyl(.018,.018,.01,std('#9a7fd8'),.035,.56,-.092,tubeOn,12);plug.rotation.x=Math.PI/2;
- const drops=Array.from({length:7},()=>ball(.012,flat('#fff3d2'),0,0,0,tubeOn));
- function dressTube(grow,flow,time){tubeOn.visible=grow>0;if(!(grow>0))return;for(let i=0;i<SEG;i++){const u0=i/SEG,u1=(i+1)/SEG,show=u0<grow;segs[i].visible=show;if(show)place(segs[i],TUBE.getPoint(u0).toArray(),TUBE.getPoint(Math.min(u1,grow)).toArray());}
-  plug.visible=grow>=1;drops.forEach((d,i)=>{d.visible=flow;if(flow)d.position.copy(TUBE.getPoint(((reduced()?0:time*.42)+i/7)%1));});}
+ const TUBE=new T.CubicBezierCurve3(new T.Vector3(.11,.5,.12),new T.Vector3(.26,.36,.04),new T.Vector3(.17,.4,-.16),new T.Vector3(.035,.56,-.092));
+ const tube=createPegTube(T,body,TUBE,reduced),tubeOn=tube.group,dressTube=tube.dress;
  // ---- Hit boxes: the table (with the chair and bowl) and the backpack on the floor ----
  // and the glass on the table, a little bigger than it is (inside the table's box: inside.js takes the glass when both are hit).
  const hitMat=new T.MeshBasicMaterial({color:'#ff00ff'}),tableHit=box(1.05,.66,1.45,hitMat,tb.x,.33,(tb.z+ch.z)/2-.05),bagHit=box(.36,.5,.3,hitMat,MEAL.bag.x,.25,MEAL.bag.z),glassHit=box(.17,.2,.17,hitMat,glassAt.x,bowlY+.08,glassAt.z);
@@ -68,12 +90,13 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
  // Where she cannot walk: the table with the chair, and the backpack on the floor.
  const obstacles=[{x0:tb.x-.62,x1:tb.x+.62,z0:ch.z-.36,z1:tb.z+.58},{x0:MEAL.bag.x-.3,x1:MEAL.bag.x+.3,z0:MEAL.bag.z-.25,z1:MEAL.bag.z+.3}];
  // ---- The brushing chart on the back wall: a sheet with a big tooth and ten places, a star for each time she brushes ----
- const chart=new T.Group();chart.position.set(MEAL.chart.x,MEAL.chart.y,MEAL.chart.z);scene.add(chart);
+ const wallArt=new T.Group();scene.add(wallArt); // the chart and the stars: Sofia's, so they are not on the walls at Ludvig's (inside.js)
+ const chart=new T.Group();chart.position.set(MEAL.chart.x,MEAL.chart.y,MEAL.chart.z);wallArt.add(chart);
  box(.82,.64,.02,std('#fffaf0'),0,0,0,chart);box(.82,.14,.022,flat('#79e4e2'),0,.25,.002,chart);const tooth=ball(1,flat('#ffffff'),-.29,.02,.02,chart);tooth.scale.set(.09,.1,.01);for(const x of [-.05,.05]){const r=ball(1,flat('#ffffff'),-.29+x,-.08,.02,chart);r.scale.set(.035,.06,.01);}
  const starShape=new T.Shape();for(let i=0;i<10;i++){const r=i%2?.45:1,a=Math.PI/2+i*Math.PI/5;starShape[i?'lineTo':'moveTo'](Math.cos(a)*r,Math.sin(a)*r);}const starGeo=new T.ShapeGeometry(starShape),starOn=flat('#2fbfbc'),starOff=flat('#e8e0d0');
  const stars=Array.from({length:10},(_,i)=>{const s=add(starGeo,starOff,-.1+(i%5)*.11,.07-Math.floor(i/5)*.17,.015,chart);s.scale.setScalar(.04);return s;});
  // After ten the chart is full, and the stars go on the walls, as many as she brushes (star-wall.js).
- const starWall=createStarWall(T,scene);
+ const starWall=createStarWall(T,wallArt);
  function setBrushed(n){stars.forEach((s,i)=>{const on=i<Math.min(10,n);s.material=on?starOn:starOff;s.scale.setScalar(on?.05:.03);});starWall.set(n);}
  // ---- The meal, step by step ----
  // kind: null, 'spoon' or 'peg'; s: seconds into the step; bite: seconds into a spoonful (−1 between); queued: taps waiting; pump: seconds the pump has run;
@@ -111,7 +134,7 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
  function foodLeft(){if(st.kind!=='spoon'||!['walk','sit','eat'].includes(st.step))return 0;return Math.max(0,1-(st.bites+(st.step==='eat'&&st.bite>=.1&&st.bite<.5?1:0))/BITES);}
  // ---- Her pose, after inside.js has walked and posed her: on the chair, at the bowl, with the backpack ----
  const legs=girl.legs,arms=girl.arms;
- function aim(arm,dx,dy,dz){const l=Math.hypot(dx,dy,dz)||1;arm.rotation.set(Math.atan2(-dz/l,-dy/l),0,Math.asin(Math.max(-1,Math.min(1,dx/l))));}
+ const aim=aimArm;
  const SH=[[-.15,.76,0],[.15,.76,0]];
  // Body coordinates (she faces −z) of the bowl and her mouth while she sits on the chair facing the room.
  const BOWL=[MEAL.bowl.x-ch.x,0,0],seated={x:ch.x,y:seat-.4,z:ch.z},MOUTH=[0,.867,-.116];BOWL[0]=-(MEAL.bowl.x-ch.x);BOWL[1]=bowlY+.05-seated.y;BOWL[2]=-(MEAL.bowl.z-ch.z);
@@ -140,7 +163,7 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
   if(carry<=0){bag.position.set(MEAL.bag.x,0,MEAL.bag.z);bag.quaternion.identity();}
   else{girl.group.updateMatrixWorld(true);body.localToWorld(bagAt.set(0,.42,.148));body.getWorldQuaternion(bagQ);if(carry>=1){bag.position.copy(bagAt);bag.quaternion.copy(bagQ);}
    else{bag.position.set(mix(MEAL.bag.x,bagAt.x,carry),mix(0,bagAt.y,carry)+Math.sin(carry*Math.PI)*.35,mix(MEAL.bag.z,bagAt.z,carry));bag.quaternion.copy(floorQ.identity()).slerp(bagQ,carry);}}
-  const lit=s==='ready'?(Math.sin(time*6)>0?'#ffb43d':'#7a5a20'):s==='pump'?(Math.sin(time*5)>-.3?'#5be37a':'#2a7a3a'):s==='beep'?'#5be37a':'#3a3a40';bagLight.color.set(lit);
+  bagLight.color.set(pumpLight(s,time));
   dressTube(k==='peg'?(s==='plug'?c:s==='unplug'?1-c:['ready','pump','beep'].includes(s)?1:0):0,s==='pump',time);
   if(!(k==='spoon'&&s==='eat'))restSpoon();}
  // Called every frame after the girl has been posed and animated; the walk itself is inside.js's.
@@ -167,5 +190,5 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
   g.position.set(st0.x,y,st0.z);g.rotation.set(0,yaw,0);return true;}
  // The camera glides in to the table, or to her and the backpack: what it should keep in view.
  function viewPoints(){const k=st.kind||st.last;return k==='spoon'?[[tb.x-.45,.5,tb.z+.1],[tb.x+.45,.5,tb.z+.1],[ch.x-.35,1.1,ch.z-.2],[ch.x+.35,1.1,ch.z-.2]]:[[MEAL.stand.x-.4,1.2,MEAL.stand.z],[MEAL.stand.x+.35,0,MEAL.stand.z],[MEAL.bag.x-.3,0,MEAL.bag.z+.25],[MEAL.bag.x+.3,.5,MEAL.bag.z]];}
- return {st,start,tap,drink,finish,update,pose,reset,setBrushed,starWall,viewPoints,hits:[tableHit,bagHit,glassHit],obstacles,bag,spoon,glass,food,worn,tubeOn,chart,get active(){return !!st.kind;},get busy(){return !!st.kind&&st.step!=='walk';}};
+ return {st,start,tap,drink,finish,update,pose,reset,setBrushed,starWall,wallArt,foodLeft,viewPoints,hits:[tableHit,bagHit,glassHit],obstacles,bag,spoon,glass,food,worn,tubeOn,chart,get active(){return !!st.kind;},get busy(){return !!st.kind&&st.step!=='walk';}};
 }

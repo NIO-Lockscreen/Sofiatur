@@ -15,7 +15,9 @@ export function createBoyModel(T){
  const head=new T.Group();head.position.set(0,1.0,0);body.add(head);
  part(sphere,skin,[0,0,0],[.13,.14,.13],head);part(sphere,hair,[0,.05,.02],[.137,.11,.135],head);part(sphere,hair,[0,.02,-.07],[.12,.06,.08],head);
  for(const s of [-1,1]){part(sphere,dark,[s*.045,.005,-.12],[.017,.022,.01],head);part(sphere,skin,[s*.13,-.01,0],[.025,.035,.025],head);}
- part(box,dark,[0,-.055,-.122],[.05,.012,.008],head);
+ const smile=part(box,dark,[0,-.055,-.122],[.05,.012,.008],head);
+ // His mouth open in a laugh (in the house, jumping on the bed with Sofia, friends.js).
+ const laugh=part(sphere,new T.MeshBasicMaterial({color:'#8c2f3c'}),[0,-.06,-.116],[.03,.024,.01],head);laugh.visible=false;
  // Legs from the hips and arms from the shoulders, each in a group that swings.
  const legs=[-1,1].map(s=>{const hip=new T.Group();hip.position.set(s*.075,.46,0);body.add(hip);
   part(limb,skin,[0,-.2,0],[.05,.4,.05],hip);part(box,shoe,[0,-.42,-.03],[.09,.07,.17],hip);return hip;});
@@ -42,8 +44,9 @@ export function createBoyModel(T){
    j.vx+=(k*(tx-j.x)-c*j.vx)*dt;j.vz+=(k*(tz-j.z)-c*j.vz)*dt;j.x=Math.max(-lim,Math.min(lim,j.x+j.vx*dt));j.z=Math.max(-lim,Math.min(lim,j.z+j.vz*dt));
    j.o.rotation.x=j.x;j.o.rotation.z=j.z;});
  }
+ function setLaugh(on){laugh.visible=!!on;smile.visible=!on;}
  update(0,0,0);
- return {group,update,dangle,legs,arms,head};
+ return {group,body,update,dangle,setLaugh,get laughing(){return laugh.visible;},legs,arms,head};
 }
 
 // The follower: a track of the car's path (a point every 0.2 m, with the path length at each) and the boy that runs along it.

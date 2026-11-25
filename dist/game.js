@@ -11,7 +11,9 @@ const $=id=>document.getElementById(id);
 let world,data,state='loading',sound=true,current,previous=null,active=null,distance=0,speed=0,travelled=0,turns=0,heading=new T.Vector3(0,0,1),position=new T.Vector3(),choices=[],best=null,totalInitial=0,maxKmh=200,camMode='follow',lastTime=performance.now(),time=0,mapClock=0,leavingHome=false,lastEdge=null,lines=null;
 let roundaboutUndo=null,freeMode=false,free=null,carHeight,showDeadEnds=false,choicesStale=false,musicOn=true,queue=[],preview=null,picked=null,pickedUntil=-9,aheadShown=false,planKey='';
 let arrivals=0,carColour='#14171c',behind='trail',ludvigUnlocked=false,duckUnlocked=false,model='car',newReward=null,homeAt=0; // behind: what follows the car, 'trail' (the rainbow trail), 'ludvig', 'duck' (a running duck) or 'none'
-let ducklingOn=false,ducklingFound=false; // the duckling of the double duck (7 October 2026): an easter egg for this visit to the game only, never saved (see ducklingHeard); found: honked for this visit, on: wanted behind the small duck
+let ducklingOn=false,ducklingFound=false; // the duckling of the double duck (7 October 2026): an easter egg for this visit to the game only, never saved (see ducklingHeard); found: honked for this visit, on: wanted behind the small duck (or Ludvig)
+// The duckling follows a friend that runs after the car: the small duck, or Ludvig (25 November 2026, so it can come into the house with him).
+const ducklingFollows=()=>ducklingOn&&duckUnlocked&&(behind==='duck'||behind==='ludvig'&&ludvigUnlocked);
 let ishallVisited=false,remaVisited=false,taxiSeen=false,pigUnlocked=false,beenInside=false,hoverSeen=false,hoverOn=true,spiderUnlocked=false; // the new unlocks (5 October 2026): places visited, the taxi and the hover car announced, the pig found, Sofia been inside, the hover mode on or off
 const roundaboutKmh=45; // speed round the circle and into it
 // The car speeds up by ACCEL, brakes ahead of a slower stretch (a turn, a junction where it must stop) by DECEL, and by BRAKE at most when a new plan needs it at once.
@@ -51,7 +53,7 @@ function incomingEdge(){if(lastEdge&&lastEdge.to===current)return lastEdge;if(pr
 function endDirection(e,start=true){const p=e.path.map(n=>data.nodes[n]),i=start?e.stub||0:p.length-2;const a=p[i],b=p[i+1];return new T.Vector3(b[0]-a[0],0,b[1]-a[1]).normalize();}
 function routeFrom(n){const route=[];const visited=new Set();while(n!==data.goal&&!visited.has(n)){visited.add(n);const e=optimal.get(n);if(!e)break;route.push(e);n=e.to;}return route;}
 function computeRoutes(){const reverse=incoming;for(const e of data.edges){if(!adjacency.has(e.from))adjacency.set(e.from,[]);adjacency.get(e.from).push(e);if(!reverse.has(e.to))reverse.set(e.to,[]);reverse.get(e.to).push(e);}distances.set(data.goal,0);const todo=[data.goal];while(todo.length){todo.sort((a,b)=>distances.get(b)-distances.get(a));const n=todo.pop(),d=distances.get(n);for(const e of reverse.get(n)||[]){const nd=d+(e.cost||e.length);if(nd<(distances.get(e.from)??Infinity)){distances.set(e.from,nd);optimal.set(e.from,e);if(!todo.includes(e.from))todo.push(e.from);}}}}
-function reset(){if(brushing)stopBrushing(true);clearInputs();tripBar(null);homeAt=0;$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;picked=null;$('undoRoundabout').hidden=true;maxKmh=200;current=data.start;previous=null;lastEdge=null;active=null;distance=0;speed=0;travelled=0;turns=0;state='intro';position.copy(point(current));heading.copy(endDirection(optimal.get(current)));totalInitial=routeFrom(current).reduce((n,e)=>n+e.length,0);ui.welcome.hidden=false;ui.drive.hidden=true;ui.decision.hidden=true;ui.finish.hidden=true;document.body.classList.remove('choosing');document.body.classList.remove('arrived');world.resetCamera();clearWorldChoices();world.setTurnArrow(null);$('remaining').textContent='Herlofsons veg → Skjermvegen';newReward=null;$('insideHud').hidden=true;sleepHud(false);$('goInside').hidden=false;hintTurn++;showRewards();}
+function reset(){if(brushing)stopBrushing(true);clearInputs();tripBar(null);homeAt=0;$('freeControls').hidden=true;roundaboutUndo=null;queue=[];preview=null;picked=null;$('undoRoundabout').hidden=true;maxKmh=200;current=data.start;previous=null;lastEdge=null;active=null;distance=0;speed=0;travelled=0;turns=0;state='intro';position.copy(point(current));heading.copy(endDirection(optimal.get(current)));totalInitial=routeFrom(current).reduce((n,e)=>n+e.length,0);ui.welcome.hidden=false;ui.drive.hidden=true;ui.decision.hidden=true;ui.finish.hidden=true;document.body.classList.remove('choosing');document.body.classList.remove('arrived');world.resetCamera();clearWorldChoices();world.setTurnArrow(null);$('remaining').textContent='Herlofsons veg → Skjermvegen';newReward=null;place='home';visit=null;company={ludvig:false,duckling:false};$('visitLudvig').hidden=true;$('insideHud').hidden=true;sleepHud(false);$('goInside').hidden=false;hintTurn++;showRewards();}
 function start(){if(state!=='intro')return;$('goInside').hidden=true;$('hornHome').hidden=true;lakeVisit=false;if(sound&&musicOn)music.play();if(sound&&arrivals>=HORN_AT)music.preloadHorns?.();if(freeMode){startFree();return;}tripBar(0);ui.welcome.hidden=true;ui.drive.hidden=false;state='decision';const rexCarries=model==='trex'&&arrivals>=MODEL_AT.trex&&ludvigUnlocked&&behind==='ludvig'; // the easter egg (world.js)
  if(rexCarries)toast('🦖 Oi! T-rexen har tatt Ludvig i munnen!');say('Hei Sofia! Nå kjører vi til barnehagen. Ved hvert kryss velger du vei med en pil.'+(rexCarries?' Oi! T-rexen har tatt Ludvig i munnen!':''));leavingHome=true;showDecision();}
 // A roundabout exit's arrow shows where its road goes, seen from the circle (roundaboutLabels); without that, where its
@@ -323,9 +325,9 @@ $('carColours').append(...swatches,rainbowSwatch,kiwiSwatch);
 function pickColour(hex){fx('pick');carColour=hex.toLowerCase();saveProgress();applyRewards();showRewards();}
 function applyRewards(){if(!world)return;const kiwi=carColour==='kiwi'&&kiwiUnlocked,ride=rideOK(model)?model:'car';
  world.setCarColour?.(kiwi?'#5fae36':arrivals>=1&&carColour!=='kiwi'?carColour:ride==='pig'?PIG_PINK:'#14171c'); // a pig found before the first trip (no colour picker yet) is pink
- world.setCarSkin?.(kiwi?'kiwi':null);world.setTrail?.(arrivals>=3&&behind==='trail');world.setBoy?.(ludvigUnlocked&&behind==='ludvig');world.setDuckRunner?.(duckUnlocked&&behind==='duck');world.setDuckling?.(ducklingOn&&duckUnlocked&&behind==='duck');world.setBubbles?.(arrivals>=BUBBLES_AT&&behind==='bubbles');$('horn').hidden=arrivals<HORN_AT;world.setCarModel?.(ride);world.setHover?.(hoverReady()&&hoverOn);world.setBalloonGirl?.(beenInside);}
+ world.setCarSkin?.(kiwi?'kiwi':null);world.setTrail?.(arrivals>=3&&behind==='trail');world.setBoy?.(ludvigUnlocked&&behind==='ludvig');world.setDuckRunner?.(duckUnlocked&&behind==='duck');world.setDuckling?.(ducklingFollows());world.setBubbles?.(arrivals>=BUBBLES_AT&&behind==='bubbles');$('horn').hidden=arrivals<HORN_AT;world.setCarModel?.(ride);world.setHover?.(hoverReady()&&hoverOn);world.setBalloonGirl?.(beenInside);}
 // Before the first trip to the kindergarten, a KIWI unlock shows only black and the KIWI car.
-function showRewards(){rideWords();$('rewards').hidden=arrivals<1&&!kiwiUnlocked&&!ludvigUnlocked&&!duckUnlocked&&!pigUnlocked;$('trailRow').hidden=arrivals<3;$('trail').checked=behind==='trail';$('ludvigRow').hidden=!ludvigUnlocked;$('ludvig').checked=behind==='ludvig';$('duckRunnerRow').hidden=!duckUnlocked;$('duckRunner').checked=behind==='duck';$('ducklingRow').hidden=!(ducklingFound&&duckUnlocked);$('duckling').checked=ducklingOn&&behind==='duck';$('bubblesRow').hidden=arrivals<BUBBLES_AT;$('bubbles').checked=behind==='bubbles';$('modelRow').hidden=arrivals<2&&!taxiReady()&&!pigUnlocked;$('hoverRow').hidden=!hoverReady();$('hover').checked=hoverOn;for(const m of MODELS){$('model-'+m).hidden=!rideOK(m);$('model-'+m).classList.toggle('on',m===model);}
+function showRewards(){rideWords();$('rewards').hidden=arrivals<1&&!kiwiUnlocked&&!ludvigUnlocked&&!duckUnlocked&&!pigUnlocked;$('trailRow').hidden=arrivals<3;$('trail').checked=behind==='trail';$('ludvigRow').hidden=!ludvigUnlocked;$('ludvig').checked=behind==='ludvig';$('duckRunnerRow').hidden=!duckUnlocked;$('duckRunner').checked=behind==='duck';$('ducklingRow').hidden=!(ducklingFound&&duckUnlocked);$('duckling').checked=ducklingFollows();$('ducklingText').textContent=behind==='ludvig'&&ludvigUnlocked?'🐥 Gul andunge følger Ludvig':'🐥 Gul andunge følger anda';$('bubblesRow').hidden=arrivals<BUBBLES_AT;$('bubbles').checked=behind==='bubbles';$('modelRow').hidden=arrivals<2&&!taxiReady()&&!pigUnlocked;$('hoverRow').hidden=!hoverReady();$('hover').checked=hoverOn;for(const m of MODELS){$('model-'+m).hidden=!rideOK(m);$('model-'+m).classList.toggle('on',m===model);}
  swatches.forEach((b,i)=>{const on=carColours[i][1]===carColour||i===0&&carColour!=='kiwi'&&arrivals<1&&model!=='pig';b.hidden=arrivals<1&&i>0;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');});
  rainbowSwatch.hidden=arrivals<RAINBOW_AT;rainbowSwatch.classList.toggle('on',carColour==='rainbow');rainbowSwatch.setAttribute('aria-pressed',carColour==='rainbow'?'true':'false');kiwiSwatch.hidden=!kiwiUnlocked;kiwiSwatch.classList.toggle('on',carColour==='kiwi');kiwiSwatch.setAttribute('aria-pressed',carColour==='kiwi'?'true':'false');
  const hints=missingSecrets(),missing=hints.length;$('rewardTeaser').hidden=arrivals>=LAST_REWARD&&!missing;$('rewardTeaser').textContent=arrivals>=LAST_REWARD?`🔎 ${missing} ${missing===1?'hemmelighet':'hemmeligheter'} mangler fortsatt`:arrivals<1?'🎁 Kom frem til barnehagen, så får du en overraskelse!':'🎁 Kjør til barnehagen én gang til for en ny overraskelse!';
@@ -354,10 +356,31 @@ function podiumItems(){
   other('hover','⚡','Svevebilen',hoverReady(),'Du låste opp alt sammen! Der vi skal, trenger vi ikke veier.','Hint: Lås opp alt det andre på pallen først, så nær som én. Da skjer det noe fra fremtiden!'),
   other('spider','🕷️','Edderkoppen',spiderUnlocked,'Du kjørte til barnehagen etter at du fikk svevebilen.','Hint: Når bilen kan sveve, kjører du til barnehagen én gang til. Da venter en venn med åtte bein!')];
  return items.map(i=>i.unlocked?i:{...i,icon:'❓',title:'Hemmelig overraskelse'});}
-function goInside(){if(state!=='intro'||!world)return;fx('door');if(!inside)inside=createInside({T,renderer:world.renderer,canvas:$('world'),on:bedEvent});state='inside';ui.welcome.hidden=true;$('goInside').hidden=true;$('hornHome').hidden=true;$('insideHud').hidden=false;$('unlockInfo').hidden=true;
- const first=!beenInside;beenInside=true;saveProgress();applyRewards();inside.enter(podiumItems(),{pigHidden:!pigUnlocked});inside.setBrushed?.(brushCount);sleepHud(false);
- say(first?'Velkommen inn, Sofia! På pallen står alle overraskelsene dine. Trykk på dem!':'Velkommen hjem igjen, Sofia!');}
-function goOutside(){if(state==='inside'){stopBrushing(true);fx('door');reset();}}
+// Friends in the house (25 November 2026): whoever runs after the car comes in with Sofia, Ludvig and the little yellow duckling (inside.js, friends.js),
+// and they copy what she does. With a friend in, the sofa is always for jumping (houseTap). Visiting Ludvig, the room is his, and he is always there.
+let company={ludvig:false,duckling:false},place='home',visit=null; // who is in the house with her; whose house it is; visiting Ludvig: how to go back to the car
+const houseFriends=()=>({ludvig:ludvigUnlocked&&behind==='ludvig',duckling:ducklingFollows()});
+const withFriends=()=>state==='inside'&&(company.ludvig||company.duckling);
+const COMPANY_IN={ludvig:'Ludvig ble med inn.',duckling:'Den lille gule anda ble med inn.',both:'Ludvig og den lille gule anda ble med inn.'};
+const companyKey=()=>company.ludvig&&company.duckling?'both':company.ludvig?'ludvig':company.duckling?'duckling':null;
+function openHouse(){if(!inside)inside=createInside({T,renderer:world.renderer,canvas:$('world'),on:bedEvent});state='inside';ui.welcome.hidden=true;$('goInside').hidden=true;$('visitLudvig').hidden=true;$('hornHome').hidden=true;$('insideHud').hidden=false;$('unlockInfo').hidden=true;}
+function goInside(){if(state!=='intro'||!world)return;fx('door');openHouse();place='home';company=houseFriends();
+ const first=!beenInside;beenInside=true;saveProgress();applyRewards();inside.enter(podiumItems(),{pigHidden:!pigUnlocked,friends:company,place});inside.setBrushed?.(brushCount);sleepHud(false);
+ let line=first?'Velkommen inn, Sofia! På pallen står alle overraskelsene dine. Trykk på dem!':'Velkommen hjem igjen, Sofia!';const k=companyKey();if(k)line+=' '+COMPANY_IN[k];say(line);}
+function goOutside(){if(state!=='inside')return;if(place==='ludvig'){leaveLudvig();return;}stopBrushing(true);fx('door');reset();}
+// Eating at Ludvig's (25 November 2026): parked at Bøckmans veg 102 (with the arrows, or stopped there in free driving), «🍽️ Spise hos Ludvig» takes Sofia into
+// his house, where they eat together (with the spoon or PEG; he has PEG too) and can jump on his sofa bed. «Gå ut» goes back to the car, parked where it was.
+function atLudvig(){if(!world)return false;if(state==='decision')return current===ludvigParking;const p=data.nodes[ludvigParking];return state==='free'&&freeAt===ludvigParking&&!!p&&Math.hypot(free.car.x-p[0],free.car.z-p[1])<12;} // in free driving the car keeps going by itself: the button shows while it is by the place
+function ludvigDoor(){$('visitLudvig').hidden=!atLudvig();}
+function goInLudvig(){if(!atLudvig())return;fx('door');visit={state,undo:$('undoRoundabout').hidden,ate:false};
+ if(state==='free'){free.car.speed=speed=0;clearInputs();$('freeControls').hidden=true;}
+ ui.drive.hidden=true;ui.decision.hidden=true;clearWorldChoices();document.body.classList.remove('choosing');$('undoRoundabout').hidden=true;
+ openHouse();place='ludvig';company={ludvig:true,duckling:ducklingFollows()};inside.enter([],{pigHidden:true,friends:company,place});inside.setBrushed?.(brushCount);sleepHud(false);
+ say('Velkommen inn til Ludvig! Trykk på bordet eller sekken, så spiser dere sammen.');}
+function leaveLudvig(){stopBrushing(true);fx('door');const v=visit||{state:'decision',undo:true};visit=null;place='home';company={ludvig:false,duckling:false};
+ $('insideHud').hidden=true;$('unlockInfo').hidden=true;state=v.state;ui.drive.hidden=false;$('undoRoundabout').hidden=v.undo;
+ if(state==='free')$('freeControls').hidden=false;else showDecision();ludvigDoor();say(v.ate?'Ha det, Ludvig! Takk for maten.':'Ha det, Ludvig!');}
+$('visitLudvig').onclick=goInLudvig;
 // The spider (11 November 2026): comes at an arrival at the kindergarten once the hover car is unlocked and announced (finish()), as the ride to choose on the start card.
 function unlockSpider(){spiderUnlocked=true;switchRide('spider');saveProgress();applyRewards();showRewards();}
 function findSpider(){if(spiderUnlocked)return;unlockSpider();fx('reward');toast('🕷️ En edderkopp! Nå kan du ri på en edderkopp');say('Se! En stor, snill edderkopp! Nå kan du ri på den. Du velger den på startskjermen.');} // the debug key (X) in the house; the real unlock is in finish()
@@ -367,7 +390,7 @@ function findPig(){if(pigUnlocked)return;pigUnlocked=true;switchRide('pig');save
 // The debug keys inside the house (6 October 2026) step through the whole podium in its order, to test every reward: X unlocks the next locked place without doing
 // the task, Z locks the last unlocked one again. The 13 trips count as outside (debugArrivals); the secrets do what the game does when the task is done (the visit, the
 // honk by the lake, finding the pig), so the toasts, the voice and the paint are the real ones. The hover car comes with the pig and goes with it, as in the game.
-function debugPodium(delta){
+function debugPodium(delta){if(place==='ludvig')return; // no podium at Ludvig's
  const items=podiumItems(),ids=items.map(i=>i.id);
  if(delta>0){const next=items.find(i=>!i.unlocked);if(!next){toast('🛠 Alt er låst opp');return;}
   if(ids.indexOf(next.id)<LAST_REWARD){debugArrivals(1);return;}
@@ -395,13 +418,17 @@ function lockSecret({id,title}){
 // Jumping again (24 November 2026): after that first jump, each later tap on the sofa while she is awake and not jumping has a JUMP_AGAIN (20 %) chance
 // of another jump instead of bedtime. A tap in the middle of a jump still puts her to bed.
 const DREAM_NAMES={car:'Bilen',arc:'Regnbuen'},JUMP_AGAIN=.2;let bedTapAt=-1e9,bedJumped=false;
-function sleepHud(on){$('wakeUp').hidden=!on;$('insideHud').classList.toggle('sleeping',on);$('insideName').textContent=on?'Sofia sover':'Hjemme hos Sofia';
- $('insideTip').textContent=on?'Trykk på drømmen, eller på sofaen for å vekke henne':'Trykk på premiene, eller på sofaen når du er trøtt';if(on)$('unlockInfo').hidden=true;routineHud();}
-function jumpHud(){$('wakeUp').hidden=true;$('insideHud').classList.remove('sleeping');$('insideName').textContent='Sofia hopper i senga!';$('insideTip').textContent='Trykk på sofaen igjen, så legger hun seg';$('unlockInfo').hidden=true;routineHud();}
-function jumpOnBed(){if(state!=='inside'||!inside)return;bedJumped=true;if(!inside.jump()){goToBed();return;}jumpHud();say('Hopp, hopp, hopp! Sofia hopper i senga!');}
+// With friends in, the room's title says who is there and the sofa is for jumping (25 November 2026).
+const FRIEND_TIP={ludvig:'Ludvig er med inn · trykk på sofaen, så hopper dere',duckling:'Anda er med inn · trykk på sofaen, så hopper dere',both:'Ludvig og anda er med inn · trykk på sofaen, så hopper dere'};
+const FRIEND_JUMP={ludvig:['Sofia og Ludvig hopper i senga!','Hopp, hopp, hopp! Sofia og Ludvig hopper i senga!'],duckling:['Sofia og anda hopper i senga!','Hopp, hopp, hopp! Sofia og den lille gule anda hopper i senga!'],both:['Sofia, Ludvig og anda hopper i senga!','Hopp, hopp, hopp! Sofia, Ludvig og den lille gule anda hopper i senga!']};
+function sleepHud(on){$('wakeUp').hidden=!on;$('insideHud').classList.toggle('sleeping',on);const k=state==='inside'?companyKey():null;
+ $('insideName').textContent=on?'Sofia sover':place==='ludvig'?'Hos Ludvig':'Hjemme hos Sofia';
+ $('insideTip').textContent=on?'Trykk på drømmen, eller på sofaen for å vekke henne':place==='ludvig'?'Trykk på bordet for å spise · på sofaen for å hoppe':k?FRIEND_TIP[k]:'Trykk på premiene, eller på sofaen når du er trøtt';if(on)$('unlockInfo').hidden=true;routineHud();}
+function jumpHud(){const k=withFriends()?companyKey():null;$('wakeUp').hidden=true;$('insideHud').classList.remove('sleeping');$('insideName').textContent=k?FRIEND_JUMP[k][0]:'Sofia hopper i senga!';$('insideTip').textContent=k?'De hopper og leker sammen i senga':'Trykk på sofaen igjen, så legger hun seg';$('unlockInfo').hidden=true;routineHud();}
+function jumpOnBed(){if(state!=='inside'||!inside)return;bedJumped=true;const k=withFriends()?companyKey():null;if(!inside.jump()){if(!k)goToBed();return;}jumpHud();say(k?FRIEND_JUMP[k][1]:'Hopp, hopp, hopp! Sofia hopper i senga!');}
 // What the house tells of the jump: a boing at each bounce, a sparkle at the top of the spin, a word as she climbs down, and the room as before once she is down.
 function bedEvent(name){if(state!=='inside')return;if(name.startsWith('meal:')){mealEvent(name.slice(5));return;}if(name==='boing'||name==='spin'){if(sound)music.effect?.(name==='spin'?'sparkle':'boing');}
- else if(name==='down')say('Det var gøy! Trykk på sofaen igjen når du er trøtt, Sofia.');else if(name==='done'&&!inside?.asleep)sleepHud(false);}
+ else if(name==='down')say(withFriends()?'Det var gøy! Trykk på sofaen igjen, så hopper dere en gang til.':'Det var gøy! Trykk på sofaen igjen når du er trøtt, Sofia.');else if(name==='done'&&!inside?.asleep)sleepHud(false);}
 function goToBed(){if(state!=='inside'||!inside||!inside.sleep())return;sleepHud(true);if(sound)music.effect?.('lullaby');say('God natt, Sofia! Sov godt, og drøm søtt om bilturer og regnbuer.');}
 function wakeUp(){if(state!=='inside'||!inside?.wake())return;sleepHud(false);if(sound)music.effect?.('sparkle');say('God morgen, Sofia! Nå er du uthvilt og klar for en ny biltur.');}
 // A tap on the house (under 12 px and 600 ms, so a swipe is not one): an item on the podium says how it was unlocked, the pig is found, the door leads out,
@@ -410,7 +437,8 @@ function houseTap(x,y){const hit=inside.pick(x,y);$('unlockInfo').hidden=true;if
  if(hit.type==='item'){const it=podiumItems().find(i=>i.id===hit.id);if(!it)return;fx('pop');$('unlockInfoIcon').textContent=it.icon;$('unlockInfoTitle').textContent=it.title;$('unlockInfoText').textContent=it.text;$('unlockInfo').hidden=false;say((it.unlocked?it.title+'. ':'')+it.text);}
  else if(hit.type==='pig')findPig();else if(hit.type==='door')goOutside();
  else if(hit.type==='table')startMeal('spoon');else if(hit.type==='bag')startMeal('peg');else if(hit.type==='meal')mealTap();else if(hit.type==='glass')glassTap();
- else if(hit.type==='bed'){const now=performance.now();if(now-bedTapAt<600)return;bedTapAt=now;if(inside.asleep)wakeUp();else if(!bedJumped||!inside.jumping&&Math.random()<JUMP_AGAIN)jumpOnBed();else goToBed();}
+ else if(hit.type==='bed'){const now=performance.now();if(now-bedTapAt<600)return;bedTapAt=now;if(inside.asleep)wakeUp();else if(withFriends()){if(!inside.jumping)jumpOnBed();} // with a friend in it is always jumping
+  else if(!bedJumped||!inside.jumping&&Math.random()<JUMP_AGAIN)jumpOnBed();else goToBed();}
  else if(hit.type==='dream'){const name=DREAM_NAMES[hit.id]||podiumItems().find(i=>i.id===hit.id&&i.unlocked)?.title;if(sound)music.effect?.('pop');if(name)say(name+'!');}
  else if(hit.type==='comet'){if(sound)music.effect?.('sparkle');say('En komet!');}}
 {let down=null;const canvas=$('world');canvas.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,t:performance.now()};});
@@ -421,27 +449,33 @@ function houseTap(x,y){const hit=inside.pick(x,y);$('unlockInfo').hidden=true;if
 const MEAL_SAY={eat:'Trykk, så tar Sofia en skje! Trykk på glasset, så drikker hun.',full:'Ferdig! Skåla er tom. Nå er magen god og mett, Sofia! Etter maten pusser vi tennene.',thanks:'Takk for maten!',
  ready:'Klikk! Slangen er koblet til knappen på magen. Trykk på sekken for å starte pumpen.',pump:'Pip! Pumpen går. Maten renner gjennom slangen og rett i magen. Med sekken på ryggen kan Sofia leke mens hun spiser. Trykk på henne, så danser hun!',
  beep:'Pip, pip, pip! Ferdig! Nå er magen god og mett, Sofia. Etter maten pusser vi tennene.'};
+// With Ludvig at the table (25 November 2026): he copies her, so the words are for both.
+const MEAL_SAY_TWO={eat:'Trykk, så tar Sofia en skje, og Ludvig hermer etter. Trykk på glasset, så drikker de.',full:'Ferdig! Skålene er tomme. Nå er magen god og mett, både hos Sofia og Ludvig! Etter maten pusser vi tennene.',
+ ready:'Klikk! Slangene er koblet til knappene på magen. Trykk på sekken for å starte pumpene.',pump:'Pip! Pumpene går. Maten renner gjennom slangene og rett i magen. Trykk på Sofia, så danser hun, og Ludvig hermer etter!',
+ beep:'Pip, pip, pip! Ferdig! Nå er magen god og mett, både hos Sofia og Ludvig. Etter maten pusser vi tennene.'};
 const MEAL_FX={bite:'nam',full:'reward',plug:'click',pump:'beep',dance:'boing',beep:'pumpdone',unplug:'click',gulp:'glugg'};
 let mealTalk=-1e9;
 function startMeal(kind){if(state!=='inside'||!inside?.startMeal||brushing||!inside.startMeal(kind))return;$('unlockInfo').hidden=true;fx('pop');const f=FOODS[inside.meal.st.food]?.name||'mat';
- say(kind==='spoon'?`Mat! I dag blir det ${f}. Sofia setter seg ved bordet.`:'Nå skal Sofia få mat gjennom PEG-slangen. Hun tar på seg sekken med pumpen.');routineHud();}
+ const two=state==='inside'&&company.ludvig;
+ say(kind==='spoon'?(two?`Mat! I dag blir det ${f}. Sofia og Ludvig setter seg ved bordet.`:`Mat! I dag blir det ${f}. Sofia setter seg ved bordet.`):two?'Nå skal Sofia og Ludvig få mat gjennom PEG-slangen. De tar på seg hver sin sekk med pumpe.':'Nå skal Sofia få mat gjennom PEG-slangen. Hun tar på seg sekken med pumpen.');routineHud();}
 function mealTap(){const r=inside?.mealTap();if(r==='bite')fx('pop');}
 // A tap on the glass of water (24 November 2026): at the table she drinks; before a meal she goes to the table and drinks as soon as she has sat down;
 // with the PEG backpack on it is a tap like any other.
 let sips=0;
 function glassTap(){const m=inside?.meal?.st;if(!m)return;if(m.kind==='peg'){mealTap();return;}if(!m.kind){startMeal('spoon');if(!inside.meal.st.kind)return;}inside.mealDrink();}
-function mealEvent(step){if(MEAL_FX[step])fx(MEAL_FX[step]);if(MEAL_SAY[step])say(MEAL_SAY[step]);
+function mealEvent(step){const two=company.ludvig;if(visit&&(step==='full'||step==='beep'))visit.ate=true;if(MEAL_FX[step])fx(MEAL_FX[step]);const words=two&&MEAL_SAY_TWO[step]||MEAL_SAY[step];if(words)say(words);
  const now=performance.now();if(step==='bite'&&inside.meal.st.bites<BITES&&now-mealTalk>1800){mealTalk=now;say(['Nam!','Mmm, godt!','Nam nam!','Så godt!'][inside.meal.st.bites%4]);}
  if(step==='ahh'&&now-mealTalk>1800){mealTalk=now;say(['Ahh, godt med vann!','Glugg, glugg!','Mmm, deilig vann!'][sips++%3]);}
- if(step==='dance'&&now-mealTalk>2500){mealTalk=now;say(['Se, Sofia danser med sekken!','Sekken henger med!','Hopp og sprett!','Maten kommer likevel!'][Math.floor(Math.random()*4)]);}
+ if(step==='dance'&&now-mealTalk>2500){mealTalk=now;say((two?['Se, Sofia og Ludvig danser med sekkene!','Ludvig hermer etter Sofia!','Hopp og sprett!','Maten kommer likevel!']:['Se, Sofia danser med sekken!','Sekken henger med!','Hopp og sprett!','Maten kommer likevel!'])[Math.floor(Math.random()*4)]);}
  if(step==='end')sleepHud(false);else routineHud();}
 // The room's buttons and the title as they should be now: the everyday buttons when she is free, the meal's buttons and words while she eats.
 function routineHud(){if(!inside?.meal)return;const m=inside.meal.st,k=m.kind,busy=inside.asleep||inside.jumping;$('routineBar').hidden=!!(busy||k||brushing);$('mealBar').hidden=!k||brushing;$('goOut').hidden=!!k;
  $('tummy').hidden=!k;if(!k)return;const s=m.step,f=FOODS[m.food]?.name||'mat',a=$('mealAction');$('unlockInfo').hidden=true;
  a.hidden=!['eat','ready','pump'].includes(s);a.textContent=s==='eat'?'🥄 En skje til':s==='ready'?'▶ Start pumpen':'💃 Dans med sekken';
  $('mealDone').hidden=!(k==='spoon'&&['walk','sit','eat'].includes(s)||k==='peg'&&['walk','plug','ready','pump'].includes(s));
- const [name,tip]=k==='spoon'?(s==='eat'?[`Sofia spiser ${f}`,`Trykk, så tar hun en skje · trykk på glasset, så drikker hun · ${BITES-m.bites} igjen`]:['full','up'].includes(s)?['Skåla er tom!','Nå er magen god og mett']:['Sofia skal spise',`I dag blir det ${f}!`])
-  :s==='ready'?['Slangen er koblet til','Trykk på sekken, så starter pumpen']:s==='pump'?['Pumpen går','Maten renner i slangen · trykk på Sofia, så danser hun']:['beep','unplug','drop'].includes(s)?['Pumpen er ferdig','Nå er magen god og mett']:['Mat med PEG','Sofia tar på seg sekken og kobler slangen til magen'];
+ const two=company.ludvig,who=two?'Sofia og Ludvig':'Sofia';
+ const [name,tip]=k==='spoon'?(s==='eat'?[`${who} spiser ${f}`,two?`Trykk, så tar hun en skje og Ludvig hermer etter · ${BITES-m.bites} igjen`:`Trykk, så tar hun en skje · trykk på glasset, så drikker hun · ${BITES-m.bites} igjen`]:['full','up'].includes(s)?[two?'Skålene er tomme!':'Skåla er tom!','Nå er magen god og mett']:[`${who} skal spise`,`I dag blir det ${f}!`])
+  :s==='ready'?[two?'Slangene er koblet til':'Slangen er koblet til',two?'Trykk på sekken, så starter pumpene':'Trykk på sekken, så starter pumpen']:s==='pump'?[two?'Pumpene går':'Pumpen går',two?'Maten renner i slangene · trykk på Sofia, så danser de':'Maten renner i slangen · trykk på Sofia, så danser hun']:['beep','unplug','drop'].includes(s)?[two?'Pumpene er ferdige':'Pumpen er ferdig','Nå er magen god og mett']:['Mat med PEG',two?'De tar på seg sekkene og kobler slangene til magen':'Sofia tar på seg sekken og kobler slangen til magen'];
  $('insideName').textContent=name;$('insideTip').textContent=tip;tummyHud();}
 function tummyHud(){const m=inside?.meal?.st;if(!m?.kind)return;const full=m.kind==='peg'?Math.min(1,m.pump/PUMP+(['beep','unplug','drop'].includes(m.step)?1:0)):Math.min(1,m.bites/BITES);
  $('tummyFill').style.width=Math.round(full*100)+'%';$('tummy').setAttribute('aria-label',`Magen er ${Math.round(full*100)} prosent mett`);}
@@ -566,7 +600,8 @@ $('ludvig').onchange=e=>{fx('pick');behind=e.target.checked?'ludvig':behind==='l
 $('duckRunner').onchange=e=>{fx('pick');behind=e.target.checked?'duck':behind==='duck'?'none':behind;saveProgress();applyRewards();showRewards();};
 // The duckling on the start card (12 November 2026): once found by the double duck, it has a row of its own under the small duck's for the rest of this visit
 // (never saved). It follows the small duck whatever the ride, so ticking it puts the small duck behind the car too; unticked, the small duck runs alone.
-$('duckling').onchange=e=>{fx('pick');ducklingOn=!!e.target.checked;if(ducklingOn)behind='duck';saveProgress();applyRewards();showRewards();};
+// With Ludvig behind the car it follows him instead (25 November 2026), and ticking it keeps Ludvig.
+$('duckling').onchange=e=>{fx('pick');ducklingOn=!!e.target.checked;if(ducklingOn&&!(behind==='ludvig'&&ludvigUnlocked))behind='duck';saveProgress();applyRewards();showRewards();};
 $('bubbles').onchange=e=>{fx('pick');behind=e.target.checked?'bubbles':behind==='bubbles'?'none':behind;saveProgress();applyRewards();showRewards();};
 $('hover').onchange=e=>{fx('pick');hoverOn=e.target.checked;saveProgress();applyRewards();showRewards();};
 // The horn (the reward for the fourth trip): the button on the drive screen, or H. What you drive as says its own sound, and hops.
@@ -587,7 +622,7 @@ function lakeHorn(){document.body.classList.toggle('at-lake',atLake());}
 function honkAtDuck(){if(!atLake())return;duckHeard();}
 // The double duck (7 October 2026): with the small duck already running after the car and the car driving as the duck, a honk at the big duck brings a smaller duck, a
 // duckling, which follows the small one. It is no unlock: it is not saved (a reload, RE-ward and the rollback take it away), it has no place on the podium or the start
-// card, and it is there only while the small duck is behind the car (switch the small duck off and it goes, switch it on and it is back, for as long as the page is open).
+// card, and it is there only while the small duck (or, since 25 November 2026, Ludvig) is behind the car (switch them off and it goes, switch one on and it is back, for as long as the page is open).
 function ducklingHeard(){if(ducklingOn)return;ducklingOn=ducklingFound=true;applyRewards();showRewards();toast('🐥 En enda mindre and følger etter den lille anda!');say('Kvakk kvakk! Nå følger en enda mindre and etter den lille anda!');}
 function duckHeard(){
  const first=!duckUnlocked,again=!first&&behind!=='duck';if(!first&&!again){ducklingHeard();return;} // the small duck already runs: this honk is the double duck's
@@ -636,7 +671,7 @@ function animate(now){requestAnimationFrame(animate);const dt=Math.min(.045,Math
  if(homeAt&&time>=homeAt){homeAt=0;if(state==='decision'&&current===data.start||state==='free')reset();}
  if(worldLayout&&Math.abs((world.cameraYaw?.()||0)-layoutYaw)>.02)layoutWorldChoices();world.setViewShift?.(...introShift());
  world.update(dt,position,cameraHeading,state==='driving'&&active&&active.line.reversing(distance)?-speed:speed,state==='intro'&&arrivals>=1?'introCar':(state==='intro'||travelled===0&&state==='decision')?'intro':state==='finished'?'arrived':camMode,state==='finished',time,heading);
- mapClock+=dt;if(mapClock>.16){mapClock=0;if(state!=='intro'&&state!=='finished')updateHud();watchDuck();lakeHorn();}
+ mapClock+=dt;if(mapClock>.16){mapClock=0;if(state!=='intro'&&state!=='finished')updateHud();watchDuck();lakeHorn();ludvigDoor();}
 }
 function gameState(){return {state,mode:freeMode?'free':'route',speedKmh:Math.round(speed*3.6),drifting:state==='free'&&free.car.drifting,position:[position.x,position.z],street:$('street').textContent,currentNode:current,remainingMetres:Math.round(remaining()),travelledMetres:Math.round(travelled),choices:state==='decision'?choices.map(e=>({id:e.id,direction:directionInfo(e).label,street:e.name,exitNumber:e.exitNumber,roundabout:!!e.roundaboutPlan,recommended:e.id===best?.id})):[],upcomingMetres:state==='driving'&&aheadShown?Math.round(active.len-distance+preview.ahead):null,upcoming:state==='driving'&&aheadShown?preview.list.map(e=>({id:e.id,direction:directionInfo(e,preview.h).label,street:e.name,exitNumber:e.exitNumber,roundabout:!!e.roundaboutPlan,recommended:e.id===preview.top?.id})):[],queued:queue.map(q=>({id:q.id,direction:q.label,street:q.name}))};}
 function registerTools(){const m=document.modelContext;if(!m?.registerTool)return;const definitions=[{name:'read_drive_state',description:'Read the car state and currently offered road choices.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:()=>gameState()},{name:'start_drive',description:'Start Sofia’s drive from home.',inputSchema:{type:'object',properties:{},additionalProperties:false},execute:()=>{if(state!=='intro')throw new Error('The drive is already started');start();return gameState();}},{name:'choose_road',description:'Choose one of the offered roads at a junction, or while driving queue one of the upcoming roads (up to two junctions ahead).',inputSchema:{type:'object',properties:{edgeId:{type:'integer'}},required:['edgeId'],additionalProperties:false},execute:input=>{const ok=Number.isInteger(input?.edgeId)&&(state==='decision'?choose(input.edgeId,true):state==='driving'&&queueChoice({id:input.edgeId}));if(!ok)throw new Error('That road choice is not available');return gameState();}}];for(const def of definitions)try{Promise.resolve(m.registerTool(def)).catch(()=>{});}catch{}}

@@ -49,6 +49,9 @@ html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adju
 body.choosing.at-lake .horn:not([hidden]){visibility:visible}
 body.at-lake:has(#freeControls:not([hidden])) .horn:not([hidden]){display:grid!important;bottom:118px}
 @media(max-width:700px){body.at-lake:has(#freeControls:not([hidden])) .horn:not([hidden]){bottom:104px}}
+/* «🍽️ Spise hos Ludvig» (25 November 2026): where «Gå inn» is on the start screen; in free driving above the brake and drift buttons, which take that corner. */
+body:has(#freeControls:not([hidden])) .visit-ludvig{bottom:118px}
+@media(max-width:700px){body:has(#freeControls:not([hidden])) .visit-ludvig{bottom:auto}}
 /* Inside the house (5 October 2026): "Gå inn" on the start screen, and over the room (inside.js) a way out, a title and the popup that says how an unlock was got.
    The button sits bottom right on a wide screen, where the card is at the left; on a phone the card is at the bottom, so it moves up under the header. */
 .go-inside,.go-out{position:absolute;z-index:32;min-height:56px;padding:10px 22px;display:flex;align-items:center;gap:10px;border:2px solid white;border-radius:18px;background:#fffdf1;color:#174e48;box-shadow:0 4px 0 #174e4840;font-size:18px;font-weight:800;white-space:nowrap;touch-action:manipulation}

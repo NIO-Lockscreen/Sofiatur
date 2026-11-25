@@ -9,6 +9,8 @@
 // Mealtime (23 November 2026, as in the space game): a little table with her chair and a bowl in the front right corner, and her PEG backpack on the floor beside it
 // (meal.js). She walks round them, not through them; a tap on the table or the backpack starts a meal (game.js), and the camera glides in to it.
 // She walks over and pulls the bed out as at bedtime, climbs up and jumps on it, then hops down and the sofa is made again. sleep() halfway puts her straight to bed.
+// Friends (25 November 2026): Ludvig and the little yellow duckling come in with her when they run after the car, and copy her (friends.js): enter(list,
+// {friends: {ludvig, duckling}}). Visiting Ludvig, the same room is his (enter(list, {place: 'ludvig'})): other walls, his own things, no podium and no pig.
 import {createGirlModel} from './girl.js';
 import {createET5} from './car-model.js';
 import {createCat} from './cat-model.js';
@@ -18,6 +20,7 @@ import {createDuckRunnerModel} from './duck-runner.js';
 import {createDream} from './dream.js';
 import {createSpider,SPIDER_PURPLE} from './spider.js';
 import {createMeal} from './meal.js';
+import {createFriends} from './friends.js';
 
 // The three steps of the podium, from the front (low) to the back (high): item ids in order, the height of the step's top, its middle z and its width. 1 m is a slot.
 export const STEPS=[{ids:['colour','cat','trail','horn','dog','duck','rocket'],top:.35,z:-.5,w:8.6},{ids:['unicorn','bubbles','firetruck','rainbow','balloon','trex'],top:.7,z:-1.7,w:7.4},{ids:['kiwi','ludvig','duckRunner','taxi','pig','hover','spider'],top:1.05,z:-2.9,w:8.6}];
@@ -39,9 +42,11 @@ const ease=k=>k*k*(3-2*k);
 
 export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): game.js hears the jump's moments ('boing', 'spin', 'down', 'done') for the sounds and the words
  const scene=new T.Scene(),camera=new T.PerspectiveCamera(45,1,.1,120);scene.background=new T.Color('#f3e7d3');
+ // home: what is only at Sofia's (the podium, the pig, her pictures); away: what is only at Ludvig's. place: whose the room is now.
+ const home=new T.Group(),away=new T.Group();scene.add(home,away);away.visible=false;let place='home';
  const std=(color,roughness=.85,extra={})=>new T.MeshStandardMaterial({color,roughness,...extra});
  const blockers=[],pickables=[]; // blockers: walls, the podium and the furniture, which a tap cannot go through
- function add(g,m,x,y,z,parent=scene,kind=null){const o=new T.Mesh(g,m);o.position.set(x,y,z);parent.add(o);if(kind){o.userData.kind=kind;(kind==='block'?blockers:pickables).push(o);}return o;}
+ function add(g,m,x,y,z,parent=scene,kind=null){const o=new T.Mesh(g,m);o.position.set(x,y,z);parent.add(o);if(parent===home)o.userData.home=true;if(kind){o.userData.kind=kind;(kind==='block'?blockers:pickables).push(o);}return o;}
  const box=(w,h,d,m,x,y,z,parent,kind)=>add(new T.BoxGeometry(w,h,d),m,x,y,z,parent,kind),cyl=(rt,rb,h,m,x,y,z,parent,kind,seg=24)=>add(new T.CylinderGeometry(rt,rb,h,seg),m,x,y,z,parent,kind),ball=(r,m,x,y,z,parent)=>add(new T.SphereGeometry(r,16,10),m,x,y,z,parent);
  const hemi=new T.HemisphereLight('#fff4e2','#c9a77c',1.9);scene.add(hemi);const lamp=new T.DirectionalLight('#ffdfb0',2.3);lamp.position.set(-3,8,7);scene.add(lamp);
  // ---- The room: a wooden floor with plank lines, three walls with skirting boards (the front is open, like a dollhouse), a backdrop so nothing outside shows through ----
@@ -65,14 +70,14 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
   cyl(.03,.03,3.1,rod,0,3.62,z+.04).rotation.z=Math.PI/2;
   for(const s of [-1,1]){box(.62,1.55,.1,curtain,s*1.45,2.85,z+.06);box(.2,1.55,.11,curtain2,s*1.2,2.85,z+.07);ball(.04,gold,s*1.2,2.4,z+.14);}
   // A child's drawing of the car, and a rainbow.
-  box(1.15,.9,.04,std('#8a5a3a'),-3.4,2.85,-3.47);add(new T.PlaneGeometry(1.0,.75),new T.MeshBasicMaterial({color:'#fffdf4'}),-3.4,2.85,-3.448);
-  const ink=(w,h,color,x,y,r=0)=>{add(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({color}),-3.4+x,2.85+y,-3.444+r*.001);};
-  ink(1,.2,'#7ccb5a',0,-.275);ink(.5,.17,'#e5373a',0,-.12,1);ink(.26,.12,'#e5373a',-.02,0,1);ink(.18,.08,'#9bd8f2',-.02,0,2);for(const x of [-.15,.15]){add(new T.CircleGeometry(.065,14),new T.MeshBasicMaterial({color:'#1d2226'}),-3.4+x,2.85-.2,-3.442);}
-  add(new T.CircleGeometry(.1,16),new T.MeshBasicMaterial({color:'#ffd23a'}),-3.4+.33,2.85+.22,-3.446);
-  box(1.15,.9,.04,std('#8a5a3a'),3.4,2.85,-3.47);add(new T.PlaneGeometry(1.0,.75),new T.MeshBasicMaterial({color:'#fffdf4'}),3.4,2.85,-3.448);
-  ['#e5373a','#ff9a2e','#ffd23a','#5ccf66','#41a7f4','#8b6cf0'].forEach((c,i)=>{add(new T.TorusGeometry(.4-i*.045,.025,6,24,Math.PI),new T.MeshBasicMaterial({color:c}),3.4,2.58,-3.444);});}
+  box(1.15,.9,.04,std('#8a5a3a'),-3.4,2.85,-3.47,home);add(new T.PlaneGeometry(1.0,.75),new T.MeshBasicMaterial({color:'#fffdf4'}),-3.4,2.85,-3.448,home);
+  const ink=(w,h,color,x,y,r=0)=>{add(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({color}),-3.4+x,2.85+y,-3.444+r*.001,home);};
+  ink(1,.2,'#7ccb5a',0,-.275);ink(.5,.17,'#e5373a',0,-.12,1);ink(.26,.12,'#e5373a',-.02,0,1);ink(.18,.08,'#9bd8f2',-.02,0,2);for(const x of [-.15,.15]){add(new T.CircleGeometry(.065,14),new T.MeshBasicMaterial({color:'#1d2226'}),-3.4+x,2.85-.2,-3.442,home);}
+  add(new T.CircleGeometry(.1,16),new T.MeshBasicMaterial({color:'#ffd23a'}),-3.4+.33,2.85+.22,-3.446,home);
+  box(1.15,.9,.04,std('#8a5a3a'),3.4,2.85,-3.47,home);add(new T.PlaneGeometry(1.0,.75),new T.MeshBasicMaterial({color:'#fffdf4'}),3.4,2.85,-3.448,home);
+  ['#e5373a','#ff9a2e','#ffd23a','#5ccf66','#41a7f4','#8b6cf0'].forEach((c,i)=>{add(new T.TorusGeometry(.4-i*.045,.025,6,24,Math.PI),new T.MeshBasicMaterial({color:c}),3.4,2.58,-3.444,home);});}
  // ---- The rug, the sofa (the pig hides behind it), a floor lamp, a plant and the door ----
- {const rug=std('#e8788f',.95),ring=std('#f7e3c0',.95);cyl(1.55,1.55,.02,rug,0,.01,1.4);cyl(1.25,1.25,.026,ring,0,.013,1.4);cyl(.95,.95,.032,rug,0,.016,1.4);cyl(.5,.5,.038,ring,0,.019,1.4);}
+ const rug=std('#e8788f',.95),ring=std('#f7e3c0',.95);{cyl(1.55,1.55,.02,rug,0,.01,1.4);cyl(1.25,1.25,.026,ring,0,.013,1.4);cyl(.95,.95,.032,rug,0,.016,1.4);cyl(.5,.5,.038,ring,0,.019,1.4);}
  // The sofa is a sofa bed (4 November 2026): a tap on it is a tap on the bed. It opens with its own parts: the two throw pillows are laid down as her pillow at
  // the head end, the seat slides out towards the room (on two legs of its own) and the back folds down flat into the gap behind it, level with the seat cushions.
  // Then a duvet comes, folded at the foot end until she lies down, when it is pulled up to her shoulders. No mattress and no sheet: she sleeps on the sofa.
@@ -96,10 +101,10 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
   for(const z of [1.2,1.8])box(.02,.7,.34,std('#8a5a3a'),4.4,1.6,z);}
  // ---- The podium: three white steps with gold edges; a round pedestal, a place and an invisible hit box for each of the 20 unlocks ----
  const slots=[];
- for(const step of STEPS){box(step.w,step.top,1.2,white,0,step.top/2,step.z,scene,'block');box(step.w+.06,.05,.07,gold,0,step.top-.02,step.z+.6);box(step.w+.06,.05,.07,gold,0,step.top-.02,step.z-.6);
-  step.ids.forEach((id,j)=>{const x=(j-(step.ids.length-1)/2)*SLOT,base=step.top;cyl(.4,.46,.2,cream,x,base+.1,step.z);cyl(.42,.42,.02,gold,x,base+.21,step.z);
-   const holder=new T.Group();holder.position.set(x,base+.22,step.z);scene.add(holder);
-   const hit=box(SLOT-.05,1.1,.8,new T.MeshBasicMaterial({color:'#ff00ff'}),x,base+.62,step.z,scene,'item');hit.visible=false;hit.userData.id=id; // low and shallow enough that a tap on a back place does not hit the front one
+ for(const step of STEPS){box(step.w,step.top,1.2,white,0,step.top/2,step.z,home,'block');box(step.w+.06,.05,.07,gold,0,step.top-.02,step.z+.6,home);box(step.w+.06,.05,.07,gold,0,step.top-.02,step.z-.6,home);
+  step.ids.forEach((id,j)=>{const x=(j-(step.ids.length-1)/2)*SLOT,base=step.top;cyl(.4,.46,.2,cream,x,base+.1,step.z,home);cyl(.42,.42,.02,gold,x,base+.21,step.z,home);
+   const holder=new T.Group();holder.position.set(x,base+.22,step.z);home.add(holder);
+   const hit=box(SLOT-.05,1.1,.8,new T.MeshBasicMaterial({color:'#ff00ff'}),x,base+.62,step.z,home,'item');hit.visible=false;hit.userData.id=id; // low and shallow enough that a tap on a back place does not hit the front one
    slots.push({id,x,z:step.z,base,holder,hit,content:null,key:''});});}
  // ---- What stands on a place ----
  const cache=new Map();let items=[];
@@ -133,8 +138,8 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
   slot.content=c;slot.holder.add(c.group);}
  // ---- The girl and the pig ----
  const girl=createGirlModel(T);girl.group.rotation.order='YXZ';scene.add(girl.group); // YXZ: lying down tips her back, then turns her
- const pig=createPig(T);pig.group.scale.setScalar(.18);scene.add(pig.group);
- const pigHit=box(1.4,1,1.1,new T.MeshBasicMaterial({color:'#ff00ff'}),-3.95,.5,3,scene,'pig');pigHit.visible=false;
+ const pig=createPig(T);pig.group.scale.setScalar(.18);home.add(pig.group);
+ const pigHit=box(1.4,1,1.1,new T.MeshBasicMaterial({color:'#ff00ff'}),-3.95,.5,3,home,'pig');pigHit.visible=false;
  let gx=0,gz=1.4,yaw=Math.PI,walk=null,arrive=null,waveLeft=0,pigOut=false,hop=-1;
  const meal=createMeal({T,scene,girl,walkTo:(x,z,face,free)=>walkTo(x,z,face,free),arrived:()=>!walk&&!!arrive&&Math.abs(Math.atan2(Math.sin(arrive.yaw-yaw),Math.cos(arrive.yaw-yaw)))<.12,
   setHere:(x,z,y)=>{gx=x;gz=z;yaw=y;walk=null;arrive=null;},on:name=>on('meal:'+name)});
@@ -148,9 +153,14 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
  function outside(x,z){for(const r of OBST)if(inRect(r,x,z)){const e=.06,d=[[x-r.x0,r.x0-e,z],[r.x1-x,r.x1+e,z],[z-r.z0,x,r.z0-e],[r.z1-z,x,r.z1+e]].sort((p,q)=>p[0]-q[0])[0];
   if(d[0]===x-r.x0||d[0]===r.x1-x)x=d[1];else z=d[2];}return [x,z];}
  function crosses(r,ax,az,bx,bz){let t0=0,t1=1;const dx=bx-ax,dz=bz-az;for(const [p,q] of [[-dx,ax-r.x0],[dx,r.x1-ax],[-dz,az-r.z0],[dz,r.z1-az]]){if(p===0){if(q<=0)return false;continue;}const t=q/p;if(p<0){if(t>t1)return false;if(t>t0)t0=t;}else{if(t<t0)return false;if(t<t1)t1=t;}}return t1-t0>1e-6;}
+ // (25 November 2026) The way to the first corner must be clear of every obstacle, not only the one it goes round: from between the backpacks and the front
+ // edge she cut across her backpack to the table's far corner. Only if no such corner is found is the old choice taken.
  function route(ax,az,bx,bz,depth=0){const r=OBST.find(r=>crosses(r,ax,az,bx,bz));if(!r||depth>2)return [{x:bx,z:bz}];const e=.06,cs=[[r.x0-e,r.z0-e],[r.x1+e,r.z0-e],[r.x1+e,r.z1+e],[r.x0-e,r.z1+e]],len=(...p)=>p.slice(1).reduce((s,q,i)=>s+Math.hypot(q[0]-p[i][0],q[1]-p[i][1]),0);
-  let best=null,bl=Infinity;for(const c of cs)if(!crosses(r,ax,az,...c)&&!crosses(r,...c,bx,bz)){const l=len([ax,az],c,[bx,bz]);if(l<bl){bl=l;best=[c];}}
-  if(!best)for(let i=0;i<4;i++)for(const j of [(i+1)%4,(i+3)%4]){const c=cs[i],c2=cs[j];if(crosses(r,ax,az,...c)||crosses(r,...c2,bx,bz))continue;const l=len([ax,az],c,c2,[bx,bz]);if(l<bl){bl=l;best=[c,c2];}}
+  const clear=(x0,z0,x1,z1)=>!OBST.some(o=>crosses(o,x0,z0,x1,z1));let best=null,bl=Infinity;
+  for(const all of [true,false]){
+   for(const c of cs)if(!crosses(r,ax,az,...c)&&!crosses(r,...c,bx,bz)&&(!all||clear(ax,az,...c))){const l=len([ax,az],c,[bx,bz]);if(l<bl){bl=l;best=[c];}}
+   if(!best)for(let i=0;i<4;i++)for(const j of [(i+1)%4,(i+3)%4]){const c=cs[i],c2=cs[j];if(crosses(r,ax,az,...c)||crosses(r,...c2,bx,bz)||all&&!(clear(ax,az,...c)&&clear(...c,...c2)))continue;const l=len([ax,az],c,c2,[bx,bz]);if(l<bl){bl=l;best=[c,c2];}}
+   if(best)break;}
   if(!best)return [{x:bx,z:bz}];const pts=best.map(([x,z])=>({x,z}));const last=pts[pts.length-1];return [...pts,...route(last.x,last.z,bx,bz,depth+1)];}
  // ---- Bedtime: on (told to sleep), u (0 a sofa .. 1 a bed), k (in bed, 0 standing by it .. 1 lying), night (0..1, eases with on), view (the camera at the bed, 0..1:
  // it stays there until the sofa is a sofa again), dream (seconds dreamt) ----
@@ -158,6 +168,26 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
  // bed from when told to sleep in the middle of the jump), blend (the pose she glides away from over 0.3 s after such a change of mind), clock (seconds, for the blend)
  const bed={on:false,u:0,k:0,night:0,view:0,dream:0,open:true,jumping:false,play:-1,from:null,blend:null,clock:0}; // open: the sofa is (or was last) opening; the bounces come at the bed end then, at the sofa end closing
  const dream=createDream({T,scene,build:id=>build(id)});
+ // Ludvig and the duckling (friends.js): in only when enter() says so. Their chair, backpack and glass take taps (a meal, a drink) while Ludvig is in.
+ const friends=createFriends({T,scene,girl,meal,bed,JUMP,route:(...a)=>route(...a),outside:(x,z)=>outside(x,z)});pickables.push(...friends.hits);
+ const BASE_OBST=OBST.length;
+ // ---- Ludvig's room (visiting him, place 'ludvig'): mint walls and a blue rug, his pictures (a T. rex and a football), a low bookshelf under the window,
+ // a toy T. rex where Sofia's podium stands and a box of building blocks. Sofia's podium, her pictures, her brushing chart and stars and the pig are not there. ----
+ const WALLS={home:['#f5e7d0','#eedac0','#e8788f','#f7e3c0'],ludvig:['#dcefe6','#d9eee5','#6f9fd8','#d6e8f7']};
+ {const frame=std('#5d7f8f');
+  const picture=(x,draw)=>{const c=document.createElement('canvas');c.width=256;c.height=192;const q=c.getContext('2d');q.fillStyle='#fffdf4';q.fillRect(0,0,256,192);draw(q);
+   const tx=new T.CanvasTexture(c);tx.colorSpace=T.SRGBColorSpace;box(1.15,.9,.04,frame,x,2.85,-3.47,away);add(new T.PlaneGeometry(1.0,.75),new T.MeshBasicMaterial({color:'#ffffff',map:tx}),x,2.85,-3.448,away);};
+  const emoji=(q,icon,size,x,y)=>{q.textAlign='center';q.textBaseline='middle';q.font=size+'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';q.fillText(icon,x,y);};
+  picture(-3.4,q=>{q.fillStyle='#bfe3a8';q.fillRect(0,140,256,52);emoji(q,'🦖',110,128,92);q.fillStyle='#2d6b8f';q.font='900 30px Arial, sans-serif';q.textAlign='center';q.fillText('LUDVIG',128,172);});
+  picture(3.4,q=>{q.fillStyle='#bfe3a8';q.fillRect(0,128,256,64);emoji(q,'⚽',90,128,96);emoji(q,'⭐',34,46,40);emoji(q,'⭐',26,212,52);});
+  const shelf=std('#e9d4b0'),edge=std('#c9a978');box(2.2,.06,.36,edge,0,.84,-3.3,away);box(2.2,.04,.34,shelf,0,.44,-3.3,away);box(2.2,.04,.34,shelf,0,.04,-3.3,away);for(const x of [-1.08,1.08])box(.05,.86,.36,edge,x,.43,-3.3,away);box(2.2,.86,.03,shelf,0,.43,-3.47,away);
+  let k=3;const r=()=>(k=(k*1664525+1013904223)>>>0)/4294967296,cols=['#e5373a','#41a7f4','#ffd23a','#5ccf66','#8b6cf0','#ff9a2e','#2d6b8f'];
+  for(const y of [.06,.46])for(let x=-1.0;x<.98;){const w=.05+r()*.05,h=.22+r()*.12;box(w,h,.24,std(cols[Math.floor(r()*cols.length)]),x+w/2,y+h/2,-3.3,away);x+=w+.012;}
+  const blocks=std('#d9a066');box(.8,.45,.5,blocks,1.9,.225,-2.75,away);box(.84,.05,.54,std('#b97f45'),1.9,.45,-2.75,away);
+  [['#e5373a',1.65,-2.4],['#41a7f4',1.85,-2.35],['#ffd23a',2.1,-2.42],['#5ccf66',1.75,-2.25],['#e5373a',1.98,-2.2]].forEach(([c,x,z],i)=>{const b=box(.14,.14,.14,std(c),x,.07+(i===4?.14:0),z,away);b.rotation.y=i*.6;});}
+ const toyRex=build('trex');toyRex.group.position.set(-1.5,0,-2.35);toyRex.group.rotation.y=.5;toyRex.group.scale.setScalar(1.15);away.add(toyRex.group);
+ // Whose room it is: the walls, the rug, and what stands in it.
+ function dressPlace(){const [w,sd,r1,r2]=WALLS[place]||WALLS.home;wall.color.set(w);side.color.set(sd);rug.color.set(r1);ring.color.set(r2);home.visible=place==='home';away.visible=place==='ludvig';meal.wallArt.visible=place==='home';}
  const head=new T.Vector3(),bubbleAt=new T.Vector3(BUBBLE.x,BUBBLE.y,BUBBLE.z),zSide=new T.Vector3(...ZSIDE).normalize(),DAY='#f3e7d3',NIGHT='#2f2f57',GLASS='#bfe6f7',DARK='#1c2858',tint=new T.Color();
  function dreamList(){return ['car','arc',...items.filter(i=>i.unlocked&&MODELS.has(i.id)).map(i=>i.id)];}
  // To bed: she walks to the sofa (or, already by it, stays), makes the bed of it and lies down (bedtime, below). Already on her way or asleep: nothing.
@@ -247,7 +277,9 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
  placePig();
  // Found now (hidden before): the pig hops out onto the rug. Already out, or still hidden: it stays where it is.
  function refresh(list,opts={}){items=list;dream.setList(dreamList());if(opts.pigHidden!==false){pigOut=false;hop=-1;}else if(!pigOut){pigOut=true;hop=0;}if(hop<0)placePig();for(const s of slots)content(s);}
- function enter(list,opts={}){pigOut=opts.pigHidden===false;hop=-1;items=[];for(const s of slots)s.key='';refresh(list,opts);gx=0;gz=1.4;yaw=Math.PI;walk=null;arrive=null;waveLeft=2.2;
+ // opts.place: 'home' (Sofia's, with the podium) or 'ludvig' (his); opts.friends: {ludvig, duckling}, who comes in with her (at Ludvig's he is always there).
+ function enter(list,opts={}){place=opts.place==='ludvig'?'ludvig':'home';dressPlace();pigOut=opts.pigHidden===false;hop=-1;items=[];for(const s of slots)s.key='';refresh(list,opts);gx=0;gz=1.4;yaw=Math.PI;walk=null;arrive=null;waveLeft=2.2;
+  const company={ludvig:place==='ludvig'||!!opts.friends?.ludvig,duck:!!opts.friends?.duckling};OBST.length=BASE_OBST;if(company.ludvig)OBST.push(...friends.obstacles);friends.enter(company,{x:gx,z:gz,yaw});
   Object.assign(bed,{on:false,u:0,k:0,night:0,view:0,dream:0,open:true,jumping:false,play:-1,from:null,blend:null});meal.reset();mo=motion();dream.reset();dressBed(0);dressNight();pose();fit(true);} // she always comes in awake, with the bed folded in
  // ---- The camera: from the front and a little above (the narrower the screen, the higher), as close as lets the whole room show, the front corners of the floor included ----
  const corners=[[-4.5,0,3],[4.5,0,3],[-4.5,3.6,-3.5],[4.5,3.6,-3.5],[0,0,3],[0,3.6,-3.5]].map(p=>new T.Vector3(...p)),probe=new T.Vector3();let aspect=0;
@@ -261,16 +293,18 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
  const roomEye=new T.Vector3(),roomAt=new T.Vector3(0,1.3,-.4),bedEye=new T.Vector3(),bedAt=new T.Vector3(),lookAt=new T.Vector3(),bedDir=new T.Vector3(.42,.62,1).normalize();
  const bedPoints=[[-4.05,.65,.35],[-2.7,.65,.35],[-4.05,.65,2.55],[-2.7,.65,2.55],[-4.05,.8,.4],[-3.6,2.35,1.3]].map(p=>new T.Vector3(...p)),camRight=new T.Vector3(),camUp=new T.Vector3();
  function fitBed(a){bubbleAt.set(BUBBLE.x,BUBBLE.y,BUBBLE.z);if(a<.8)bubbleAt.set(-2.75,2.9,1.2);else if(a>1.7)bubbleAt.set(-1.75,2.15,1.45); // upright screens have room above the bed, wide and low ones beside it
-  bedAt.set(-3.3,1.3,1.45).lerp(bubbleAt,.35);let d=3;const h=canvas.clientHeight||1,top=1-2*95/h,bottom=-1+2*80/h; // under the header, over the title
+  bedAt.set(-3.3,1.3,1.45).lerp(bubbleAt,.35);let d=3;const h=canvas.clientHeight||1,top=1-2*95/h,bottom=-1+2*80/h,extra=friends.bedPoints().map(p=>new T.Vector3(...p)); // under the header, over the title; and the friends jumping with her
   for(let i=0;i<90;i++,d*=1.03){camera.position.copy(bedAt).addScaledVector(bedDir,d);camera.lookAt(bedAt);camera.updateMatrixWorld(true);const e=camera.matrixWorld.elements;camRight.set(e[0],e[1],e[2]);camUp.set(e[4],e[5],e[6]);
    const rim=[[1,1],[1,-1],[-1,1],[-1,-1],[1,0],[-1,0],[0,1],[0,-1]].map(([x,y])=>bubbleAt.clone().addScaledVector(camRight,x*1.38*BUBBLE.size).addScaledVector(camUp,y*1.03*BUBBLE.size));
-   if([...bedPoints,...rim].every(p=>{probe.copy(p).project(camera);return Math.abs(probe.x)<.94&&probe.y<top&&probe.y>bottom;}))break;}
+   if([...bedPoints,...extra,...rim].every(p=>{probe.copy(p).project(camera);return Math.abs(probe.x)<.94&&probe.y<top&&probe.y>bottom;}))break;}
   bedEye.copy(camera.position);}
  // At a meal the camera glides in to the table, or to her and the backpack, from the front and a little to the left, as close as lets it all show under the buttons.
- const mealEye={spoon:new T.Vector3(),peg:new T.Vector3()},mealAt={spoon:new T.Vector3(),peg:new T.Vector3()},mealDir={spoon:new T.Vector3(-.3,.62,1).normalize(),peg:new T.Vector3(-.6,.62,1).normalize()},mealKind=()=>meal.st.kind||meal.st.last||'spoon';
+ const mealEye={spoon:new T.Vector3(),peg:new T.Vector3()},mealAt={spoon:new T.Vector3(),peg:new T.Vector3()},mealDir={spoon:new T.Vector3(-.3,.62,1).normalize(),peg:new T.Vector3(-.6,.62,1).normalize()},twoDir=new T.Vector3(.5,.62,1).normalize(), // twoDir: with Ludvig at the table, from the front and to the right, so it sees both their faces
+ mealKind=()=>meal.st.kind||meal.st.last||'spoon';
  function fitMeal(){const h=canvas.clientHeight||1,top=1-2*110/h,bottom=-1+2*115/h,keep=meal.st.kind,last=meal.st.last;
-  for(const kind of ['spoon','peg']){meal.st.kind=kind;const pts=meal.viewPoints().map(p=>new T.Vector3(...p)),at=mealAt[kind].set(0,0,0);for(const p of pts)at.add(p);at.divideScalar(pts.length);at.y+=.1;let d=2;
-   for(let i=0;i<90;i++,d*=1.03){camera.position.copy(at).addScaledVector(mealDir[kind],d);camera.lookAt(at);camera.updateMatrixWorld(true);if(pts.every(p=>{probe.copy(p).project(camera);return Math.abs(probe.x)<.86&&probe.y<top&&probe.y>bottom;}))break;}
+  for(const kind of ['spoon','peg']){meal.st.kind=kind;const pts=[...meal.viewPoints(),...friends.viewPoints(kind)].map(p=>new T.Vector3(...p)),at=mealAt[kind].set(0,0,0);for(const p of pts)at.add(p);at.divideScalar(pts.length);at.y+=.1;let d=2;
+   const dir=kind==='spoon'&&friends.company.ludvig?twoDir:mealDir[kind];
+   for(let i=0;i<90;i++,d*=1.03){camera.position.copy(at).addScaledVector(dir,d);camera.lookAt(at);camera.updateMatrixWorld(true);if(pts.every(p=>{probe.copy(p).project(camera);return Math.abs(probe.x)<.86&&probe.y<top&&probe.y>bottom;}))break;}
    mealEye[kind].copy(camera.position);}meal.st.kind=keep;meal.st.last=last;}
  function aim(){const e=ease(bed.view),m=ease(Math.min(1,meal.st.view)),k=mealKind();camera.position.lerpVectors(roomEye,bedEye,e);lookAt.lerpVectors(roomAt,bedAt,e);
   if(m>0){camera.position.lerp(mealEye[k],m);lookAt.lerp(mealAt[k],m);}camera.lookAt(lookAt);camera.updateMatrixWorld(true);}
@@ -278,7 +312,8 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
  const ray=new T.Raycaster(),ndc=new T.Vector2(),floor=new T.Plane(new T.Vector3(0,1,0),0),at=new T.Vector3();
  function pick(clientX,clientY){const r=canvas.getBoundingClientRect();ndc.set((clientX-r.left)/(r.width||1)*2-1,-((clientY-r.top)/(r.height||1))*2+1);fit();aim();scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);ray.setFromCamera(ndc,camera);
   const dreaming=dream.targets(),resting=bed.on||bed.k>0||bed.jumping; // resting: on her way to bed, in it or getting up, or jumping on it; then only the bed and the dream answer
-  const hits=ray.intersectObjects([...pickables,...blockers,...dreaming],false),onFloor=ray.ray.intersectPlane(floor,at),floorAt=onFloor?ray.ray.origin.distanceTo(at):Infinity;
+  const live=o=>!(o.userData.home&&place!=='home')&&!(o.userData.friend&&!friends.company.ludvig); // Sofia's podium and pig only at home; Ludvig's chair and backpack only while he is in
+  const hits=ray.intersectObjects([...pickables,...blockers,...dreaming].filter(live),false),onFloor=ray.ray.intersectPlane(floor,at),floorAt=onFloor?ray.ray.origin.distanceTo(at):Infinity;
   let hit=hits[0];if(hit?.object.userData.kind==='table')hit=hits.find(h=>h.object.userData.kind==='glass')||hit; // the glass stands inside the table's box
   if(hit&&dreaming.includes(hit.object)){const found=dream.hit(hit.object,hit.point);return found&&found.type!=='sky'?found:null;}
   if(meal.active)return hit?.object.userData.kind==='glass'?{type:'glass'}:{type:'meal'}; // at a meal a tap anywhere is the next spoonful, starts the pump or makes her dance, and the glass is a drink (game.js)
@@ -302,6 +337,8 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
   else if(arrive){yaw=turn(yaw,arrive.yaw,Math.min(1,dt*8));}
   let wave=0;if(waveLeft>0){waveLeft=Math.max(0,waveLeft-dt);wave=Math.min(1,waveLeft*3,(2.6-waveLeft)*3);if(waveLeft===0)arrive=null;}
   pose();girl.update(dt,bed.u>0&&bed.k===0&&mo.B>0&&mo.B<1?.6:speed,time,Math.max(0,wave));arms();meal.pose(time);dressBed(time);dressNight();aim();
+  friends.update(dt,time,{x:gx,z:gz,yaw,moving:!!walk,wave:Math.max(0,wave),free:!meal.active&&!bed.on&&!bed.jumping&&bed.u===0&&bed.k===0}); // Ludvig and the duckling copy her
+  if(place==='ludvig')toyRex.tick(dt,time);
   girl.head.getWorldPosition(head);dream.update(dt,time,{t:bed.on&&bed.k===1?bed.dream:0,head,at:bubbleAt,size:BUBBLE.size,camera,side:zSide});
   slots.forEach((s,i)=>{const c=s.content;if(!c)return;if(c.locked){c.spin.position.y=.5+Math.sin(time*2+i)*.05;c.spin.rotation.y=Math.sin(time*.8+i)*.35;}else c.spin.rotation.y=time*(c.medal?.9:.7)+i;});
   for(const c of cache.values())if(c!=='none'&&c.group.parent)c.tick(dt,time); // the ones on show come alive
@@ -312,5 +349,5 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
   renderer.render(scene,camera);}
  // Mealtime: only from awake and standing, with the sofa a sofa.
  function startMeal(kind){if(bed.on||bed.jumping||bed.u>0||bed.k>0)return false;return meal.start(kind);}
- return {meal,startMeal,mealTap:()=>meal.tap(),mealDrink:()=>meal.drink(),finishMeal:()=>meal.finish(),setBrushed:n=>meal.setBrushed(n),route,scene,camera,girl,pig,slots,pigHit,door,enter,refresh,update,pick,sleep,wake,jump,get asleep(){return bed.on;},get jumping(){return bed.jumping;},bed,dream,sofaBed,hitBoxes:slots.map(s=>s.hit),JUMP};
+ return {friends,get place(){return place;},home,away,meal,startMeal,mealTap:()=>meal.tap(),mealDrink:()=>meal.drink(),finishMeal:()=>meal.finish(),setBrushed:n=>meal.setBrushed(n),route,scene,camera,girl,pig,slots,pigHit,door,enter,refresh,update,pick,sleep,wake,jump,get asleep(){return bed.on;},get jumping(){return bed.jumping;},bed,dream,sofaBed,hitBoxes:slots.map(s=>s.hit),JUMP};
 }
