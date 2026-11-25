@@ -8,7 +8,7 @@
 // - At the table: Ludvig has his own chair round the table to her right, his own bowl, spoon (in his left hand) and glass. He sits down when she does,
 //   takes a spoonful a moment after each of hers, drinks when she drinks, pats his tummy when she is full and gets up with her. The duckling flutters up
 //   onto the table and sits there for the meal (with the spoon or PEG), pecking when they eat and flapping when they are full.
-// - With PEG: his backpack (the same as hers, in green) stands on the floor beside hers. With her he puts it on, clicks his tube onto the button on his
+// - With PEG: his backpack (exactly the same as hers, the user says) stands on the floor beside hers. With her he puts it on, clicks his tube onto the button on his
 //   tummy, turns to show it, his pump runs and blinks with hers, and he dances a moment after she does.
 // - On the bed: while she pulls the bed out they wait beside it; then they climb up and jump with her, a moment after each of her bounces: Ludvig beside her
 //   at the head end, his arms up, laughing, spinning on the same bounce as she does, the duckling with small hops at the foot end. Then they hop down.
@@ -47,8 +47,8 @@ export function createFriends({T,scene,girl,meal,bed,JUMP,route,outside}){
  const Y=new T.Vector3(0,1,0),restSpoon=()=>{spoon.position.set(FRIEND_BOWL.x-.1,tb.h+.008,FRIEND_BOWL.z+.13);spoon.quaternion.setFromAxisAngle(new T.Vector3(1,0,0),Math.PI/2);spoon.rotateOnWorldAxis(Y,FRIEND.yaw+1.2);bite.visible=false;};restSpoon();
  const GLASS_H=.09,glassAt=new T.Vector3(FRIEND_GLASS.x,tb.h+GLASS_H/2,FRIEND_GLASS.z),glass=new T.Group();glass.position.copy(glassAt);things.add(glass);
  cyl(.04,.035,GLASS_H,std('#8fd3ff'),0,0,0,glass);cyl(.033,.033,.003,std('#9fd8f0',.3),0,GLASS_H/2+.001,0,glass);
- // ---- His PEG backpack: the same as hers (meal.js), green, on the floor beside hers; on his back the straps and the tube round to the button on his tummy ----
- const pack=createPegBag(T,{front:'#3fa34d',pocket:'#368f42',sides:'#2d6b8f',sidePocket:'#245673',loops:'#f4d22a',cord:'#e8742c'});things.add(pack.bag);
+ // ---- His PEG backpack: exactly the same as hers (meal.js, the user: «Ludvig har helt samme sekk som Sofia»), on the floor beside hers; on his back the straps and the tube round to the button on his tummy ----
+ const pack=createPegBag(T);things.add(pack.bag);
  const worn=new T.Group();body.add(worn);worn.visible=false;{const black=std('#1c1c22');for(const s of [-1,1]){rod([s*.1,.89,.15],[s*.13,.92,.01],.014,black,worn);rod([s*.13,.92,.01],[s*.12,.7,-.12],.014,black,worn);}}
  const tube=createPegTube(T,body,new T.CubicBezierCurve3(new T.Vector3(.13,.62,.16),new T.Vector3(.33,.48,.05),new T.Vector3(.24,.52,-.2),new T.Vector3(.045,.66,-.115)));
  // ---- Taps: his chair is the table's (a meal with the spoon), his backpack a meal with PEG, his glass a drink (inside.js pick, only while he is in) ----

@@ -64,6 +64,7 @@ console.log('Friends: at the table Ludvig sits on his own chair and copies her s
 // he dances a moment after she does, and his backpack goes back on the floor beside hers.
 inside.enter(list,{pigHidden:true,friends:{ludvig:true,duckling:true}});run(.3);inside.startMeal('peg');until(()=>st.step==='plug');run(.3);
 const lback=()=>friends.ludvig.group.children[0].localToWorld(new T.Vector3(0,.52,.19));
+{const colours=bag=>{const c=[];bag.traverse(o=>{if(o.isMesh)c.push(o.material.color.getHexString());});return c;};assert.deepEqual(colours(friends.pack.bag),colours(meal.bag),'his backpack is exactly the same as hers');}
 assert.ok(friends.pack.bag.position.distanceTo(lback())<.01,'his backpack on his back');assert.ok(friends.worn.visible,'with its straps');
 until(()=>st.step==='ready');run(.9);assert.ok(friends.tube.group.visible&&friends.tube.plug.visible,'his tube on, clicked onto his tummy');
 {const face=new T.Vector3(0,0,1).applyQuaternion(friends.pack.bag.quaternion),toCam=inside.camera.position.clone().sub(friends.pack.bag.position).normalize();assert.ok(face.dot(toCam)>.2,'turned round, showing it');}
