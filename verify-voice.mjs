@@ -37,7 +37,17 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  v.stallMs=10;v.speak('Ingen svar');const stuck=jobs.at(-1);await wait(40);assert.ok(stuck.cancelled);assert.equal(fellBack.at(-1),'Ingen svar');assert.equal(v.neural.failed,undefined);
  v.speak('Igjen ingen svar');await wait(40);assert.equal(fellBack.at(-1),'Igjen ingen svar');assert.equal(v.neural.failed,'stalled');
  assert.match(v.note(true),/damestemme/);assert.match(v.note(false),/iPadens egen stemme/);
- console.log('Voice: the new voice reads once it is ready and there is sound, sentence after sentence with the music down; the iPad reads before, when it is off, on errors and stalls; sound on pause is woken: OK');}
+ // Still loading when a line comes (the first seconds after start): it is started if need be, and the line waits up to three seconds for it
+ // instead of going to the iPad at once. The download starts whether the sound is on or not: only the switch counts (25 November 2026).
+ {const lj=[],fb=[];class Loading{constructor(){this.status='off';this.ensured=0;}get ready(){return this.status==='ready';}onChange(){}ensure(){this.ensured++;if(this.status==='off')this.status='loading';}load(){this.loaded=(this.loaded||0)+1;}fail(){}speak(t){const j={text:t,cancel(){}};lj.push(j);return j;}}
+  const n=new Loading(),w=createVoice({on:()=>true,fallback:t=>fb.push(t),neural:n});w.context={...ctx,state:'running'};w.waitMs=300;
+  assert.equal(w.speak('Hei Sofia!'),true,'not started yet: started now, and the line waits');assert.equal(n.ensured,1);assert.equal(n.status,'loading');
+  await wait(40);n.status='ready';await wait(250);assert.deepEqual(lj.map(j=>j.text),['Hei Sofia!'],'read by the new voice once it is ready');assert.deepEqual(fb,[],'not by the iPad');w.stop();
+  n.status='loading';w.speak('Venter lenge');await wait(450);assert.deepEqual(fb,['Venter lenge'],'still loading after the wait: the iPad reads');
+  let sw=true;const n2=new Loading(),w2=createVoice({on:()=>false,switchOn:()=>sw,neural:n2,delay:1});w2.start();await wait(20);assert.equal(n2.loaded,1,'loaded with the sound off');
+  sw=false;const n3=new Loading(),w3=createVoice({on:()=>false,switchOn:()=>sw,neural:n3,delay:1});w3.start();await wait(20);assert.equal(n3.loaded,undefined,'not with the switch off');
+  assert.match(fs.readFileSync('dist/voice.js','utf8'),/'pointerdown','pointerup','touchend','click','keydown'/,'lifting the finger wakes the sound on an iPad');}
+ console.log('Voice: the new voice reads once it is ready and there is sound, sentence after sentence with the music down; the iPad reads before, when it is off, on errors and stalls; sound on pause is woken; a line waits a moment for a voice still loading; it loads with the sound off: OK');}
 
 // ---- The clips: every sentence the game can say has one, the pack is whole, PEG is read «pegg», and the player plays them in order ----
 {const clips=await import('./dist/tts/clips.mjs'),make=await import('./tts/make-voice.mjs'),crypto=await import('node:crypto');
@@ -57,7 +67,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  const saved={};for(const k of ['fetch','caches','OfflineAudioContext','AudioContext','setTimeout'])saved[k]=globalThis[k];const realInfo=console.info;console.info=m=>logged.push(m);
  Object.assign(globalThis,{OfflineAudioContext:Offline,AudioContext:function(){},setTimeout:(fn,ms)=>timers.push({fn,ms}),
   fetch:async url=>{if(!online)throw new Error('offline');const f=new URL(url).pathname.split('/').pop();return f in files?respond(files[f]):{ok:false,status:404};},
-  caches:{open:async()=>({put:async(k,r)=>store.set(k,r),match:async k=>store.get(k),keys:async()=>[...store.keys()].map(url=>({url})),delete:async k=>store.delete(k.url||k)})}});
+  caches:{open:async()=>({put:async(k,r)=>store.set(k,r),match:async k=>store.get(k)?.clone(),keys:async()=>[...store.keys()].map(url=>({url})),delete:async k=>store.delete(k.url||k)})}});
  try{const base='https://spill.example/tts/voice/',v=new ClipVoice(base);assert.equal(ClipVoice.supported(),true);await v.load();assert.equal(v.status,'ready');
   const play=(voice,t)=>new Promise(done=>{const job=voice.speak(t),lens=[];job.onchunk=c=>lens.push(c.length);job.ondone=()=>done(lens);job.onerror=()=>done('error');});
   assert.deepEqual(await play(v,'Vi er framme! Hurra!'),[1500,500],'one chunk per sentence, in order');assert.ok(v.covers('Hei Sofia!')&&!v.covers('Hei Sofia! Ny setning.'));
@@ -65,27 +75,37 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   const d0=decodes;await play(v,'Hurra!');assert.equal(decodes,d0,'a clip is unpacked once');
   for(let i=0;i<9;i++)v.remember('lang '+i,new Float32Array(9e5));assert.ok(v.cacheBytes<=24e6&&!v.cache.has('lang 0')&&v.cache.has('lang 8'),'the clip memory stays under 24 MB');
   online=false;const v2=new ClipVoice(base);await v2.load();assert.equal(v2.status,'ready','offline from the cache');
-  store.clear();const v3=new ClipVoice(base);await v3.load();assert.equal(v3.status,'failed');assert.equal(timers.at(-1).ms,20000);online=true;timers.at(-1).fn();await new Promise(r=>saved.setTimeout(r,5));assert.equal(v3.status,'ready','tried again after 20 s');
-  const v4=new ClipVoice(base);await v4.load();v4.index.clips['Hei Sofia!']=[0,7];const n0=timers.length;assert.equal(await play(v4,'Hei Sofia!'),'error','a clip that will not decode: the iPad reads');
-  assert.equal(v4.error,'decode');assert.equal(timers.length,n0,'and it is not tried again');}
+  store.clear();const v3=new ClipVoice(base);await v3.load();assert.equal(v3.status,'failed');assert.equal(timers.at(-1).ms,10000);online=true;timers.at(-1).fn();await new Promise(r=>saved.setTimeout(r,5));assert.equal(v3.status,'ready','tried again after 10 s');
+  // No limit to the tries (before 25 November 2026: two, and then it had to be switched off and on), and at once when the net is back.
+  online=false;store.clear();const v5=new ClipVoice(base);await v5.load();const waits=[timers.at(-1).ms];for(let i=0;i<5;i++){timers.at(-1).fn();await new Promise(r=>saved.setTimeout(r,5));waits.push(timers.at(-1).ms);}
+  assert.deepEqual(waits,[10000,20000,40000,80000,120000,120000],'tried again with no limit, at most two minutes apart');
+  online=true;v5.retry();await new Promise(r=>saved.setTimeout(r,5));assert.equal(v5.status,'ready','the net back: at once');
+  const v6=new ClipVoice(base);v6.ensure();await new Promise(r=>saved.setTimeout(r,5));assert.equal(v6.status,'ready','something to say before it was started: it starts');
+  const v4=new ClipVoice(base);await v4.load();assert.equal(v4.status,'ready',v4.error);v4.index.clips['Hei Sofia!']=[0,7];const n0=timers.length;
+  assert.equal(await play(v4,'Hei Sofia!'),'error','a clip that will not unpack: the iPad reads that line');assert.equal(v4.status,'ready','and the voice stays on');assert.equal(timers.length,n0);
+  await play(v4,'Hei Sofia!');await play(v4,'Hei Sofia!');assert.equal(v4.error,'decode');assert.equal(v4.status,'failed');assert.equal(timers.at(-1).ms,30000,'three in a row: a rest of 30 s');
+  v4.ensure();assert.equal(v4.status,'failed','not before the rest is over');timers.at(-1).fn();await new Promise(r=>saved.setTimeout(r,5));assert.equal(v4.status,'ready','then back by itself, without a new download');}
  finally{Object.assign(globalThis,saved);console.info=realInfo;}
- console.log('Voice: '+keys.length+' sentences with clips ('+(pack.length/1e6).toFixed(1)+' MB), the pack whole, PEG read «pegg»; the player plays the clips in order, once unpacked, offline from the cache, tries a failed download again and lets the iPad read anything missing: OK');}
+ console.log('Voice: '+keys.length+' sentences with clips ('+(pack.length/1e6).toFixed(1)+' MB), the pack whole, PEG read «pegg»; the player plays the clips in order, once unpacked, offline from the cache, tries a failed download again with no limit, rests and comes back by itself, and lets the iPad read anything missing: OK');}
 
 // ---- The game: say() lets the new voice read when it can, and the iPad's own voice otherwise; the switch in the menu is saved and on from the start ----
 {const {spoken}=await import('./dist/tts/clips.mjs'),data=JSON.parse(fs.readFileSync('dist/map.json','utf8')),code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
- const launch=async(storage,ready)=>{const els=new Map();let callbacks=[],now=0;const canvasContext=new Proxy({},{get:()=>()=>{}}),device=[],neural=[],loads=[];
+ const launch=async(storage,ready)=>{const els=new Map();let callbacks=[],now=0;const canvasContext=new Proxy({},{get:()=>()=>{}}),device=[],neural=[],loads=[],starts=[];
   const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',value:'',style:{},children:[],classList:{add(){},remove(){},toggle(){}},setAttribute(){},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(){},getContext(){return canvasContext}});return els.get(id);};
-  const tts={cancel(){},speak:u=>device.push(u.text),getVoices:()=>[]};const createVoice=({on})=>({start(){},load:o=>loads.push(o),stop(){},note:s=>s?'på':'av',speak:t=>{if(!ready||!on())return false;neural.push(t);return true;}});
+  const tts={cancel(){},speak:u=>device.push(u.text),getVoices:()=>[]};const createVoice=({on,switchOn})=>({start(){starts.push(switchOn());},load:o=>loads.push(o),stop(){},note:s=>s?'på':'av',speak:t=>{if(!ready||!on())return false;neural.push(t);return true;}});
   const env={T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,createVoice,spoken,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},
    window:{addEventListener(){}},SpeechSynthesisUtterance:class{constructor(t){this.text=t;}},speechSynthesis:tts,setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){}})};
   env.window.speechSynthesis=tts;Object.defineProperty(env,'localStorage',{get:()=>storage});const ctx=vm.createContext(env);
   const init=vm.runInContext(`(async()=>{${code}\n globalThis.test={say,voiceOn:()=>voiceOn};})()`,ctx);for(let i=0;i<12;i++){await Promise.resolve();const q=callbacks.splice(0);q.forEach(cb=>cb(now+=45));}await init;
-  return {test:env.test,element,device,neural,loads};};
+  return {test:env.test,element,device,neural,loads,starts};};
  const store=new Map(),storage={getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,String(v))};
- let g=await launch(storage,true);assert.equal(g.test.voiceOn(),true,'on from the start');assert.equal(g.element('voice').value,'on');assert.equal(g.element('voiceNote').textContent,'på');
+ let g=await launch(storage,true);assert.equal(g.test.voiceOn(),true,'on from the start');assert.deepEqual(g.starts,[true],'and started at once, switched on');assert.equal(g.element('voice').value,'on');assert.equal(g.element('voiceNote').textContent,'på');
  g.test.say('Hei Sofia!');assert.deepEqual(g.neural,['Hei Sofia!']);assert.deepEqual(g.device,[],'the new voice reads, not the iPad');
  g=await launch(storage,false);g.test.say('Ikke klar ennå');assert.deepEqual(g.device,['Ikke klar ennå'],'not ready: the iPad reads');g.test.say('Mat gjennom PEG-slangen.');assert.equal(g.device.at(-1),'Mat gjennom pegg-slangen.','the iPad says PEG as a word too');
  g=await launch(storage,true);g.element('voice').onchange({target:{value:'off'}});g.test.say('Av');assert.deepEqual(g.device,['Av'],'switched off: the iPad reads');
  g=await launch(storage,true);assert.equal(g.element('voice').value,'off','the choice is saved');g.element('voice').onchange({target:{value:'on'}});assert.ok(g.loads.length===1&&g.loads[0].force===true,'switching it on starts it at once');
  g=await launch(storage,true);assert.equal(g.test.voiceOn(),true);
+ // Switched off before the new voice «ingrid» (25 November 2026): on again, once.
+ {const old=new Map([['sofiatur.innstillinger',JSON.stringify({v:3,music:'on',voice:'off'})]]),st={getItem:k=>old.get(k)??null,setItem:(k,v)=>old.set(k,String(v))};
+  g=await launch(st,true);assert.equal(g.test.voiceOn(),true,'off from before the new voice: on again');assert.equal(g.element('voice').value,'on');}
  console.log('Voice in the game: say() uses the new voice when it is ready and the iPad\'s voice otherwise; "Stemme" in the menu is on from the start and saved: OK');}

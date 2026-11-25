@@ -24,7 +24,7 @@ const music=createMusic();
 // The new Norwegian voice (voice.js, 25 November 2026): a real woman's voice («ingrid»), read in advance, the same as in the space game. Until it is ready, when it is
 // switched off in the menu ("Stemme"), and whenever it fails, the iPad's own voice reads (sayDevice). On from the start.
 let voiceOn=true;
-const voice=typeof createVoice==='function'?createVoice({on:()=>sound&&voiceOn,duck:on=>music.duck(on),fallback:t=>sayDevice(t),onChange:()=>voiceNote()}):null;
+const voice=typeof createVoice==='function'?createVoice({on:()=>sound&&voiceOn,switchOn:()=>voiceOn,duck:on=>music.duck(on),fallback:t=>sayDevice(t),onChange:()=>voiceNote()}):null;
 function voiceNote(){const el=$('voiceNote');if(el)el.textContent=voice?voice.note(voiceOn):'';}
 function hush(){voice?.stop();sayNow=null;window.speechSynthesis?.cancel?.();} // stops whichever voice is speaking
 const keys=new Set(),touch=new Set(),heldPointers=new Map(),cameraHeading=new T.Vector3();
@@ -272,8 +272,8 @@ $('fullscreen').hidden=!(document.fullscreenEnabled||document.webkitFullscreenEn
 for(const type of ['fullscreenchange','webkitfullscreenchange'])document.addEventListener(type,showFullscreen);
 $('settings').onclick=openMenu;$('sound').onclick=()=>{sound=!sound;$('sound').classList.toggle('active',!sound);$('sound').setAttribute('aria-label',sound?'Slå av lyden':'Slå på lyden');if(!sound)hush();if(sound&&musicOn)music.play();else music.stop();if(sound)say('Hei Sofia!');};
 // Music and blindvei choices are remembered on this device (browser storage may be unavailable, e.g. in private mode).
-function saveSettings(){try{localStorage.setItem('sofiatur.innstillinger',JSON.stringify({v:3,music:musicOn?'on':'off',deadEnds:showDeadEnds?'on':'off',ahead:chooseAhead?'on':'off',voice:voiceOn?'on':'off'}));}catch{}}
-try{const saved=JSON.parse(localStorage.getItem('sofiatur.innstillinger'))||{};musicOn=saved.music!=='off';showDeadEnds=saved.v===3&&saved.deadEnds==='on';chooseAhead=saved.ahead==='on';voiceOn=saved.voice!=='off';}catch{} // blindveier are off unless chosen on since 11 October 2026 (v:3); older saved values do not count
+function saveSettings(){try{localStorage.setItem('sofiatur.innstillinger',JSON.stringify({v:3,music:musicOn?'on':'off',deadEnds:showDeadEnds?'on':'off',ahead:chooseAhead?'on':'off',voice:voiceOn?'on':'off',voiceV:2}));}catch{}}
+try{const saved=JSON.parse(localStorage.getItem('sofiatur.innstillinger'))||{};musicOn=saved.music!=='off';showDeadEnds=saved.v===3&&saved.deadEnds==='on';chooseAhead=saved.ahead==='on';voiceOn=saved.voiceV!==2||saved.voice!=='off';}catch{} // blindveier are off unless chosen on since 11 October 2026 (v:3); older saved values do not count; the voice is on for everyone once with the new voice «ingrid» (voiceV:2, 25 November 2026), whatever was saved before
 $('music').value=musicOn?'on':'off';$('deadEnds').value=showDeadEnds?'on':'off';$('chooseAhead').value=chooseAhead?'on':'off';$('voice').value=voiceOn?'on':'off';voice?.start();voiceNote();
 // Rewards: after the first trip to the kindergarten Sofia can pick the car's colour on the start screen, after the second
 // the car can be a running cat, after the third it gets a rainbow trail, after the fourth the horn, after the fifth, sixth and seventh

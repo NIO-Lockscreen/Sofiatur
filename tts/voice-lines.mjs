@@ -7,7 +7,7 @@ import { constFrom } from './lines.mjs';
 
 export default {
   out: 'dist/tts/voice',
-  files: ['dist/game.js', 'dist/teeth.js', 'dist/meal.js', 'dist/inside.js', 'dist/rides.js', 'dist/landmarks.js', 'dist/dream.js', 'dist/voice.js'],
+  files: ['dist/game.js', 'dist/teeth.js', 'dist/meal.js', 'dist/inside.js', 'dist/rides.js', 'dist/landmarks.js', 'dist/dream.js'],
   // Never read: the download size in the voice's note in the settings.
   skip: [/\bMB\b/],
   // Functions whose arguments are read aloud.
