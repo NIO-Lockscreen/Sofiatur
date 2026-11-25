@@ -29,9 +29,13 @@ sys.path.insert(0, os.path.join(HERE, "src"))
 import g2p_no  # noqa: E402
 
 SAMPLE_RATE = 24000
-# Phonemes changed after the text-to-phoneme step, for this voice. «Sofia» as no_listx has it (sʊfˈiːʲɑ, right for the Piper voice) was
-# heard as «Sofidia» or «Sofiria» by NB-Whisper in 6 of 6 test sentences with ingrid; suːfˈiːɑ was heard as «Sofia» in 6 of 6 (25 November 2026).
-PHONEME_FIXES = [("sʊfˈiːʲɑ", "suːfˈiːɑ")]
+# Phonemes changed after the text-to-phoneme step, for this voice, each tried with NB-Whisper (small) with and without (25 November 2026):
+# - «Sofia» as no_listx has it (sʊfˈiːʲɑ, right for the Piper voice) was heard «Sofidia» or «Sofiria» in 6 of 6 sentences; suːfˈiːɑ «Sofia» in 6 of 6.
+# - ʲ: the game's espeak-ng (newer than the 1.51 the model was trained with) puts it between two vowels («viːʲ ˌɛːr», «lˈiːʲɑnvɑnnət»), and
+#   the model makes a sound of it: «Vi er» was heard «Hvit er», Lianvannet «liten vannet», KIWI «kivier». Without it, right.
+# - «igjen» is stressed on the first syllable (ˈɪjən) and was heard «i renn» / «i len»; ɪjˈɛn is heard «igjen».
+# - «ishall» (ˈɪshɑl) was heard «i sal»; ˈiːshˌɑl (is-hall) is heard «ishall».
+PHONEME_FIXES = [("sʊfˈiːʲɑ", "suːfˈiːɑ"), ("ʲ", ""), ("ˈɪjən", "ɪjˈɛn"), ("ˈɪshɑl", "ˈiːshˌɑl")]
 
 
 class GameEspeak:

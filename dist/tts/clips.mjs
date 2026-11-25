@@ -10,7 +10,9 @@ export function sentences(text) {
   return t.replace(/([.!?…]["»”')\]]*)(?:\s+|(?=\p{Lu}))/gu, '$1\n').split('\n').map(s => s.trim()).filter(s => /[\p{L}\d]/u.test(s));
 }
 
-// What is read for what is written: PEG (the feeding tube) is said as a word, «pegg», not spelled P-E-G (25 November 2026).
+// What is read for what is written (25 November 2026): PEG (the feeding tube) is said as a word, «pegg», not spelled P-E-G; and words in
+// capitals (a heading, «FOR VARMT FOR EN AND», «KOMETKRAFT!») are read as words, not spelled. Short ones alone (KIWI, NAV) stay as they are.
 export function spoken(text) {
-  return String(text ?? '').replace(/\bPEG\b/g, 'pegg');
+  return String(text ?? '').replace(/\bPEG\b/g, 'pegg')
+    .replace(/(^|[^\p{L}])(\p{Lu}{2,}(?:(?:,? |-)\p{Lu}{2,})+|\p{Lu}{6,})(?!\p{L})/gu, (m, pre, w) => pre + w[0] + w.slice(1).toLowerCase());
 }

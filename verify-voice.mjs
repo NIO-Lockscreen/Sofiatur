@@ -47,7 +47,8 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  for(const [k,[at,len]] of Object.entries(index.clips)){assert.ok(at>=0&&len>400&&at+len<=pack.length,k);const h=pack.subarray(at,at+3);assert.ok(h[0]===0xff&&(h[1]&0xe0)===0xe0||h.toString()==='ID3','an MP3 stream starts at '+k);}
  for(const k of keys)assert.deepEqual(clips.sentences(k),[k],'a clip is one sentence: '+k);
  assert.deepEqual(clips.sentences('Hurra Sofia! Du fant barnehagen!Og se! 🦆 En stor, snill edderkopp.'),['Hurra Sofia!','Du fant barnehagen!','Og se!','En stor, snill edderkopp.']);
- assert.equal(clips.spoken('Mat gjennom PEG-slangen. PEGASUS'),'Mat gjennom pegg-slangen. PEGASUS','PEG is said «pegg»');assert.ok(keys.includes('Nå skal Sofia få mat gjennom PEG-slangen.'),'the PEG line has a clip');
+ assert.equal(clips.spoken('Mat gjennom PEG-slangen.'),'Mat gjennom pegg-slangen.','PEG is said «pegg»');
+ assert.equal(clips.spoken('FOR VARMT FOR EN AND. HURRA, SOFIA! Hemmelig KIWI-bil'),'For varmt for en and. Hurra, sofia! Hemmelig KIWI-bil','headings in capitals are read as words, short names stay');assert.ok(keys.includes('Nå skal Sofia få mat gjennom PEG-slangen.'),'the PEG line has a clip');
  for(const f of ['tts/build-espeak.sh','tts/src/bridge.c','tts/src/no_listx','tts/src/g2p_no.py','tts/espeak-nb.wasm','tts/licenses/espeak-ng-GPL-3.0.txt','dist/tts/licenses/canora-norwegian-Apache-2.0.txt','dist/tts/licenses/canora-norwegian-NOTICE.txt'])assert.ok(fs.existsSync(f),f);
  const {ClipVoice}=await import('./dist/voice.js'),logged=[],timers=[],store=new Map();let online=true,decodes=0;
  const files={'ingrid.json':JSON.stringify({hash:'abc',bytes:3000,sampleRate:24000,clips:{'Hei Sofia!':[0,1000],'Vi er framme!':[1000,1500],'Hurra!':[2500,500]}}),'ingrid.mp3':new Uint8Array(3000)};
