@@ -6,6 +6,7 @@ import {createMusic} from './music.js';
 import {createInside} from './inside.js';
 import {createToothGame} from './teeth.js';
 import {FOODS,BITES,PUMP} from './meal.js';
+import {DISHES,FOOD_MAX,cleanFood,orderFood,eatFood,foodChoices,dishById} from './food.js';
 import {createVoice,spoken} from './voice.js';
 const $=id=>document.getElementById(id);
 let world,data,state='loading',sound=true,current,previous=null,active=null,distance=0,speed=0,travelled=0,turns=0,heading=new T.Vector3(0,0,1),position=new T.Vector3(),choices=[],best=null,totalInitial=0,maxKmh=200,camMode='follow',lastTime=performance.now(),time=0,mapClock=0,leavingHome=false,lastEdge=null,lines=null;
@@ -363,11 +364,11 @@ const houseFriends=()=>({ludvig:ludvigUnlocked&&behind==='ludvig',duckling:duckl
 const withFriends=()=>state==='inside'&&(company.ludvig||company.duckling);
 const COMPANY_IN={ludvig:'Ludvig ble med inn.',duckling:'Den lille gule anda ble med inn.',both:'Ludvig og den lille gule anda ble med inn.'};
 const companyKey=()=>company.ludvig&&company.duckling?'both':company.ludvig?'ludvig':company.duckling?'duckling':null;
-function openHouse(){if(!inside)inside=createInside({T,renderer:world.renderer,canvas:$('world'),on:bedEvent});state='inside';ui.welcome.hidden=true;$('goInside').hidden=true;$('visitLudvig').hidden=true;$('hornHome').hidden=true;$('insideHud').hidden=false;$('unlockInfo').hidden=true;}
+function openHouse(){if(!inside)inside=createInside({T,renderer:world.renderer,canvas:$('world'),on:bedEvent});closeFood();arriving.length=0;foodChanged();state='inside';ui.welcome.hidden=true;$('goInside').hidden=true;$('visitLudvig').hidden=true;$('hornHome').hidden=true;$('insideHud').hidden=false;$('unlockInfo').hidden=true;}
 function goInside(){if(state!=='intro'||!world)return;fx('door');openHouse();place='home';company=houseFriends();
  const first=!beenInside;beenInside=true;saveProgress();applyRewards();inside.enter(podiumItems(),{pigHidden:!pigUnlocked,friends:company,place});inside.setBrushed?.(brushCount);sleepHud(false);
  let line=first?'Velkommen inn, Sofia! På pallen står alle overraskelsene dine. Trykk på dem!':'Velkommen hjem igjen, Sofia!';const k=companyKey();if(k)line+=' '+COMPANY_IN[k];say(line);}
-function goOutside(){if(state!=='inside')return;if(place==='ludvig'){leaveLudvig();return;}stopBrushing(true);fx('door');reset();}
+function goOutside(){if(state!=='inside')return;closeFood();if(place==='ludvig'){leaveLudvig();return;}stopBrushing(true);fx('door');reset();}
 // Eating at Ludvig's (25 November 2026): parked at Bøckmans veg 102 (with the arrows, or stopped there in free driving), «🍽️ Spise hos Ludvig» takes Sofia into
 // his house, where they eat together (with the spoon or PEG; he has PEG too) and can jump on his sofa bed. «Gå ut» goes back to the car, parked where it was.
 function atLudvig(){if(!world)return false;if(state==='decision')return current===ludvigParking;const p=data.nodes[ludvigParking];return state==='free'&&freeAt===ludvigParking&&!!p&&Math.hypot(free.car.x-p[0],free.car.z-p[1])<12;} // in free driving the car keeps going by itself: the button shows while it is by the place
@@ -436,7 +437,8 @@ function wakeUp(){if(state!=='inside'||!inside?.wake())return;sleepHud(false);if
 function houseTap(x,y){const hit=inside.pick(x,y);$('unlockInfo').hidden=true;if(!hit)return;
  if(hit.type==='item'){const it=podiumItems().find(i=>i.id===hit.id);if(!it)return;fx('pop');$('unlockInfoIcon').textContent=it.icon;$('unlockInfoTitle').textContent=it.title;$('unlockInfoText').textContent=it.text;$('unlockInfo').hidden=false;say((it.unlocked?it.title+'. ':'')+it.text);}
  else if(hit.type==='pig')findPig();else if(hit.type==='door')goOutside();
- else if(hit.type==='table')startMeal('spoon');else if(hit.type==='bag')startMeal('peg');else if(hit.type==='meal')mealTap();else if(hit.type==='glass')glassTap();
+ else if(hit.type==='table')chooseMeal(true);else if(hit.type==='bag')startMeal('peg');else if(hit.type==='meal')mealTap();else if(hit.type==='glass')glassTap();
+ else if(hit.type==='phone')openPhone(true);else if(hit.type==='dish')startMeal('spoon',hit.id);
  else if(hit.type==='bed'){const now=performance.now();if(now-bedTapAt<600)return;bedTapAt=now;if(inside.asleep)wakeUp();else if(withFriends()){if(!inside.jumping)jumpOnBed();} // with a friend in it is always jumping
   else if(!bedJumped||!inside.jumping&&Math.random()<JUMP_AGAIN)jumpOnBed();else goToBed();}
  else if(hit.type==='dream'){const name=DREAM_NAMES[hit.id]||podiumItems().find(i=>i.id===hit.id&&i.unlocked)?.title;if(sound)music.effect?.('pop');if(name)say(name+'!');}
@@ -454,8 +456,13 @@ const MEAL_SAY_TWO={eat:'Trykk, så tar Sofia en skje, og Ludvig hermer etter. T
  ready:'Klikk! Slangene er koblet til knappene på magen. Trykk på sekken for å starte pumpene.',pump:'Pip! Pumpene går. Maten renner gjennom slangene og rett i magen. Trykk på Sofia, så danser hun, og Ludvig hermer etter!',
  beep:'Pip, pip, pip! Ferdig! Nå er magen god og mett, både hos Sofia og Ludvig. Etter maten pusser vi tennene.'};
 const MEAL_FX={bite:'nam',full:'reward',plug:'click',pump:'beep',dance:'boing',beep:'pumpdone',unplug:'click',gulp:'glugg'};
+// A dish she has ordered on the mobile (food.js): eaten with her fingers (pizza, the burger, sushi), «Alt er spist!» when it is eaten up.
+const DISH_SAY={eat:'Trykk, så tar Sofia en bit! Trykk på glasset, så drikker hun.',full:'Ferdig! Alt er spist. Nå er magen god og mett, Sofia! Etter maten pusser vi tennene.'};
+const DISH_SAY_TWO={eat:'Trykk, så tar Sofia en bit, og Ludvig hermer etter. Trykk på glasset, så drikker de.',full:'Ferdig! Alt er spist. Nå er magen god og mett, både hos Sofia og Ludvig! Etter maten pusser vi tennene.'};
 let mealTalk=-1e9;
-function startMeal(kind){if(state!=='inside'||!inside?.startMeal||brushing||!inside.startMeal(kind))return;$('unlockInfo').hidden=true;fx('pop');const f=FOODS[inside.meal.st.food]?.name||'mat';
+// What she eats now: a dish she has ordered, or the bowl's food today.
+const mealDish=()=>{const m=inside?.meal?.st;return m?.kind==='spoon'&&m.dish?dishById(m.dish):null;},foodName=()=>mealDish()?.name||FOODS[inside?.meal?.st.food]?.name||'mat';
+function startMeal(kind,dish=null){if(state!=='inside'||!inside?.startMeal||brushing||!inside.startMeal(kind,place==='home'?dish:null))return;$('unlockInfo').hidden=true;fx('pop');const f=foodName();
  const two=state==='inside'&&company.ludvig;
  say(kind==='spoon'?(two?`Mat! I dag blir det ${f}. Sofia og Ludvig setter seg ved bordet.`:`Mat! I dag blir det ${f}. Sofia setter seg ved bordet.`):two?'Nå skal Sofia og Ludvig få mat gjennom PEG-slangen. De tar på seg hver sin sekk med pumpe.':'Nå skal Sofia få mat gjennom PEG-slangen. Hun tar på seg sekken med pumpen.');routineHud();}
 function mealTap(){const r=inside?.mealTap();if(r==='bite')fx('pop');}
@@ -463,23 +470,62 @@ function mealTap(){const r=inside?.mealTap();if(r==='bite')fx('pop');}
 // with the PEG backpack on it is a tap like any other.
 let sips=0;
 function glassTap(){const m=inside?.meal?.st;if(!m)return;if(m.kind==='peg'){mealTap();return;}if(!m.kind){startMeal('spoon');if(!inside.meal.st.kind)return;}inside.mealDrink();}
-function mealEvent(step){const two=company.ludvig;if(visit&&(step==='full'||step==='beep'))visit.ate=true;if(MEAL_FX[step])fx(MEAL_FX[step]);const words=two&&MEAL_SAY_TWO[step]||MEAL_SAY[step];if(words)say(words);
+function mealEvent(step){const two=company.ludvig;if(visit&&(step==='full'||step==='beep'))visit.ate=true;if(MEAL_FX[step])fx(MEAL_FX[step]);
+ // the first bite of a dish from the trolley: it is hers no longer
+ if(step==='taken'){food=eatFood(food,inside.meal.st.dish);saveFood();foodChanged();return;}
+ const hand=mealDish()?.hand,ordered=!!mealDish(),words=(ordered&&step==='full'||hand&&step==='eat')?(two?DISH_SAY_TWO[step]:DISH_SAY[step]):two&&MEAL_SAY_TWO[step]||MEAL_SAY[step];if(words)say(words);
  const now=performance.now();if(step==='bite'&&inside.meal.st.bites<BITES&&now-mealTalk>1800){mealTalk=now;say(['Nam!','Mmm, godt!','Nam nam!','Så godt!'][inside.meal.st.bites%4]);}
  if(step==='ahh'&&now-mealTalk>1800){mealTalk=now;say(['Ahh, godt med vann!','Glugg, glugg!','Mmm, deilig vann!'][sips++%3]);}
  if(step==='dance'&&now-mealTalk>2500){mealTalk=now;say((two?['Se, Sofia og Ludvig danser med sekkene!','Ludvig hermer etter Sofia!','Hopp og sprett!','Maten kommer likevel!']:['Se, Sofia danser med sekken!','Sekken henger med!','Hopp og sprett!','Maten kommer likevel!'])[Math.floor(Math.random()*4)]);}
  if(step==='end')sleepHud(false);else routineHud();}
 // The room's buttons and the title as they should be now: the everyday buttons when she is free, the meal's buttons and words while she eats.
 function routineHud(){if(!inside?.meal)return;const m=inside.meal.st,k=m.kind,busy=inside.asleep||inside.jumping;$('routineBar').hidden=!!(busy||k||brushing);$('mealBar').hidden=!k||brushing;$('goOut').hidden=!!k;
- $('tummy').hidden=!k;if(!k)return;const s=m.step,f=FOODS[m.food]?.name||'mat',a=$('mealAction');$('unlockInfo').hidden=true;
- a.hidden=!['eat','ready','pump'].includes(s);a.textContent=s==='eat'?'🥄 En skje til':s==='ready'?'▶ Start pumpen':'💃 Dans med sekken';
+ $('tummy').hidden=!k;if(!k)return;const s=m.step,f=foodName(),a=$('mealAction'),dish=mealDish(),bit=dish?.hand?'bit':'skje';$('unlockInfo').hidden=true;
+ a.hidden=!['eat','ready','pump'].includes(s);a.textContent=s==='eat'?(dish?.hand?dish.emoji+' En bit til':'🥄 En skje til'):s==='ready'?'▶ Start pumpen':'💃 Dans med sekken';
  $('mealDone').hidden=!(k==='spoon'&&['walk','sit','eat'].includes(s)||k==='peg'&&['walk','plug','ready','pump'].includes(s));
  const two=company.ludvig,who=two?'Sofia og Ludvig':'Sofia';
- const [name,tip]=k==='spoon'?(s==='eat'?[`${who} spiser ${f}`,two?`Trykk, så tar hun en skje og Ludvig hermer etter · ${BITES-m.bites} igjen`:`Trykk, så tar hun en skje · trykk på glasset, så drikker hun · ${BITES-m.bites} igjen`]:['full','up'].includes(s)?[two?'Skålene er tomme!':'Skåla er tom!','Nå er magen god og mett']:[`${who} skal spise`,`I dag blir det ${f}!`])
+ const [name,tip]=k==='spoon'?(s==='eat'?[`${who} spiser ${f}`,two?`Trykk, så tar hun en ${bit} og Ludvig hermer etter · ${BITES-m.bites} igjen`:`Trykk, så tar hun en ${bit} · trykk på glasset, så drikker hun · ${BITES-m.bites} igjen`]:['full','up'].includes(s)?[dish?'Alt er spist!':two?'Skålene er tomme!':'Skåla er tom!','Nå er magen god og mett']:[`${who} skal spise`,`I dag blir det ${f}!`])
   :s==='ready'?[two?'Slangene er koblet til':'Slangen er koblet til',two?'Trykk på sekken, så starter pumpene':'Trykk på sekken, så starter pumpen']:s==='pump'?[two?'Pumpene går':'Pumpen går',two?'Maten renner i slangene · trykk på Sofia, så danser de':'Maten renner i slangen · trykk på Sofia, så danser hun']:['beep','unplug','drop'].includes(s)?[two?'Pumpene er ferdige':'Pumpen er ferdig','Nå er magen god og mett']:['Mat med PEG',two?'De tar på seg sekkene og kobler slangene til magen':'Sofia tar på seg sekken og kobler slangen til magen'];
  $('insideName').textContent=name;$('insideTip').textContent=tip;tummyHud();}
 function tummyHud(){const m=inside?.meal?.st;if(!m?.kind)return;const full=m.kind==='peg'?Math.min(1,m.pump/PUMP+(['beep','unplug','drop'].includes(m.step)?1:0)):Math.min(1,m.bites/BITES);
  $('tummyFill').style.width=Math.round(full*100)+'%';$('tummy').setAttribute('aria-label',`Magen er ${Math.round(full*100)} prosent mett`);}
-$('eatSpoon').onclick=()=>startMeal('spoon');$('eatPeg').onclick=()=>startMeal('peg');$('mealDone').onclick=()=>inside?.finishMeal();$('mealAction').onclick=mealTap;
+$('eatSpoon').onclick=()=>chooseMeal();$('eatPeg').onclick=()=>startMeal('peg');$('mealDone').onclick=()=>inside?.finishMeal();$('mealAction').onclick=mealTap;
+// ---- The white mobile on the table, and the food she orders (25 November 2026, as in the space game; food.js, meal.js) ----
+// The mobile lies on her table in plain sight, and nothing says it is there. A tap opens it: «🛵 Matbud» with pizza, a burger, sushi and an egg. The order is
+// saved at once (sofiatur.mat); a moment later the doorbell rings and the dish pops up on the trolley at the front of the room, which holds FOOD_MAX.
+// «🥄 Spise» or a tap on the table then asks what she wants: a dish from the trolley or the bowl as before; a tap on a dish on the trolley eats that one.
+// It is all in her own room: at Ludvig's she eats from the bowl as before.
+let food=[];try{food=cleanFood(JSON.parse(localStorage.getItem('sofiatur.mat')));}catch{food=[];}
+const DELIVERY=2600,arriving=[];let phoneTimer=0;
+function saveFood(){try{localStorage.setItem('sofiatur.mat',JSON.stringify(food));}catch{}}
+function foodChanged(){inside?.meal?.setFood?.(food,arriving.map(o=>o.id));}
+// A window opened by a tap in the room (on the finger's lifting, houseTap) would get the click that follows it on a button or on its shade: it waits a moment.
+function guardTap(el){el.style.pointerEvents='none';clearTimeout(el.guard);el.guard=setTimeout(()=>el.style.pointerEvents='',400);}
+const homeFree=()=>state==='inside'&&place==='home'&&inside?.meal&&!brushing&&!inside.meal.active&&!inside.asleep&&!inside.jumping&&!inside.bed?.k&&!inside.bed?.u;
+// The menu's buttons are made the first time the mobile is opened (so nothing here runs before food.js is there).
+function renderPhone(){if(!$('orderGrid').children.length)for(const d of DISHES){const b=document.createElement('button');b.type='button';b.className='order';b.innerHTML=`<span aria-hidden="true">${d.emoji}</span><b>${d.word}</b>`;b.onclick=()=>orderDish(d.id);$('orderGrid').append(b);}
+ const full=food.length>=FOOD_MAX;$('phoneFull').hidden=!full;for(const b of $('orderGrid').children)b.disabled=full;$('phoneCount').textContent=food.length?`På trillebordet: ${food.length} av ${FOOD_MAX}`:'';}
+function openPhone(fromTap=false){if(!homeFree()||!$('phone').hidden)return;clearTimeout(phoneTimer);$('phoneMenu').hidden=false;$('phoneSent').hidden=true;renderPhone();
+ $('phone').hidden=false;inside.meal.setPhoneOpen(true);if(fromTap)guardTap($('phone'));$('orderGrid').querySelector('button:not([disabled])')?.focus({preventScroll:true});fx('phone');$('unlockInfo').hidden=true;
+ say(food.length>=FOOD_MAX?'Trillebordet er fullt. Spis litt av maten først!':'Mobilen! Hva vil du bestille? Pizza, burger, sushi eller egg?');}
+function closePhone(){clearTimeout(phoneTimer);$('phone').hidden=true;inside?.meal?.setPhoneOpen(false);}
+function closeFood(){closePhone();$('dishes').hidden=true;}
+function orderDish(id){const dish=dishById(id);if(!dish||$('phone').hidden||!$('phoneSent').hidden)return;
+ if(food.length>=FOOD_MAX){renderPhone();say('Trillebordet er fullt. Spis litt av maten først!');return;}
+ food=orderFood(food,id);saveFood();const o={id};arriving.push(o);foodChanged();fx('order');say(`${dish.word} er bestilt! Maten er på vei.`);
+ $('sentEmoji').textContent=dish.emoji;$('sentWhat').textContent=dish.word;$('phoneMenu').hidden=true;$('phoneSent').hidden=false;phoneTimer=setTimeout(closePhone,1500);
+ // the doorbell: the dish is on the trolley (if she has gone out meanwhile, it is there when she comes in again)
+ setTimeout(()=>{const i=arriving.indexOf(o);if(i<0)return;arriving.splice(i,1);foodChanged();if(state!=='inside'||place!=='home')return;fx('doorbell');toast(dish.emoji+' '+dish.word+' er levert!');
+  say(`Ding dong! Her kommer ${dish.the}. Maten står på trillebordet.`);},DELIVERY);}
+// Eating: with nothing ordered (or at Ludvig's) she eats from the bowl as before; otherwise she chooses, each dish she has once (with how many) and the bowl last.
+function chooseMeal(fromTap=false){if(state!=='inside'||!inside?.meal||brushing||inside.meal.active)return;const list=place==='home'?foodChoices(food):[];if(!list.length){startMeal('spoon');return;}
+ if(inside.asleep||inside.jumping)return;const box=$('dishChoices'),next=FOODS[(inside.meal.st.food+1)%FOODS.length].name;box.replaceChildren();
+ for(const d of [...list,{id:null,emoji:'🥣',word:'Skåla',n:0}]){const b=document.createElement('button');b.type='button';b.className='dish-choice'+(d.id?'':' bowl');
+  b.innerHTML=`<span class="dish-emoji" aria-hidden="true">${d.emoji}</span><b>${d.word}</b>`+(d.n>1?`<small>× ${d.n}</small>`:d.id?'':`<small>${next}</small>`);
+  b.setAttribute('aria-label',d.id?`${d.word}${d.n>1?', '+d.n:''}`:`Skåla: ${next}`);b.onclick=()=>{$('dishes').hidden=true;startMeal('spoon',d.id);};box.append(b);}
+ $('dishes').hidden=false;if(fromTap)guardTap($('dishes'));box.firstChild?.focus({preventScroll:true});fx('pop');$('unlockInfo').hidden=true;say('Hva vil du spise?');}
+$('phoneClose').onclick=closePhone;$('phone').onclick=e=>{if(e.target===e.currentTarget)closePhone();};$('dishesClose').onclick=()=>{$('dishes').hidden=true;};$('dishes').onclick=e=>{if(e.target===e.currentTarget)$('dishes').hidden=true;};
+window.addEventListener('keydown',e=>{if(!$('phone').hidden||!$('dishes').hidden){if(e.key==='Escape')closeFood();if(e.key==='Escape'||e.key.length===1)e.stopImmediatePropagation();}},true); // Esc puts them away; letters do not steer the car meanwhile
 // Tooth brushing (23 November 2026, the same game as in the space game, teeth.js): over the whole screen, with «Tilbake» where «Gå ut» was. Clean teeth give a star
 // on the brushing chart on the wall over the podium (ten places). The count is kept on its own ('sofiatur.tannpuss'): it is no unlock, so RE-ward leaves it alone.
 let toothGame=null,brushing=false,brushCount=0;try{brushCount=Math.max(0,Math.floor(Number(localStorage.getItem('sofiatur.tannpuss'))||0));}catch{}

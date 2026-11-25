@@ -15,14 +15,16 @@
 import {createBoyModel} from './boy.js';
 import {createDucklingModel} from './duck-runner.js';
 import {MEAL,TIME,BITE,DRINK,BITES,FOODS,meshKit,aimArm,createPegBag,createPegTube,pumpLight} from './meal.js';
+import {createDish,createBite,dishById} from './food.js';
 
 const ease=k=>k*k*(3-2*k),mix=(a,b,k)=>a+(b-a)*k,turn=(from,to,k)=>from+Math.atan2(Math.sin(to-from),Math.cos(to-from))*k,clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const towards=(fx,fz,tx,tz)=>Math.atan2(-(tx-fx),-(tz-fz)); // the yaw that looks from (fx, fz) at (tx, tz); forward is −z
 // Ludvig's places: his chair round the table from hers (facing the middle of the table), where he stands before he hops onto it, his backpack on the floor
 // beside hers and where he stands to put it on; by the sofa bed, where he waits while she pulls it out and where he jumps (at the head end, beside her).
-// The duckling: where it waits by the bed and jumps (at the foot end), where it sits on the table, and where it hops down to after a meal.
+// The duckling: where it waits by the bed and jumps (at the foot end), where it sits on the table (a little back from the white mobile, 25 November 2026),
+// and where it hops down to after a meal.
 export const FRIEND={chair:{x:1.6,z:1.98},side:{x:1.34,z:2.46},bag:{x:3.55,z:2.6},stand:{x:3.62,z:2.0},bedWait:{x:-2.22,z:.95},bedJump:{x:-3.0,z:1.0},
- duckWait:{x:-2.12,z:2.25},duckJump:{x:-3.05,z:2.3},table:{x:2.45,z:2.42,yaw:Math.PI+.35},duckDown:{x:1.2,z:2.75},duckSize:.6,lag:.8,duckLag:.5,gap:.5,delay:.35,jumpDelay:.14};
+ duckWait:{x:-2.12,z:2.25},duckJump:{x:-3.05,z:2.3},table:{x:2.47,z:2.34,yaw:Math.PI+.35},duckDown:{x:1.2,z:2.75},duckSize:.6,lag:.8,duckLag:.5,gap:.5,delay:.35,jumpDelay:.14};
 FRIEND.yaw=towards(FRIEND.chair.x,FRIEND.chair.z,MEAL.table.x,MEAL.table.z);
 // Ludvig's body (boy.js): his shoulders, his mouth, how far his hand is from his shoulder, his hips; and how low he sits on his chair.
 const BOY={shoulders:[[-.2,.88,0],[.2,.88,0]],mouth:[0,.945,-.125],arm:.31,seatY:MEAL.seat-.44};
@@ -45,6 +47,11 @@ export function createFriends({T,scene,girl,meal,bed,JUMP,route,outside}){
  const spoon=new T.Group();things.add(spoon);{const silver=std('#c9ced8',.35);cyl(.006,.007,.11,silver,0,.055,0,spoon,8);ball(1,silver,0,.125,0,spoon).scale.set(.02,.026,.008);}
  const bite=ball(1,std('#efe0bb'),0,.128,-.008,spoon);bite.scale.set(.016,.018,.012);
  const Y=new T.Vector3(0,1,0),restSpoon=()=>{spoon.position.set(FRIEND_BOWL.x-.1,tb.h+.008,FRIEND_BOWL.z+.13);spoon.quaternion.setFromAxisAngle(new T.Vector3(1,0,0),Math.PI/2);spoon.rotateOnWorldAxis(Y,FRIEND.yaw+1.2);bite.visible=false;};restSpoon();
+ // When she eats a dish she has ordered on the mobile (food.js, 25 November 2026), he gets one just like it where his bowl stands, and eats it the way she does.
+ const dishSpot=new T.Group();dishSpot.position.set(FRIEND_BOWL.x,tb.h,FRIEND_BOWL.z);dishSpot.rotation.y=FRIEND.yaw-Math.PI;things.add(dishSpot);let dish=null,handBite=null;
+ const dispose=g=>g.traverse(o=>{if(o.isMesh){o.geometry.dispose();o.material.dispose();}});
+ function setDish(id){if(dish?.id===id)return;if(dish){dishSpot.remove(dish.group);dispose(dish.group);dish=null;}if(handBite){things.remove(handBite);dispose(handBite);handBite=null;}
+  if(id){dish=createDish(T,id);dishSpot.add(dish.group);if(dishById(id).hand){handBite=createBite(T,id);handBite.visible=false;things.add(handBite);}}}
  const GLASS_H=.09,glassAt=new T.Vector3(FRIEND_GLASS.x,tb.h+GLASS_H/2,FRIEND_GLASS.z),glass=new T.Group();glass.position.copy(glassAt);things.add(glass);
  cyl(.04,.035,GLASS_H,std('#8fd3ff'),0,0,0,glass);cyl(.033,.033,.003,std('#9fd8f0',.3),0,GLASS_H/2+.001,0,glass);
  // ---- His PEG backpack: exactly the same as hers (meal.js, the user: «Ludvig har helt samme sekk som Sofia»), on the floor beside hers; on his back the straps and the tube round to the button on his tummy ----
@@ -105,6 +112,8 @@ export function createFriends({T,scene,girl,meal,bed,JUMP,route,outside}){
   const to=[mix(BOWL[0],AIM_MOUTH[0],k),mix(BOWL[1]-scoop,AIM_MOUTH[1],k),mix(BOWL[2],AIM_MOUTH[2],k)];aimArm(l,to[0]-SH[0][0],to[1]-SH[0][1],to[2]-SH[0][2]);
   g.updateMatrixWorld(true);l.localToWorld(va.set(0,-.33,0));const target=vc.set(mix(BOWL[0],MOUTH[0],k),mix(BOWL[1]-.03,MOUTH[1],k),mix(BOWL[2],MOUTH[2],k));body.localToWorld(target);
   spoon.position.copy(va);spoon.quaternion.setFromUnitVectors(Y,vb.copy(target).sub(va).normalize());bite.visible=b>=.1&&b<.52;
+  // a dish eaten with the fingers: his spoon stays on the table, and the bite is over his hand
+  if(handBite){restSpoon();body.worldToLocal(hand.copy(va));hand.y+=.04;hand.z-=.04;hand.lerp(vb.set(...MOUTH),.5*k);handBite.position.copy(body.localToWorld(hand));body.getWorldQuaternion(handBite.quaternion);handBite.visible=b>=.1&&b<.52;}
   // the glass in his right hand: he reaches for it, lifts it to his mouth, tips it, and puts it back
   const d=L.drink,up=d<.35?0:d<.8?ease((d-.35)/.45):d<1.4?1:d<1.8?1-ease((d-1.4)/.4):0,held=d>=.35&&d<1.8,free=d<0?1:d<.35?1-ease(d/.35):d>=1.8?ease(Math.min(1,(d-1.8)/.2)):0;
   const c=GLASS.table.map((v,i)=>mix(v,GLASS.mouth[i],up)),grip=[.05,0,0],want=[c[0]+grip[0]-SH[1][0],c[1]-SH[1][1],c[2]-SH[1][2]],len=Math.hypot(...want);
@@ -149,7 +158,11 @@ export function createFriends({T,scene,girl,meal,bed,JUMP,route,outside}){
   // his bowl: the same food as hers, a heap that is smaller after each of his spoonfuls
   const left=kind==='spoon'&&['walk','sit','eat','full'].includes(st.step)?Math.max(0,1-(L.bites+(L.bite>=.1&&L.bite<.5?1:0))/BITES):0,r=.085*(.5+.5*left);
   const h=.007+.03*left;food.visible=with_.ludvig&&left>0;food.scale.set(r,h,r);dots.forEach((d,i)=>{const a=i*2.4+.7;d.visible=food.visible&&i<Math.ceil(5*left);d.position.set(Math.cos(a)*.5*r,.077+.82*h,Math.sin(a)*.5*r);});
-  if(st.food>=0){const f=FOODS[st.food];food.material.color.set(f.color);bite.material.color.set(f.color);for(const d of dots)d.material.color.set(f.dots);}}
+  if(st.food>=0){const f=FOODS[st.food];food.material.color.set(f.color);bite.material.color.set(f.color);for(const d of dots)d.material.color.set(f.dots);}
+  // his dish, when she eats one: like hers, smaller after each of his bites; his bowl is put away meanwhile
+  const dishOn=with_.ludvig&&kind==='spoon'&&!!st.dish&&['walk','sit','eat','full','up'].includes(st.step);if(dishOn)setDish(st.dish);
+  bowl.visible=!dishOn;if(dish){dish.group.visible=dishOn;if(dishOn)dish.set(left);}if(handBite&&!(kind==='spoon'&&st.step==='eat'))handBite.visible=false;
+  if(st.dish==='egg')bite.material.color.set('#ffd96a');}
 
  function updateLudvig(dt,time,sofia){const st=meal.st,kind=st.kind,step=st.step,g=ludvig.group;ludvig.group.visible=true;
   // the copies waiting for their moment

@@ -77,6 +77,8 @@ export function createMusic({fetch=globalThis.fetch,horns:files=HORNS}={}){
  // and ding0..ding15, a note higher for each clean tooth (C major from C5).
  Object.assign(SOUNDS,{nam:[[330,0,.12,.07],[392,.14,.15,.06]],click:[[1500,0,.035,.025,'square'],[950,.05,.05,.022,'square']],beep:[[1760,0,.13,.05]],pumpdone:[[1760,0,.13,.05],[1760,.24,.13,.05],[1760,.48,.13,.05]],
   scrub:[[2400,0,.05,.012,'triangle'],[1900,.06,.05,.01,'triangle']],squeeze:[[230,0,.3,.05,'triangle'],[180,.12,.25,.03,'triangle']],rinse:[[240,.3,.12,.04],[280,.52,.12,.04],[320,.74,.12,.04],[360,.96,.12,.04]]});
+ // The white mobile (25 November 2026): two soft blips when it opens, a rising tone when an order is sent, and the doorbell when the food comes.
+ Object.assign(SOUNDS,{phone:[[1175,0,.07,.035],[1567,.09,.07,.035]],order:[[880,0,.12,.04],[1320,.1,.14,.035]],doorbell:[[659,0,.75,.07],[1318,0,.4,.014],[523,.42,.75,.07],[1046,.42,.4,.014]]});
  [0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26].forEach((s,i)=>{SOUNDS['ding'+i]=[[523.25*2**(s/12),0,.3,.045]];});
  return {
   effect(name){hornContext();if(!fxOut){fxOut=ctx.createGain();fxOut.gain.value=.9;fxOut.connect(ctx.destination);}

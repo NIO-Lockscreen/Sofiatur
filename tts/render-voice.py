@@ -35,7 +35,12 @@ SAMPLE_RATE = 24000
 #   the model makes a sound of it: «Vi er» was heard «Hvit er», Lianvannet «liten vannet», KIWI «kivier». Without it, right.
 # - «igjen» is stressed on the first syllable (ˈɪjən) and was heard «i renn» / «i len»; ɪjˈɛn is heard «igjen».
 # - «ishall» (ˈɪshɑl) was heard «i sal»; ˈiːshˌɑl (is-hall) is heard «ishall».
-PHONEME_FIXES = [("sʊfˈiːʲɑ", "suːfˈiːɑ"), ("ʲ", ""), ("ˈɪjən", "ɪjˈɛn"), ("ˈɪshɑl", "ˈiːshˌɑl")]
+# - The food on the mobile (25 November 2026): espeak reads «pizza» with a z (pˈɪzɑ), «burger» as written (bˈɨrɡər), «sushi» as «sus-hi» (sˈɨshiː)
+#   and stresses «mobil» on the first syllable. Here as Norwegians say them: «pitsa», «børger», «sushi» with sj, «mobil» stressed last, and
+#   «trillebordet» without a long e in the middle.
+PHONEME_FIXES = [("sʊfˈiːʲɑ", "suːfˈiːɑ"), ("ʲ", ""), ("ˈɪjən", "ɪjˈɛn"), ("ˈɪshɑl", "ˈiːshˌɑl"),
+                 ("pˈɪzaːn", "pˈɪtsɑən"), ("pˈɪzɑ", "pˈɪtsɑ"), ("bˈɨrɡeːrən", "bˈœrɡərən"), ("bˈɨrɡər", "bˈœrɡər"), ("sˈɨshiː", "sˈɨːʃiː"),
+                 ("mˈuːbiːl", "mʊbˈiːl"), ("trˈɪlleːbˌuːrda", "trˈɪləbˌuːrda")]
 
 
 class GameEspeak:

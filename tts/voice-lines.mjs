@@ -13,6 +13,7 @@ export default {
   // Functions whose arguments are read aloud.
   calls: ['say', 'talk'],
   values(root) {
+    const dishes = constFrom(root, 'dist/food.js', 'DISHES');
     const foods = constFrom(root, 'dist/meal.js', 'FOODS').map(f => f.name), src = fs.readFileSync(path.join(root, 'dist/game.js'), 'utf8');
     // The names on the podium (trip(id,icon,title,…) and other(id,icon,title,…) in podiumItems), and what Sofia dreams of.
     const titles = [...src.matchAll(/\b(?:trip|other)\('\w+','[^']*','([^']+)'/g)].map(m => m[1]), dreams = Object.values(constFrom(root, 'dist/game.js', 'DREAM_NAMES'));
@@ -28,7 +29,8 @@ export default {
       'e.exitNumber': [1, 2, 3, 4, 5, 6],
       // rideWord(): what Sofia drives, «bilen» or «anda»
       'rideWord()': ['bilen', 'anda'], 'rideWord(false)': ['bil', 'and'],
-      f: foods,
+      // the food she orders on the mobile (25 November 2026): «Pizza er bestilt!», «Her kommer pizzaen.», «I dag blir det pizza.»
+      f: [...foods, ...dishes.map(d => d.name)], 'dish.word': dishes.map(d => d.word), 'dish.the': dishes.map(d => d.the),
       'info.label': ['Venstre', 'Høyre', 'Rett frem', 'Snu'],
     };
   },

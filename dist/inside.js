@@ -187,7 +187,7 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
   [['#e5373a',1.65,-2.4],['#41a7f4',1.85,-2.35],['#ffd23a',2.1,-2.42],['#5ccf66',1.75,-2.25],['#e5373a',1.98,-2.2]].forEach(([c,x,z],i)=>{const b=box(.14,.14,.14,std(c),x,.07+(i===4?.14:0),z,away);b.rotation.y=i*.6;});}
  const toyRex=build('trex');toyRex.group.position.set(-1.5,0,-2.35);toyRex.group.rotation.y=.5;toyRex.group.scale.setScalar(1.15);away.add(toyRex.group);
  // Whose room it is: the walls, the rug, and what stands in it.
- function dressPlace(){const [w,sd,r1,r2]=WALLS[place]||WALLS.home;wall.color.set(w);side.color.set(sd);rug.color.set(r1);ring.color.set(r2);home.visible=place==='home';away.visible=place==='ludvig';meal.wallArt.visible=place==='home';}
+ function dressPlace(){const [w,sd,r1,r2]=WALLS[place]||WALLS.home;wall.color.set(w);side.color.set(sd);rug.color.set(r1);ring.color.set(r2);home.visible=place==='home';away.visible=place==='ludvig';meal.wallArt.visible=meal.homeThings.visible=place==='home';}
  const head=new T.Vector3(),bubbleAt=new T.Vector3(BUBBLE.x,BUBBLE.y,BUBBLE.z),zSide=new T.Vector3(...ZSIDE).normalize(),DAY='#f3e7d3',NIGHT='#2f2f57',GLASS='#bfe6f7',DARK='#1c2858',tint=new T.Color();
  function dreamList(){return ['car','arc',...items.filter(i=>i.unlocked&&MODELS.has(i.id)).map(i=>i.id)];}
  // To bed: she walks to the sofa (or, already by it, stays), makes the bed of it and lies down (bedtime, below). Already on her way or asleep: nothing.
@@ -314,7 +314,7 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
   const dreaming=dream.targets(),resting=bed.on||bed.k>0||bed.jumping; // resting: on her way to bed, in it or getting up, or jumping on it; then only the bed and the dream answer
   const live=o=>!(o.userData.home&&place!=='home')&&!(o.userData.friend&&!friends.company.ludvig); // Sofia's podium and pig only at home; Ludvig's chair and backpack only while he is in
   const hits=ray.intersectObjects([...pickables,...blockers,...dreaming].filter(live),false),onFloor=ray.ray.intersectPlane(floor,at),floorAt=onFloor?ray.ray.origin.distanceTo(at):Infinity;
-  let hit=hits[0];if(hit?.object.userData.kind==='table')hit=hits.find(h=>h.object.userData.kind==='glass')||hit; // the glass stands inside the table's box
+  let hit=hits[0];if(hit?.object.userData.kind==='table')hit=hits.find(h=>h.object.userData.kind==='glass')||hits.find(h=>h.object.userData.kind==='phone')||hit; // the glass and the mobile stand inside the table's box
   if(hit&&dreaming.includes(hit.object)){const found=dream.hit(hit.object,hit.point);return found&&found.type!=='sky'?found:null;}
   if(meal.active)return hit?.object.userData.kind==='glass'?{type:'glass'}:{type:'meal'}; // at a meal a tap anywhere is the next spoonful, starts the pump or makes her dance, and the glass is a drink (game.js)
   if(hit&&hit.object.userData.kind==='bed')return {type:'bed'}; // to bed, or up again: game.js decides
@@ -324,7 +324,8 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
    if(kind==='item'){const slot=slots.find(s=>s.id===o.userData.id);walkTo(slot.x,.65,{yaw:0});return {type:'item',id:slot.id};}
    if(kind==='pig'){walkTo(-2.7,2.6,{yaw:Math.PI*.7});return {type:'pig'};}
    if(kind==='door'){walkTo(3.45,1.5,{yaw:-Math.PI/2});return {type:'door'};}
-   if(kind==='table'||kind==='bag'||kind==='glass')return {type:kind};
+   if(kind==='table'||kind==='bag'||kind==='glass'||kind==='phone')return {type:kind};
+   if(kind==='dish'&&o.userData.id)return {type:'dish',id:o.userData.id}; // a dish on the trolley (meal.js)
    return null;}
   if(onFloor&&Math.abs(at.x)<ROOM.x&&at.z>ROOM.back&&at.z<ROOM.front){walkTo(at.x,at.z);return {type:'floor'};}
   return null;}
@@ -348,6 +349,6 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
   pig.update(dt,0,time);
   renderer.render(scene,camera);}
  // Mealtime: only from awake and standing, with the sofa a sofa.
- function startMeal(kind){if(bed.on||bed.jumping||bed.u>0||bed.k>0)return false;return meal.start(kind);}
+ function startMeal(kind,dish=null){if(bed.on||bed.jumping||bed.u>0||bed.k>0)return false;return meal.start(kind,dish);}
  return {friends,get place(){return place;},home,away,meal,startMeal,mealTap:()=>meal.tap(),mealDrink:()=>meal.drink(),finishMeal:()=>meal.finish(),setBrushed:n=>meal.setBrushed(n),route,scene,camera,girl,pig,slots,pigHit,door,enter,refresh,update,pick,sleep,wake,jump,get asleep(){return bed.on;},get jumping(){return bed.jumping;},bed,dream,sofaBed,hitBoxes:slots.map(s=>s.hit),JUMP};
 }

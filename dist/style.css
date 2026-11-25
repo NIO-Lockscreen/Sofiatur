@@ -216,3 +216,27 @@ header{top:var(--st);left:max(14px,env(safe-area-inset-left));right:max(14px,env
 #insideHud.brushing .routine-bar,#insideHud.brushing #goOut,#insideHud.brushing #wakeUp,#insideHud.brushing .unlock-info{display:none}
 @media(max-width:700px){.routine-bar{left:14px;top:142px;gap:6px}.routine{min-height:44px;padding:6px 14px;font-size:14px}.routine.main{font-size:16px}}
 @media(max-height:500px){.routine-bar{top:134px;gap:5px}.routine{min-height:38px;padding:4px 12px;font-size:13px}}
+/* The white mobile and the food she orders (25 November 2026): the phone over the room, white with rounded corners and four big buttons (held sideways on a
+   low, wide screen); the choice of what to eat, a card with big buttons. */
+.phone-shade,.dish-shade{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:16px;background:#173e3c73;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.phone{width:min(330px,92vw);height:min(640px,100%);background:#fbfcff;border-radius:46px;padding:14px 12px 12px;box-shadow:0 30px 80px #0b25236b,inset 0 0 0 2px #e3e7f0;display:flex;flex-direction:column;animation:phone-up .3s ease-out}
+.phone-top{height:20px;display:flex;justify-content:center;align-items:center;flex-shrink:0}.phone-cam{width:64px;height:16px;border-radius:10px;background:#141823}
+.phone-screen{flex:1;min-height:0;margin-top:8px;border-radius:32px;background:linear-gradient(170deg,#fff4e0,#ffe1ec 60%,#e3f4ff);color:#1c2940;overflow:auto;padding:18px 16px}
+.phone-page{min-height:100%;display:flex;flex-direction:column}.phone-app{font-weight:900;font-size:14px;letter-spacing:1.5px;color:#d9456b;text-transform:uppercase}
+.phone h2{font-size:24px;margin:6px 0 14px;letter-spacing:-.4px}
+.order-grid{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(112px,190px);align-content:start;gap:12px}
+.order{min-height:112px;border-radius:24px;background:#fff;box-shadow:0 4px 0 #f0c7d6,0 6px 18px #d9456b22;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#1c2940}
+.order span{font-size:clamp(48px,8vh,64px);line-height:1}.order b{font-size:24px;font-weight:900}
+.phone-full{margin:14px 0 0;font-weight:800;color:#d9456b;font-size:16px;text-align:center}.phone-count{margin:12px 0 0;color:#5a6480;font-size:14px;text-align:center}.phone-count:empty{display:none}
+.phone-sent{align-items:center;justify-content:center;text-align:center}.phone-sent[hidden]{display:none}.sent-emoji{font-size:96px;line-height:1;animation:sent-pop .4s ease-out}
+.phone-sent h2{margin:14px 0 8px}.phone-sent p{font-size:20px;font-weight:800;margin:0;color:#3a4766}
+.phone-home{align-self:center;flex-shrink:0;margin-top:10px;min-height:44px;padding:8px 22px;border-radius:22px;background:#eef1f7;color:#3a4766;font-weight:800;font-size:15px}
+@keyframes phone-up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}@keyframes sent-pop{0%{transform:scale(.4)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
+.dish-card{width:min(580px,100%);max-height:100%;overflow:auto;border-radius:28px;background:#fffdf1;box-shadow:0 6px 0 #174e4830,0 24px 60px #0b252355;padding:20px 22px}
+.dish-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.dish-head h2{margin:0;font-size:26px;color:#173e3c}
+.dish-close{width:48px;height:48px;border-radius:16px;background:#ffe3ee;color:#7a2350;font-size:28px;font-weight:800;line-height:1}
+.dish-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:12px}
+.dish-choice{min-height:122px;border-radius:22px;border:2px solid white;background:#ffe3ee;color:#7a2350;box-shadow:0 4px 0 #7a235033;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px}
+.dish-choice.bowl{background:#e3f7f6;color:#174e48;box-shadow:0 4px 0 #174e4833}.dish-emoji{font-size:50px;line-height:1}.dish-choice b{font-size:21px}.dish-choice small{font-size:13px;font-weight:700;opacity:.8}
+@media(max-height:620px) and (min-width:561px){.phone{width:min(600px,94vw);border-radius:38px;padding:10px 12px}.phone-top{display:none}.phone-screen{margin-top:0;border-radius:28px;padding:12px 16px}.phone h2{font-size:21px;margin:2px 0 10px}.order-grid{grid-template-columns:repeat(4,1fr);grid-auto-rows:minmax(92px,1fr)}.order{min-height:92px}.order span{font-size:40px}.order b{font-size:19px}.sent-emoji{font-size:64px}.phone-home{margin-top:8px;min-height:38px}.dish-choice{min-height:96px}.dish-emoji{font-size:40px}}
+@media(max-width:560px){.dish-choices{grid-template-columns:1fr 1fr}.dish-choice{min-height:104px}}
