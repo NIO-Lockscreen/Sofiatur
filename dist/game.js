@@ -6,7 +6,7 @@ import {createMusic} from './music.js';
 import {createInside} from './inside.js';
 import {createToothGame} from './teeth.js';
 import {FOODS,BITES,PUMP} from './meal.js';
-import {createVoice} from './voice.js';
+import {createVoice,spoken} from './voice.js';
 const $=id=>document.getElementById(id);
 let world,data,state='loading',sound=true,current,previous=null,active=null,distance=0,speed=0,travelled=0,turns=0,heading=new T.Vector3(0,0,1),position=new T.Vector3(),choices=[],best=null,totalInitial=0,maxKmh=200,camMode='follow',lastTime=performance.now(),time=0,mapClock=0,leavingHome=false,lastEdge=null,lines=null;
 let roundaboutUndo=null,freeMode=false,free=null,carHeight,showDeadEnds=false,choicesStale=false,musicOn=true,queue=[],preview=null,picked=null,pickedUntil=-9,aheadShown=false,planKey='';
@@ -21,7 +21,7 @@ const ACCEL=20,DECEL=12,BRAKE=16,STOP=2.4;
 const everyRoadAt=new Set(['91783986']);
 let chooseAhead=false; // Menu option: arrows for the next junction while driving, to queue up to two roads. Off by default.
 const music=createMusic();
-// The new Norwegian voice (voice.js, 24 November 2026): a woman's voice made on the iPad, the same as in the space game. Until it is ready, when it is
+// The new Norwegian voice (voice.js, 25 November 2026): a real woman's voice («ingrid»), read in advance, the same as in the space game. Until it is ready, when it is
 // switched off in the menu ("Stemme"), and whenever it fails, the iPad's own voice reads (sayDevice). On from the start.
 let voiceOn=true;
 const voice=typeof createVoice==='function'?createVoice({on:()=>sound&&voiceOn,duck:on=>music.duck(on),fallback:t=>sayDevice(t),onChange:()=>voiceNote()}):null;
@@ -38,7 +38,7 @@ const ui={welcome:$('welcome'),decision:$('decision'),drive:$('driveHud'),finish
 let sayNow; // the utterance being spoken: only its end/error may un-duck the music (11 November 2026; a cancelled one used to fire late and un-duck while the next sentence played)
 const fx=n=>{if(sound)music.effect?.(n);};
 function say(text){if(!sound)return;if(voice){sayNow=null;window.speechSynthesis?.cancel?.();if(voice.speak(text))return;}sayDevice(text);}
-function sayDevice(text){if(!sound||!('speechSynthesis'in window))return;try{speechSynthesis.cancel();const s=sayNow=new SpeechSynthesisUtterance(text);s.lang='nb-NO';s.rate=.88;s.pitch=1.1;const v=speechSynthesis.getVoices().find(x=>/^nb|^no/.test(x.lang));if(v)s.voice=v;s.onstart=()=>music.duck(true);s.onend=s.onerror=()=>{if(sayNow===s)music.duck(false);};speechSynthesis.speak(s);}catch{}}
+function sayDevice(text){if(!sound||!('speechSynthesis'in window))return;try{speechSynthesis.cancel();const s=sayNow=new SpeechSynthesisUtterance(typeof spoken==='function'?spoken(text):text);s.lang='nb-NO';s.rate=.88;s.pitch=1.1;const v=speechSynthesis.getVoices().find(x=>/^nb|^no/.test(x.lang));if(v)s.voice=v;s.onstart=()=>music.duck(true);s.onend=s.onerror=()=>{if(sayNow===s)music.duck(false);};speechSynthesis.speak(s);}catch{}}
 let toastTimer;function toast(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),3100);}
 function point(n){const p=data.nodes[n];return new T.Vector3(p[0],carHeight(...p),p[1]);}
 // The car follows the drawn road's smoothed centre line (world.roadLine: samples 2 m apart, level and bends as drawn); without it, sample the road every 2 m between map nodes.

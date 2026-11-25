@@ -17,12 +17,13 @@ import {createGirlModel} from './dist/girl.js';
 import {setSantaSeason} from './dist/santa-hat.js';
 setSantaSeason(false); // the sizes measured here are the ducks' and the children's own, without the Santa hats they wear in December (verify-santa-hats.mjs)
 const data=JSON.parse(fs.readFileSync('dist/map.json','utf8'));
+const everySpoken=new Set(); // every line said in all the games below, checked against the clips at the end
 const code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
 // Starts a fresh game (as after a page reload) with the given browser storage; the world records paint, boy and model calls.
 async function launch(localStorage,{random}={}){ // random: what Math.random gives inside the game, for the bed's chance of another jump
  const els=new Map(),world={colour:null,trail:null,boy:null,bubbles:null,honks:0,skin:null,model:null};let callbacks=[],now=0;const canvasContext=new Proxy({},{get:()=>()=>{}});
  const element=id=>{if(!els.has(id))els.set(id,{hidden:false,textContent:'',value:'',checked:false,style:{},children:[],attrs:{},classes:new Set(),classList:{add(){},remove(){},toggle(c,on){on?this.owner.classes.add(c):this.owner.classes.delete(c);}},setAttribute(k,v){this.attrs[k]=v;},append(...v){this.children.push(...v)},replaceChildren(){this.children=[]},addEventListener(type,fn){(this.listeners??={})[type]=fn;},close(){this.open=false;},getContext(){return canvasContext}});const el=els.get(id);el.classList.owner=el;return el;};
- const listeners=new Map(),spoken=[],tts={cancel(){},speak:u=>spoken.push(u.text),getVoices:()=>[]},inside={created:0,enters:[],refreshes:[],picks:[],asleep:false,sleeps:0,wakes:0,jumping:false,jumps:0,on:null}; // spoken: every text say() speaks; inside: what game.js asks of the house (inside.js, stubbed here)
+ const listeners=new Map(),spoken=[],tts={cancel(){},speak:u=>{spoken.push(u.text);everySpoken.add(u.text);},getVoices:()=>[]},inside={created:0,enters:[],refreshes:[],picks:[],asleep:false,sleeps:0,wakes:0,jumping:false,jumps:0,on:null}; // spoken: every text say() speaks; inside: what game.js asks of the house (inside.js, stubbed here)
  const env={T,roundaboutChoices,createDrivingLines,createFreeDrive,createMusic,console,performance:{now:()=>now},document:{getElementById:element,createElement:()=>element(Symbol()),body:element('body'),addEventListener(){}},window:{addEventListener:(type,fn)=>listeners.set(type,fn),speechSynthesis:tts},speechSynthesis:tts,SpeechSynthesisUtterance:class{constructor(text){this.text=text;}},createInside:opts=>{inside.created++;inside.on=opts?.on;return {enter:(items,o)=>{inside.asleep=false;inside.jumping=false;inside.enters.push({items,o});},refresh:(items,o)=>inside.refreshes.push({items,o}),update(){},pick:()=>inside.picks.length?inside.picks.shift():null,get asleep(){return inside.asleep;},get jumping(){return inside.jumping;},jump:()=>!inside.asleep&&!inside.jumping&&(inside.jumping=true,++inside.jumps),sleep:()=>!inside.asleep&&(inside.asleep=true,inside.jumping=false,++inside.sleeps),wake:()=>inside.asleep&&!(inside.asleep=false)&&++inside.wakes};},setTimeout:()=>0,clearTimeout(){},requestAnimationFrame:cb=>callbacks.push(cb),fetch:async()=>({ok:true,json:async()=>data}),
   createWorld:()=>({height:()=>160,update(){},resetCamera(){},setTurnArrow(){},setCarColour:c=>world.colour=c,setCarSkin:k=>world.skin=k,setCarModel:m=>world.model=m,setTrail:on=>world.trail=on,setBoy:on=>world.boy=on,setDuckRunner:on=>world.duckRunner=on,setDuckling:on=>world.duckling=on,setBubbles:on=>world.bubbles=on,setHover:on=>world.hover=on,setBalloonGirl:on=>world.balloonGirl=on,honk:()=>world.honks++})};
  if(localStorage)Object.defineProperty(env,'localStorage',{get:localStorage});
@@ -918,3 +919,10 @@ console.log('Models: the pig (car-sized, pink to begin with, takes the paint, KI
  // the start card: its words in <span class="ride-word"> follow the ride
  const html=fs.readFileSync('dist/index.html','utf8');assert.equal((html.match(/class="ride-word"/g)||[]).length,6,'six words on the start card follow the ride');assert.match(html,/Du velger veien\. <span class="ride-word" data-cap="1">Bilen<\/span> kjører selv\./);}
 console.log('On the duck, the voice and the texts say «anda» (home, Ludvig, the small duck, KIWI, the bubbles); on the car «bilen»; the start card follows: OK');
+
+// Every line the game said in these tests has a clip in the new voice (dist/tts/voice/, made by node tts/make-voice.mjs): nothing said here
+// would fall back to the iPad's own voice.
+{const {sentences}=await import('./dist/tts/clips.mjs'),index=JSON.parse(fs.readFileSync('dist/tts/voice/ingrid.json','utf8'));
+ const missing=[...everySpoken].flatMap(t=>sentences(t)).filter(s=>!index.clips[s]);
+ assert.deepEqual([...new Set(missing)],[],'said without a clip (run node tts/make-voice.mjs)');
+ console.log(`Every one of the ${everySpoken.size} lines said in these tests has clips in the new voice: OK`);}

@@ -1,0 +1,3 @@
+This model is a modified version of hexgrad/Kokoro-82M, licensed under the Apache License, Version 2.0 (LICENSE).
+Modifications by EmpirioLabs.ai LLC. The modifications and the resulting model are licensed under the
+Apache License, Version 2.0 (LICENSE).
