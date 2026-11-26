@@ -6,7 +6,8 @@ import {roundaboutChoices} from './dist/roundabouts.js';
 import {createDrivingLines} from './dist/driving-line.js';
 import {createFreeDrive} from './dist/free-drive.js';
 import {createMusic} from './dist/music.js';
-// The new Norwegian voice (dist/voice.js and dist/tts/, 25 November 2026): the same woman's voice as in the space game, «ingrid», read in advance as clips.
+// The Norwegian voice (dist/voice.js and dist/tts/, 26 November 2026): the same as in the space game, Piper «talesyntese» (no_NO-talesyntese-medium),
+// read in advance as clips at the model's own pitch, with «Stemme» in the menu to use the iPad's own voice instead.
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
 // ---- The speaker: clips one after the other, the music down while it speaks, and the iPad's own voice whenever the new one cannot read ----
@@ -36,7 +37,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  // Unpacking that never answers: the iPad reads after a while, and two in a row switch the new voice off for now.
  v.stallMs=10;v.speak('Ingen svar');const stuck=jobs.at(-1);await wait(40);assert.ok(stuck.cancelled);assert.equal(fellBack.at(-1),'Ingen svar');assert.equal(v.neural.failed,undefined);
  v.speak('Igjen ingen svar');await wait(40);assert.equal(fellBack.at(-1),'Igjen ingen svar');assert.equal(v.neural.failed,'stalled');
- assert.match(v.note(true),/damestemme/);assert.match(v.note(false),/iPadens egen stemme/);
+ assert.match(v.note(true),/Piper-stemmen/);assert.match(v.note(false),/^Av: iPadens eller nettleserens egen stemme leser/);v.neural.status='ready';assert.match(v.note(true),/^Piper-stemmen er klar: «talesyntese»/);
  // Still loading when a line comes (the first seconds after start): it is started if need be, and the line waits up to three seconds for it
  // instead of going to the iPad at once. The download starts whether the sound is on or not: only the switch counts (25 November 2026).
  {const lj=[],fb=[];class Loading{constructor(){this.status='off';this.ensured=0;}get ready(){return this.status==='ready';}onChange(){}ensure(){this.ensured++;if(this.status==='off')this.status='loading';}load(){this.loaded=(this.loaded||0)+1;}fail(){}speak(t){const j={text:t,cancel(){}};lj.push(j);return j;}}
@@ -49,26 +50,40 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   assert.match(fs.readFileSync('dist/voice.js','utf8'),/'pointerdown','pointerup','touchend','click','keydown'/,'lifting the finger wakes the sound on an iPad');}
  console.log('Voice: the new voice reads once it is ready and there is sound, sentence after sentence with the music down; the iPad reads before, when it is off, on errors and stalls; sound on pause is woken; a line waits a moment for a voice still loading; it loads with the sound off: OK');}
 
-// ---- The clips: every sentence the game can say has one, the pack is whole, PEG is read «pegg», and the player plays them in order ----
+// ---- The clips: every sentence the game can say has one, made by Piper «talesyntese» with the ids Python Piper gives, the pack is whole, PEG is read «pegg»,
+// the old voices are gone, and the player plays the clips in order ----
 {const clips=await import('./dist/tts/clips.mjs'),make=await import('./tts/make-voice.mjs'),crypto=await import('node:crypto');
  const miss=await make.missing();assert.deepEqual(miss,[],'sentences without a clip (run node tts/make-voice.mjs): '+miss.slice(0,5).join(' | '));
- const index=JSON.parse(fs.readFileSync('dist/tts/voice/ingrid.json','utf8')),pack=fs.readFileSync('dist/tts/voice/ingrid.mp3'),keys=Object.keys(index.clips);
+ const index=JSON.parse(fs.readFileSync('dist/tts/voice/talesyntese.json','utf8')),pack=fs.readFileSync('dist/tts/voice/talesyntese.mp3'),keys=Object.keys(index.clips);
+ assert.match(index.voice,/^Piper «talesyntese» \(no_NO-talesyntese-medium/);assert.equal(index.sampleRate,22050,'the model\'s own sample rate');assert.equal(index.lengthScale,make.VOICE.lengthScale);
+ for(const gone of ['dist/tts/voice/ingrid.mp3','dist/tts/voice/ingrid.json','dist/tts/voice-shift.mjs','dist/tts/piper-worker.mjs','tts/src/g2p_no.py','tts/src/canora-config.json','dist/tts/licenses/canora-norwegian-Apache-2.0.txt'])assert.ok(!fs.existsSync(gone),'the old voices are gone: '+gone);
+ // Phonemes to ids as Python Piper 1.8 does it (tts/src/piper-fixture.json), and the game's fixes for words espeak gets wrong.
+ {const core=await import('./tts/piper-core.mjs'),espeak=await core.startEspeak('tts'),config=make.voiceConfig();assert.equal(config.dataset,'talesyntese');
+  for(const c of JSON.parse(fs.readFileSync('tts/src/piper-fixture.json','utf8')).cases)assert.deepEqual(core.textToIdSentences(espeak,c.text,config),c.ids,'the same ids as Python Piper: '+c.text);
+  const said=t=>core.fixPhonemes(core.ipa(espeak,t),make.PHONEME_FIXES);
+  for(const [word,expected] of [['Sofia','sʊfˈiːʲɑ'],['ishall','ˈiːshˌɑl'],['KIWI','kˈiːviː'],['pizza','pˈɪtsɑ'],['burger','bˈœrɡər'],['sushi','sˈʉːʃiː'],['mobilen','mʊbˈiːlən'],['Vi er framme!','viːʲ ˌɛːr frˈɑmma'],['igjen','ˈɪjən'],['støvsugeren','stˈœvsʉːɡərən'],['laderen','lˈɑːdərən']])assert.equal(said(word),expected,word);}
  assert.equal(crypto.createHash('sha1').update(pack).digest('hex').slice(0,12),index.hash,'the list belongs to this pack');assert.equal(pack.length,index.bytes);
  for(const [k,[at,len]] of Object.entries(index.clips)){assert.ok(at>=0&&len>400&&at+len<=pack.length,k);const h=pack.subarray(at,at+3);assert.ok(h[0]===0xff&&(h[1]&0xe0)===0xe0||h.toString()==='ID3','an MP3 stream starts at '+k);}
  for(const k of keys)assert.deepEqual(clips.sentences(k),[k],'a clip is one sentence: '+k);
  assert.deepEqual(clips.sentences('Hurra Sofia! Du fant barnehagen!Og se! 🦆 En stor, snill edderkopp.'),['Hurra Sofia!','Du fant barnehagen!','Og se!','En stor, snill edderkopp.']);
  assert.equal(clips.spoken('Mat gjennom PEG-slangen.'),'Mat gjennom pegg-slangen.','PEG is said «pegg»');
  assert.equal(clips.spoken('FOR VARMT FOR EN AND. HURRA, SOFIA! Hemmelig KIWI-bil'),'For varmt for en and. Hurra, sofia! Hemmelig KIWI-bil','headings in capitals are read as words, short names stay');assert.ok(keys.includes('Nå skal Sofia få mat gjennom PEG-slangen.'),'the PEG line has a clip');
- for(const f of ['tts/build-espeak.sh','tts/src/bridge.c','tts/src/no_listx','tts/src/g2p_no.py','tts/espeak-nb.wasm','tts/licenses/espeak-ng-GPL-3.0.txt','dist/tts/licenses/canora-norwegian-Apache-2.0.txt','dist/tts/licenses/canora-norwegian-NOTICE.txt'])assert.ok(fs.existsSync(f),f);
+ for(const f of ['tts/build-espeak.sh','tts/src/bridge.c','tts/src/no_listx','tts/piper-core.mjs','tts/render-voice.py','tts/no_NO-talesyntese-medium.onnx.json','tts/espeak-nb.wasm','tts/licenses/espeak-ng-GPL-3.0.txt','dist/tts/licenses/talesyntese-MODEL_CARD.md'])assert.ok(fs.existsSync(f),f);
  const {ClipVoice}=await import('./dist/voice.js'),logged=[],timers=[],store=new Map();let online=true,decodes=0;
- const files={'ingrid.json':JSON.stringify({hash:'abc',bytes:3000,sampleRate:24000,clips:{'Hei Sofia!':[0,1000],'Vi er framme!':[1000,1500],'Hurra!':[2500,500]}}),'ingrid.mp3':new Uint8Array(3000)};
+ const files={'talesyntese.json':JSON.stringify({hash:'abc',bytes:3000,sampleRate:22050,clips:{'Hei Sofia!':[0,1000],'Vi er framme!':[1000,1500],'Hurra!':[2500,500]}}),'talesyntese.mp3':new Uint8Array(3000)};
+ const cacheNames=new Set(['sofiatur-stemme','sofia-tts-1','noe-annet']);
  const respond=body=>({ok:true,headers:{get:()=>null},clone(){return respond(body);},json:async()=>JSON.parse(body),arrayBuffer:async()=>(body.buffer||new TextEncoder().encode(body).buffer).slice(0)});
  class Offline{constructor(ch,len,sr){this.sr=sr;}decodeAudioData(buf,done,fail){decodes++;if(buf.byteLength===7)return fail(new Error('bad'));const d=new Float32Array(buf.byteLength).fill(.5);done({sampleRate:this.sr,getChannelData:()=>d});}}
  const saved={};for(const k of ['fetch','caches','OfflineAudioContext','AudioContext','setTimeout'])saved[k]=globalThis[k];const realInfo=console.info;console.info=m=>logged.push(m);
  Object.assign(globalThis,{OfflineAudioContext:Offline,AudioContext:function(){},setTimeout:(fn,ms)=>timers.push({fn,ms}),
   fetch:async url=>{if(!online)throw new Error('offline');const f=new URL(url).pathname.split('/').pop();return f in files?respond(files[f]):{ok:false,status:404};},
-  caches:{open:async()=>({put:async(k,r)=>store.set(k,r),match:async k=>store.get(k)?.clone(),keys:async()=>[...store.keys()].map(url=>({url})),delete:async k=>store.delete(k.url||k)})}});
- try{const base='https://spill.example/tts/voice/',v=new ClipVoice(base);assert.equal(ClipVoice.supported(),true);await v.load();assert.equal(v.status,'ready');
+  caches:{keys:async()=>[...cacheNames],delete:async n=>cacheNames.delete(n),open:async()=>({put:async(k,r)=>store.set(k,r),match:async k=>store.get(k)?.clone(),keys:async()=>[...store.keys()].map(url=>({url})),delete:async k=>store.delete(k.url||k)})}});
+ try{const base='https://spill.example/tts/voice/',v=new ClipVoice(base);assert.equal(ClipVoice.supported(),true);
+  // What the old voices left on the iPad: the «ingrid» pack in the same cache, and the Piper files from when the voice ran on the iPad (sofia-tts-*).
+  store.set(base+'ingrid.mp3?v=old',respond('x'));store.set(base+'ingrid.json',respond('{}'));
+  await v.load();assert.equal(v.status,'ready');assert.equal(v.sampleRate,22050);await new Promise(r=>saved.setTimeout(r,5));
+  assert.deepEqual([...store.keys()].sort(),[base+'talesyntese.json',base+'talesyntese.mp3?v=abc'],'the «ingrid» pack is cleared out of the cache');
+  assert.deepEqual([...cacheNames],['sofiatur-stemme','noe-annet'],'and the old Piper files');
   const play=(voice,t)=>new Promise(done=>{const job=voice.speak(t),lens=[];job.onchunk=c=>lens.push(c.length);job.ondone=()=>done(lens);job.onerror=()=>done('error');});
   assert.deepEqual(await play(v,'Vi er framme! Hurra!'),[1500,500],'one chunk per sentence, in order');assert.ok(v.covers('Hei Sofia!')&&!v.covers('Hei Sofia! Ny setning.'));
   assert.equal(await play(v,'Vi er framme! Ny setning her.'),'error','a sentence without a clip: the whole line goes to the iPad');assert.ok(logged.some(m=>m.includes('Ny setning her.')));
@@ -86,7 +101,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   await play(v4,'Hei Sofia!');await play(v4,'Hei Sofia!');assert.equal(v4.error,'decode');assert.equal(v4.status,'failed');assert.equal(timers.at(-1).ms,30000,'three in a row: a rest of 30 s');
   v4.ensure();assert.equal(v4.status,'failed','not before the rest is over');timers.at(-1).fn();await new Promise(r=>saved.setTimeout(r,5));assert.equal(v4.status,'ready','then back by itself, without a new download');}
  finally{Object.assign(globalThis,saved);console.info=realInfo;}
- console.log('Voice: '+keys.length+' sentences with clips ('+(pack.length/1e6).toFixed(1)+' MB), the pack whole, PEG read «pegg»; the player plays the clips in order, once unpacked, offline from the cache, tries a failed download again with no limit, rests and comes back by itself, and lets the iPad read anything missing: OK');}
+ console.log('Voice: '+keys.length+' sentences with Piper «talesyntese» clips ('+(pack.length/1e6).toFixed(1)+' MB), ids as Python Piper, the old voices gone and cleared from the cache, the pack whole, PEG read «pegg»; the player plays the clips in order, once unpacked, offline from the cache, tries a failed download again with no limit, rests and comes back by itself, and lets the iPad read anything missing: OK');}
 
 // ---- The game: say() lets the new voice read when it can, and the iPad's own voice otherwise; the switch in the menu is saved and on from the start ----
 {const {spoken}=await import('./dist/tts/clips.mjs'),data=JSON.parse(fs.readFileSync('dist/map.json','utf8')),code=fs.readFileSync('dist/game.js','utf8').replace(/^import .*?;\n/gm,'');
@@ -105,7 +120,8 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  g=await launch(storage,true);g.element('voice').onchange({target:{value:'off'}});g.test.say('Av');assert.deepEqual(g.device,['Av'],'switched off: the iPad reads');
  g=await launch(storage,true);assert.equal(g.element('voice').value,'off','the choice is saved');g.element('voice').onchange({target:{value:'on'}});assert.ok(g.loads.length===1&&g.loads[0].force===true,'switching it on starts it at once');
  g=await launch(storage,true);assert.equal(g.test.voiceOn(),true);
- // Switched off before the new voice «ingrid» (25 November 2026): on again, once.
- {const old=new Map([['sofiatur.innstillinger',JSON.stringify({v:3,music:'on',voice:'off'})]]),st={getItem:k=>old.get(k)??null,setItem:(k,v)=>old.set(k,String(v))};
-  g=await launch(st,true);assert.equal(g.test.voiceOn(),true,'off from before the new voice: on again');assert.equal(g.element('voice').value,'on');}
+ // Switched off before the new voice («ingrid», or Piper on 26 November 2026): on again, once.
+ for(const before of [{v:3,music:'on',voice:'off'},{v:3,music:'on',voice:'off',voiceV:2}]){const old=new Map([['sofiatur.innstillinger',JSON.stringify(before)]]),st={getItem:k=>old.get(k)??null,setItem:(k,v)=>old.set(k,String(v))};
+  g=await launch(st,true);assert.equal(g.test.voiceOn(),true,'off from before the Piper voice: on again');assert.equal(g.element('voice').value,'on');}
+ assert.match(fs.readFileSync('dist/index.html','utf8'),/<select id="voice"><option value="on">Piper «talesyntese» · norsk stemme<\/option><option value="off">iPadens egen stemme<\/option><\/select>/,'the switch in the menu');
  console.log('Voice in the game: say() uses the new voice when it is ready and the iPad\'s voice otherwise; "Stemme" in the menu is on from the start and saved: OK');}

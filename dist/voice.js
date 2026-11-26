@@ -1,21 +1,21 @@
-// The new Norwegian voice (25 November 2026, the same as in Sofia's space game, SofiaSpace): a real woman's voice, Canora Norwegian «ingrid»
-// (EmpirioLabs, Apache 2.0), read in advance. Everything the game can say is made as clips, one sentence each, by tts/make-voice.mjs and packed
-// in dist/tts/voice/ingrid.mp3 (MP3) with a list in dist/tts/voice/ingrid.json. The game downloads the pack once (about 11 MB, kept in Cache
-// Storage) and plays the clips; it makes no speech itself. A line with a sentence that has no clip is read by the device's own voice.
-// Before 25 November 2026 the speech was made on the iPad with Piper «talesyntese» (a man's voice) and raised with TD-PSOLA; it crackled and
-// did not sound like a woman. «ingrid» is too heavy to run on an iPad (three times slower than real time in the browser), but read in advance
-// it is both natural and a real woman's voice.
+// The Norwegian voice (26 November 2026, the same as in Sofia's space game, SofiaSpace): Piper «talesyntese» (no_NO-talesyntese-medium,
+// Nasjonalbiblioteket, CC0), read in advance at the model's own pitch. Everything the game can say is made as clips, one sentence each, by
+// tts/make-voice.mjs and packed in dist/tts/voice/talesyntese.mp3 (MP3) with a list in dist/tts/voice/talesyntese.json. The game downloads the
+// pack once (about 7 MB, kept in Cache Storage) and plays the clips; it makes no speech itself. A line with a sentence that has no clip, and
+// every line when «Stemme» in the menu is set to the iPad's own voice, is read by the device's own voice (iPad or browser).
+// Before: 24 November 2026 Piper «talesyntese» made on the iPad and raised with TD-PSOLA (it crackled), 25 November Canora Norwegian «ingrid»
+// read in advance. Both are gone; the «ingrid» pack and the old Piper files are deleted from Cache Storage.
 // game.js: say() asks speak(text) first and uses the device voice when it says no.
 import {sentences,spoken} from './tts/clips.mjs';
 export {sentences,spoken};
 
-const CACHE='sofiatur-stemme';
+const CACHE='sofiatur-stemme',VOICE_NAME='talesyntese';
 // A short pause between sentences (the pace is in the clips: a little slower than ordinary reading, for a five-year-old).
 export const SENTENCE_GAP=.22;
 
 // The clips: the list, the pack, and the clips already unpacked.
 export class ClipVoice{
- constructor(base=new URL('./tts/voice/',import.meta.url).href){this.base=base;this.status='off';this.progress=0;this.sampleRate=24000;this.index=null;this.pack=null;this.cache=new Map();this.cacheBytes=0;this.listeners=new Set();this.error='';this.retries=0;this.decoder=null;this.missed=new Set();this.badClips=0;this.failedAt=0;
+ constructor(base=new URL('./tts/voice/',import.meta.url).href){this.base=base;this.status='off';this.progress=0;this.sampleRate=22050;this.index=null;this.pack=null;this.cache=new Map();this.cacheBytes=0;this.listeners=new Set();this.error='';this.retries=0;this.decoder=null;this.missed=new Set();this.badClips=0;this.failedAt=0;
   // The net back, or the page shown again: a voice that failed is tried at once (25 November 2026: it must never need switching off and on).
   try{globalThis.addEventListener?.('online',()=>this.retry());globalThis.document?.addEventListener?.('visibilitychange',()=>{if(!globalThis.document.hidden)this.retry();});}catch{}}
  static supported(){try{return typeof fetch==='function'&&!!(globalThis.OfflineAudioContext||globalThis.webkitOfflineAudioContext)&&!!(globalThis.AudioContext||globalThis.webkitAudioContext);}catch{return false;}}
@@ -28,18 +28,18 @@ export class ClipVoice{
   if(this.index&&this.pack){this.error='';return this.set('ready');} // loaded already (after a rest)
   this.progress=0;this.error='';this.set('loading');
   try{let cache=null;try{cache=await caches.open(CACHE);}catch{}
-   const indexUrl=this.base+'ingrid.json';let res=null;
+   const indexUrl=this.base+VOICE_NAME+'.json';let res=null;
    try{res=await fetch(indexUrl,{cache:'no-cache'});if(!res.ok)res=null;}catch{}
    if(res)cache?.put(indexUrl,res.clone()).catch(()=>{});else res=await cache?.match(indexUrl);
    if(!res)throw new Error('no list');
-   const index=await res.json(),packUrl=this.base+'ingrid.mp3?v='+index.hash;
+   const index=await res.json(),packUrl=this.base+VOICE_NAME+'.mp3?v='+index.hash;
    let buf=null;const hit=await cache?.match(packUrl).catch(()=>null);
    if(hit)buf=await hit.arrayBuffer();
-   else{const r=await fetch(packUrl);if(!r.ok)throw new Error('ingrid.mp3: HTTP '+r.status);const total=+r.headers.get('content-length')||index.bytes||1;
+   else{const r=await fetch(packUrl);if(!r.ok)throw new Error(VOICE_NAME+'.mp3: HTTP '+r.status);const total=+r.headers.get('content-length')||index.bytes||1;
     if(r.body?.getReader){const reader=r.body.getReader(),parts=[];let size=0;for(;;){const {done,value}=await reader.read();if(done)break;parts.push(value);size+=value.byteLength;this.progress=Math.min(.99,size/total);this.set('loading');}
      const all=new Uint8Array(size);let at=0;for(const p of parts){all.set(p,at);at+=p.byteLength;}buf=all.buffer;}else buf=await r.arrayBuffer();
-    if(cache){for(const k of await cache.keys().catch(()=>[]))if(/ingrid\.mp3/.test(k.url)&&k.url!==packUrl)cache.delete(k).catch(()=>{});await cache.put(packUrl,new Response(buf,{headers:{'Content-Type':'audio/mpeg'}})).catch(()=>{});}}
-   this.index=index;this.pack=new Uint8Array(buf);this.sampleRate=index.sampleRate||24000;this.progress=1;this.retries=0;this.set('ready');}
+    if(cache){for(const k of await cache.keys().catch(()=>[]))if(k.url!==packUrl&&k.url!==indexUrl)cache.delete(k).catch(()=>{});await cache.put(packUrl,new Response(buf,{headers:{'Content-Type':'audio/mpeg'}})).catch(()=>{});}}
+   dropOldVoices();this.index=index;this.pack=new Uint8Array(buf);this.sampleRate=index.sampleRate||22050;this.progress=1;this.retries=0;this.set('ready');}
   catch(err){this.fail(err);}}
  // A failed download (the net gone) is tried again by itself with no limit: after 10, 20, 40 … seconds (at most 2 minutes apart), and at once when
  // the net comes back, the page is shown again or something is to be said. A stall ('stalled') or clips that will not unpack ('decode'): the
@@ -70,11 +70,14 @@ export class ClipVoice{
  remember(key,pcm){if(this.cache.has(key))return;this.cache.set(key,pcm);this.cacheBytes+=pcm.byteLength;
   for(const [k,v] of this.cache){if(this.cacheBytes<=24e6)break;this.cache.delete(k);this.cacheBytes-=v.byteLength;}}
 }
+// What the first Piper voice left in Cache Storage when it ran on the iPad (sofia-tts-*, 48 MB) is deleted. The «ingrid» pack was in the same
+// cache as the clips now, and goes when the new pack is stored.
+export function dropOldVoices(){try{globalThis.caches?.keys?.().then(keys=>{for(const k of keys)if(/^sofia-tts-/.test(k))globalThis.caches.delete(k).catch(()=>{});}).catch(()=>{});}catch{}}
 // Silence before and after a clip is taken off (MP3 adds a little), leaving 20 ms.
 export function trimQuiet(pcm,sr,threshold=.003,keep=.02){let a=0,b=pcm.length;while(a<b&&Math.abs(pcm[a])<threshold)a++;while(b>a&&Math.abs(pcm[b-1])<threshold)b--;const k=Math.round(keep*sr);return pcm.slice(Math.max(0,a-k),Math.min(pcm.length,b+k));}
 
 // The game's side: plays the clips in Web Audio one after the other, turns the music down while it speaks, and hands a line to the device voice when
-// the new voice cannot read it. on(): whether to use the new voice (sound on and the switch on); switchOn(): the switch alone (the voice is loaded
+// the Piper voice cannot read it or is switched off. on(): whether to use the new voice (sound on and the switch on); switchOn(): the switch alone (the voice is loaded
 // whether the sound is on or not); duck(on): the music; fallback(text): the device voice; onChange(): the status changed (for the note in the menu).
 // Its own AudioContext is made, and woken again, by any touch or key.
 export function createVoice({on=()=>true,switchOn=()=>true,duck=()=>{},fallback=()=>{},onChange=()=>{},neural=ClipVoice.supported()?new ClipVoice():null,delay=2500}={}){
@@ -119,12 +122,12 @@ export function createVoice({on=()=>true,switchOn=()=>true,duck=()=>{},fallback=
   // The new voice failing before anything was said: the device voice reads the same line.
   job.onerror=()=>{if(!live())return;clearTimeout(cur.timer);if(cur.sources.length){cur.done=true;check();return;}current=null;duck(false);fallback(cur.text);};}
  // The line under the switch in the menu.
- v.note=switchOn=>{const n=neural;if(!switchOn)return 'Av: iPadens egen stemme leser.';
-  if(!n||n.status==='unsupported')return 'Denne nettleseren kan ikke bruke den nye stemmen. iPadens egen stemme leser i stedet.';
-  if(n.ready)return 'Den nye norske stemmen er klar: en ekte damestemme («ingrid» fra Canora Norwegian), lest inn på forhånd, så den virker også uten nett.';
-  if(n.status==='loading')return `Laster ned den nye stemmen: ${Math.round(n.progress*100)} % (ca. 11 MB, bare første gang). Imens leser iPadens egen stemme.`;
-  if(n.status==='failed'&&(n.error==='stalled'||n.error==='decode'))return 'Den nye stemmen tar en liten pause, så iPadens egen stemme leser. Den er tilbake av seg selv om et halvt minutt.';
-  if(n.status==='failed')return 'Den nye stemmen kunne ikke startes nå, så iPadens egen stemme leser. Den prøves igjen av seg selv.';
-  return 'Den nye stemmen lastes ned om et øyeblikk.';};
+ v.note=switchOn=>{const n=neural;if(!switchOn)return 'Av: iPadens eller nettleserens egen stemme leser.';
+  if(!n||n.status==='unsupported')return 'Denne nettleseren kan ikke bruke Piper-stemmen. iPadens egen stemme leser i stedet.';
+  if(n.ready)return 'Piper-stemmen er klar: «talesyntese» fra Nasjonalbiblioteket, lest inn på forhånd, så den virker også uten nett.';
+  if(n.status==='loading')return `Laster ned Piper-stemmen: ${Math.round(n.progress*100)} % (ca. 7 MB, bare første gang). Imens leser iPadens egen stemme.`;
+  if(n.status==='failed'&&(n.error==='stalled'||n.error==='decode'))return 'Piper-stemmen tar en liten pause, så iPadens egen stemme leser. Den er tilbake av seg selv om et halvt minutt.';
+  if(n.status==='failed')return 'Piper-stemmen kunne ikke startes nå, så iPadens egen stemme leser. Den prøves igjen av seg selv.';
+  return 'Piper-stemmen lastes ned om et øyeblikk.';};
  return v;
 }
