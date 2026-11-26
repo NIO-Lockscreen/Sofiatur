@@ -316,7 +316,9 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
   const hits=ray.intersectObjects([...pickables,...blockers,...dreaming].filter(live),false),onFloor=ray.ray.intersectPlane(floor,at),floorAt=onFloor?ray.ray.origin.distanceTo(at):Infinity;
   let hit=hits[0];if(hit?.object.userData.kind==='table')hit=hits.find(h=>h.object.userData.kind==='glass')||hits.find(h=>h.object.userData.kind==='phone')||hit; // the glass and the mobile stand inside the table's box
   if(hit&&dreaming.includes(hit.object)){const found=dream.hit(hit.object,hit.point);return found&&found.type!=='sky'?found:null;}
-  if(meal.active)return hit?.object.userData.kind==='glass'?{type:'glass'}:{type:'meal'}; // at a meal a tap anywhere is the next spoonful, starts the pump or makes her dance, and the glass is a drink (game.js)
+  // at a meal a tap anywhere is the next spoonful, starts the pump or makes her dance (game.js); the glass is a drink, and the white mobile opens (26 November 2026:
+  // «Fiks så man kan bruke mobilen i mens man spiser ved bordet»)
+  if(meal.active){const k=hit?.object.userData.kind;return k==='glass'?{type:'glass'}:k==='phone'?{type:'phone'}:{type:'meal'};}
   if(hit&&hit.object.userData.kind==='bed')return {type:'bed'}; // to bed, or up again: game.js decides
   if(resting)return null;
   if(hit&&hit.distance<floorAt){const o=hit.object,kind=o.userData.kind;

@@ -799,3 +799,7 @@ The user: «vi har en svart roborock støvsuger med dock. Vi har anime øyne kli
 - **The voice**: 7 new sentences, 649 in all; «støvsugeren» and «laderen» are said right (`PHONEME_FIXES`, the same file as the space game's).
 - **Not known, so made up**: the model, the dock and what the sticker looks like.
 - **Tests**: `verify-food.mjs` (the robot on the screen and tapped at five screen sizes, at home only; the eyes on its lid; forty dishes sucked up in under a minute and a half with the trolley left, inside the room and round the furniture all the way, back in the dock facing out; a round of a clean floor; home when asked; the dish being sucked up is off the floor; in its dock on coming in; `goOutside` clearing the floor and the welcome). All 45 `verify-*.mjs` pass.
+
+## The mobile at the table · 26 November 2026
+
+The user: «Fiks så man kan bruke mobilen i mens man spiser ved bordet». At a meal a tap anywhere used to be the next spoonful, so the mobile could not be reached. Now a tap on the mobile opens it (`pick()` in `dist/inside.js`), a tap on the glass is a drink, and anything else is the meal's as before; `game.js` opens the phone at a meal too (not while she brushes, sleeps or jumps). She can order more while she eats, with Ludvig too. `verify-food.mjs` checks the mobile, the bowl and the glass at a meal at three screen sizes. Made in both games.

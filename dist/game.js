@@ -504,7 +504,8 @@ function saveFood(){try{localStorage.setItem('sofiatur.mat',JSON.stringify(food)
 function foodChanged(){inside?.meal?.setFood?.(food,arriving.map(o=>o.slot));}
 // A window opened by a tap in the room (on the finger's lifting, houseTap) would get the click that follows it on a button or on its shade: it waits a moment.
 function guardTap(el){el.style.pointerEvents='none';clearTimeout(el.guard);el.guard=setTimeout(()=>el.style.pointerEvents='',400);}
-const homeFree=()=>state==='inside'&&place==='home'&&inside?.meal&&!brushing&&!inside.meal.active&&!inside.asleep&&!inside.jumping&&!inside.bed?.k&&!inside.bed?.u;
+// The mobile works in her own room, also while she eats (she can order more at the table); not while she brushes, sleeps or jumps on the sofa bed.
+const homeFree=()=>state==='inside'&&place==='home'&&inside?.meal&&!brushing&&!inside.asleep&&!inside.jumping&&!inside.bed?.k&&!inside.bed?.u;
 // The menu's buttons are made the first time the mobile is opened (so nothing here runs before food.js is there).
 function renderPhone(){if(!$('orderGrid').children.length)for(const d of DISHES){const b=document.createElement('button');b.type='button';b.className='order';b.innerHTML=`<span aria-hidden="true">${d.emoji}</span><b>${d.word}</b>`;b.onclick=()=>orderDish(d.id);$('orderGrid').append(b);}
  // how much there is (never how much there may be), and a note when the house is full

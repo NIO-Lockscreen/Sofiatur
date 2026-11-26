@@ -50,7 +50,14 @@ for(const [w,h] of [[1024,768],[768,1024],[820,1180],[390,844],[844,390]]){canva
 canvas.clientWidth=1024;canvas.clientHeight=768;inside.enter(list,{pigHidden:true});
 {const lit=[];for(let i=0;i<180;i++){frame();lit.push(meal.phone.group.children[0].children[1].material.color.b);}assert.ok(Math.max(...lit)>.9&&Math.min(...lit)<.3,'the screen lights up now and then');
  meal.setPhoneOpen(true);frame();assert.ok(meal.phone.group.children[0].children[1].material.color.b>.95,'lit while open');meal.setPhoneOpen(false);}
-console.log('Food: the white mobile on the table, on the screen and picked at five screen sizes, at home only, its screen lighting up now and then: OK');
+// At a meal (26 November 2026) a tap on the mobile is the mobile, a tap on the glass a drink, and anything else the meal's.
+{inside.enter(list,{pigHidden:true});run(.2);assert.ok(inside.startMeal('spoon'));for(let i=0;i<200&&st.step!=='eat';i++)frame();assert.equal(st.step,'eat');
+ for(const [w,h] of [[1024,768],[390,844],[844,390]]){canvas.clientWidth=w;canvas.clientHeight=h;run(.05);const [x,y]=screen(phoneAt);assert.ok(x>0&&x<w&&y>0&&y<h,`the mobile on the screen at the meal at ${w}×${h}`);
+  assert.deepEqual({...inside.pick(x,y)},{type:'phone'},`the mobile at the meal at ${w}×${h}`);assert.deepEqual({...inside.pick(...screen(new T.Vector3(MEAL.bowl.x,MEAL.table.h+.05,MEAL.bowl.z)))},{type:'meal'});
+  assert.deepEqual({...inside.pick(...screen(new T.Vector3(MEAL.glass.x,MEAL.table.h+.05,MEAL.glass.z)))},{type:'glass'});}
+ canvas.clientWidth=1024;canvas.clientHeight=768;inside.finishMeal();run(2);assert.equal(st.kind,null);
+ assert.ok(!/homeFree=\(\)=>[^;]*meal\.active/.test(fs.readFileSync('dist/game.js','utf8')),'game.js opens the mobile at a meal too');}
+console.log('Food: the white mobile on the table, on the screen and picked at five screen sizes, at home only, its screen lighting up now and then, and at a meal too: OK');
 
 // The trolley: there while it has food on it, the dishes in order (the top shelf first), the ones still on their way not yet; each dish picked by a tap;
 // she walks round it while it stands there, and not when it is gone.
