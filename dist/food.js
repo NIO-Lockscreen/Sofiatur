@@ -12,7 +12,7 @@ export const DISHES=[{id:'pizza',word:'Pizza',name:'pizza',the:'pizzaen',emoji:'
 export const dishById=id=>DISHES.find(d=>d.id===id)||null;
 // (26 November 2026) Six dishes go on the trolley; after that they go on the floor, as many as there are places for: a limit nobody is told (the user:
 // «etter 6 så blir det satt på gulvet, ha en skjult grense og la henne fylle gulvet om hun vil»). She walks through the food on the floor (a tap on the
-// floor is still a walk; she eats it by choosing it at «Spise», the farthest out first).
+// floor is still a walk; she eats it by choosing it at «Spise»: the floor's food first, the farthest out first).
 // The list has a place for each dish: 0–5 on the trolley, from FOOD_CART on the floor (FLOOR_FOOD, the nearest the trolley first). A dish she eats leaves its
 // place empty (null), and a new one takes the first empty place, so nothing else moves.
 export const FOOD_CART=6;
@@ -34,12 +34,14 @@ export function cleanFood(list){const out=Array.isArray(list)?list.slice(0,FOOD_
 // Where the next dish goes: the first empty place, or the next one; −1 when the house is full.
 export function foodSlot(list){const i=list.indexOf(null);return i>=0?i:list.length<FOOD_LIMIT?list.length:-1;}
 export function orderFood(list,id){const i=foodSlot(list);if(!dishById(id)||i<0)return list;const out=[...list];out[i]=id;return out;}
-// A dish eaten leaves its place empty. pickFood: which of a kind she eats when she chooses it, the one farthest out (the floor is tidied first).
+// A dish eaten leaves its place empty. pickFood: which one she eats. Food on the floor is always eaten first (the user, 26 November 2026: «når man spiser så
+// velger man alltid mat fra gulvet først»): of a kind, the one farthest out; a tap on one on the trolley takes one like it from the floor if there is one.
 export function eatFood(list,slot){if(!list[slot])return list;const out=[...list];out[slot]=null;while(out.length&&out.at(-1)===null)out.pop();return out;}
-export function pickFood(list,id){return list.lastIndexOf(id);}
+export function pickFood(list,id,slot=-1){const far=list.lastIndexOf(id);if(far>=FOOD_CART)return slot>=FOOD_CART&&list[slot]===id?slot:far;return list[slot]===id?slot:far;}
 export const foodCount=list=>list.filter(Boolean).length;
-// What there is to choose from when she is going to eat: each kind once, with how many, in the menu's order.
-export function foodChoices(list){return DISHES.map(d=>({...d,n:list.filter(id=>id===d.id).length})).filter(d=>d.n>0);}
+// What there is to choose from when she is going to eat: each kind once, with how many, in the menu's order; while there is food on the floor, only
+// what is on the floor (the trolley's turn comes when the floor is clear).
+export function foodChoices(list){const floor=list.slice(FOOD_CART),from=foodCount(floor)?floor:list;return DISHES.map(d=>({...d,n:from.filter(id=>id===d.id).length})).filter(d=>d.n>0);}
 
 const SCALE=.6,PIECES=5; // the space game's sizes to this house's (its bowl is .17 across the middle, this one .1); five bites, as the bowl has
 // coarse: fewer sides on the round shapes (the food on the floor, made into one mesh per colour by meal.js).

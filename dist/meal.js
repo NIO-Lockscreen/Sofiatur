@@ -127,7 +127,7 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
  // dish: the id of a dish she has ordered, eaten instead of the bowl (null for the bowl); slot: its place, on the trolley or the floor (a tap on it, or
  // else the one farthest out); taken: it has left its place for good (at the first bite).
  const st={kind:null,last:null,step:'',s:0,bites:0,bite:-1,queued:0,pump:0,dance:-1,drink:-1,drinkNext:false,view:0,food:-1,dish:null,slot:-1,taken:false};
- function start(kind,dishId=null,slot=-1){if(st.kind)return false;let d=kind==='spoon'&&dishById(dishId)?dishId:null;if(d&&ordered[slot]!==d)slot=pickFood(ordered,d);if(slot<0)d=null;
+ function start(kind,dishId=null,slot=-1){if(st.kind)return false;let d=kind==='spoon'&&dishById(dishId)?dishId:null;if(d)slot=pickFood(ordered,d,slot);if(slot<0)d=null;
   Object.assign(st,{kind,last:kind,step:'walk',s:0,bites:0,bite:-1,queued:0,pump:0,dance:-1,drink:-1,drinkNext:false,dish:d,slot:d?slot:-1,taken:false});if(kind==='spoon'&&!d)st.food=(st.food+1)%FOODS.length;
   const f=FOODS[Math.max(0,st.food)];food.material.color.set(f.color);bite.material.color.set(d==='egg'?'#ffd96a':f.color);for(const d of dots)d.material.color.set(f.dots);
   if(dish){dishSpot.remove(dish.group);dispose(dish.group);dish=null;}if(handBite){scene.remove(handBite);dispose(handBite);handBite=null;}

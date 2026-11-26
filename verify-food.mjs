@@ -23,7 +23,8 @@ assert.deepEqual(DISHES.map(d=>d.id),['pizza','burger','sushi','egg']);assert.de
 assert.deepEqual(DISHES.filter(d=>d.hand).map(d=>d.id),['pizza','burger','sushi'],'the egg is eaten with the spoon');
 let food=[];for(const id of ['pizza','sushi','pizza','kake','egg','burger','burger','egg','pizza'])food=orderFood(food,id);
 assert.deepEqual(food,['pizza','sushi','pizza','egg','burger','burger','egg','pizza'],'in order, nothing unknown; after six on the floor');
-assert.deepEqual(foodChoices(food).map(d=>d.id+d.n),['pizza3','burger2','sushi1','egg2']);assert.equal(pickFood(food,'pizza'),7,'the one farthest out');
+assert.deepEqual(foodChoices(food).map(d=>d.id+d.n),['pizza1','egg1'],'while there is food on the floor, only that');assert.deepEqual(foodChoices(food.slice(0,6)).map(d=>d.id+d.n),['pizza2','burger2','sushi1','egg1'],'then the trolley');
+assert.equal(pickFood(food,'pizza'),7,'the one farthest out');assert.equal(pickFood(food,'pizza',0),7,'a tap on a pizza on the trolley takes the one on the floor');assert.equal(pickFood(food,'burger',4),4,'one only on the trolley is that one');
 food=eatFood(food,1);assert.equal(food[1],null,'an empty place');assert.equal(foodSlot(food),1);food=orderFood(food,'egg');assert.equal(food[1],'egg','the first empty place is taken');
 assert.equal(eatFood(eatFood(food,7),6).length,6,'no empty places at the end');assert.equal(foodCount([null,'egg']),1);
 assert.deepEqual(cleanFood(['egg','kake',7,'sushi']),['egg',null,null,'sushi']);assert.deepEqual(cleanFood('pizza'),[]);assert.equal(cleanFood(Array(FOOD_LIMIT+9).fill('egg')).length,FOOD_LIMIT);

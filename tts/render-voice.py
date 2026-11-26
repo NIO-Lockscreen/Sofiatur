@@ -38,9 +38,11 @@ SAMPLE_RATE = 24000
 # - The food on the mobile (25 November 2026): espeak reads «pizza» with a z (pˈɪzɑ), «burger» as written (bˈɨrɡər), «sushi» as «sus-hi» (sˈɨshiː)
 #   and stresses «mobil» on the first syllable. Here as Norwegians say them: «pitsa», «børger», «sushi» with sj, «mobil» stressed last, and
 #   «trillebordet» without a long e in the middle.
+# - The robot vacuum (26 November 2026): «støvsugeren» had a long, stressed e at the end («støvsu-GEE-ren») and «laderen» a long e too; now as said.
 PHONEME_FIXES = [("sʊfˈiːʲɑ", "suːfˈiːɑ"), ("ʲ", ""), ("ˈɪjən", "ɪjˈɛn"), ("ˈɪshɑl", "ˈiːshˌɑl"),
                  ("pˈɪzaːn", "pˈɪtsɑən"), ("pˈɪzɑ", "pˈɪtsɑ"), ("bˈɨrɡeːrən", "bˈœrɡərən"), ("bˈɨrɡər", "bˈœrɡər"), ("sˈɨshiː", "sˈɨːʃiː"),
-                 ("mˈuːbiːl", "mʊbˈiːl"), ("trˈɪlleːbˌuːrda", "trˈɪləbˌuːrda")]
+                 ("mˈuːbiːl", "mʊbˈiːl"), ("trˈɪlleːbˌuːrda", "trˈɪləbˌuːrda"),
+                 ("sɨːɡˌeːrən", "sɨːɡərən"), ("lˈadeːrən", "lˈɑːdərən")]
 
 
 class GameEspeak:
