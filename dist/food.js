@@ -25,9 +25,9 @@ export function foodFloorSpots({x0,x1,z0,z1,gap,from,skip=[],rug=null}){
   const onRug=rug&&((x-rug.x)/rug.rx)**2+((z-rug.z)/rug.rz)**2<1;out.push({x,z,y:onRug?rug.y:0,yaw:(hash(i,j,3)-.5)*1.4,d:Math.hypot(x-from[0],z-from[1])});}
  return out.sort((a,b)=>a.d-b.d).map(({d,...p})=>p);}
 // The house's floor in front of the podium, clear of the sofa bed (pulled out too), the lamp, the plant, the door and its mat, the table with both chairs, the
-// PEG backpacks, the trolley and where the pig stands once found; the rug is a little higher than the floor.
+// PEG backpacks, the trolley, where the pig hides and stands once found, and the robot vacuum's dock (vacuum.js); the rug is a little higher than the floor.
 export const FLOOR_FOOD=foodFloorSpots({x0:-4.25,x1:4.25,z0:.28,z1:2.88,gap:.32,from:[-1.75,2.62],rug:{x:0,z:1.4,rx:1.55,rz:1.55,y:.04},
- skip:[[-4.5,-2.3,.15,2.8],{x:4.05,z:.4,r:.45},{x:4,z:2.6,r:.42},[3.5,4.5,1,2],[1.2,2.85,1.2,3],[2.75,3.95,2.2,3],[-2.4,-1.1,2.12,3],{x:.95,z:1.95,r:.35},{x:-4.2,z:2.65,r:.55}]});
+ skip:[[-4.5,-2.3,.15,2.8],{x:4.05,z:.4,r:.45},{x:4,z:2.6,r:.42},[3.5,4.5,1,2],[1.2,2.85,1.2,3],[2.75,3.95,2.2,3],[-2.4,-1.1,2.12,3],{x:.95,z:1.95,r:.35},{x:-4.2,z:2.65,r:.55},[2.75,3.6,.1,.95]]});
 export const FOOD_LIMIT=FOOD_CART+FLOOR_FOOD.length;
 // Known dishes in their places (anything else is an empty place), at most FOOD_LIMIT, without empty places at the end.
 export function cleanFood(list){const out=Array.isArray(list)?list.slice(0,FOOD_LIMIT).map(id=>dishById(id)?id:null):[];while(out.length&&out.at(-1)===null)out.pop();return out;}
@@ -39,6 +39,8 @@ export function orderFood(list,id){const i=foodSlot(list);if(!dishById(id)||i<0)
 export function eatFood(list,slot){if(!list[slot])return list;const out=[...list];out[slot]=null;while(out.length&&out.at(-1)===null)out.pop();return out;}
 export function pickFood(list,id,slot=-1){const far=list.lastIndexOf(id);if(far>=FOOD_CART)return slot>=FOOD_CART&&list[slot]===id?slot:far;return list[slot]===id?slot:far;}
 export const foodCount=list=>list.filter(Boolean).length;
+// The robot vacuum has been round: nothing left on the floor (the trolley's six are where they were).
+export function clearFloor(list){const out=list.slice(0,FOOD_CART);while(out.length&&out.at(-1)===null)out.pop();return out;}
 // What there is to choose from when she is going to eat: each kind once, with how many, in the menu's order; while there is food on the floor, only
 // what is on the floor (the trolley's turn comes when the floor is clear).
 export function foodChoices(list){const floor=list.slice(FOOD_CART),from=foodCount(floor)?floor:list;return DISHES.map(d=>({...d,n:from.filter(id=>id===d.id).length})).filter(d=>d.n>0);}

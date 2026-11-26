@@ -5,6 +5,8 @@ import {createInside,STEPS} from './dist/inside.js';
 import {MEAL,BITES} from './dist/meal.js';
 import {DISHES,FOOD_CART,FLOOR_FOOD,FOOD_LIMIT,foodFloorSpots,cleanFood,foodSlot,orderFood,eatFood,pickFood,foodCount,foodChoices} from './dist/food.js';
 import {FRIEND} from './dist/friends.js';
+import {VAC} from './dist/vacuum.js';
+import {clearFloor} from './dist/food.js';
 import {FRIEND_BOWL} from './dist/friends.js';
 // The white mobile on the table and the food Sofia orders on it (25 November 2026): dist/food.js in dist/meal.js and dist/inside.js with a fake renderer
 // and canvas, as in verify-meal.mjs, and what game.js does with it.
@@ -101,9 +103,10 @@ console.log('Food: a dish where the bowl stood, five bites, pizza, burger and su
 {inside.enter(list,{pigHidden:true});const all=Array.from({length:FOOD_LIMIT},(_,i)=>DISHES[(i*7+3)%4].id);meal.setFood(all.slice(0,9),[8]);run(.2);
  assert.equal(meal.cartList().length,6);assert.deepEqual(meal.floorList().map(o=>o.slot),[6,7],'two on the floor, the third still on its way');
  const obstacles=meal.obstacles.length;meal.setFood(all);run(.2);assert.equal(meal.floorList().length,FLOOR_FOOD.length,'the whole floor');assert.equal(meal.obstacles.length,obstacles,'the food on the floor is not in the way');
- assert.ok(meal.floor.children.length<=20&&meal.floor.children.length>=10,'one mesh per colour: '+meal.floor.children.length);
- const tris=meal.floor.children.reduce((n,m)=>n+m.geometry.attributes.position.count/3,0);assert.ok(tris<FLOOR_FOOD.length*700,'coarse on the floor: '+tris+' triangles');
- const box=new T.Box3();for(const m of meal.floor.children){m.geometry.computeBoundingBox();box.union(m.geometry.boundingBox);}assert.ok(box.min.y>-.01&&box.max.y<.2,'lying on the floor: '+box.min.y.toFixed(3)+' to '+box.max.y.toFixed(3));
+ const meshes=()=>{const out=[];meal.floor.traverse(o=>{if(o.isMesh)out.push(o);});return out;};
+ assert.ok(meshes().length<=5*20&&meal.floor.children.length===5,'one mesh per colour, in pieces of 24 places: '+meshes().length+' meshes in '+meal.floor.children.length);
+ const tris=meshes().reduce((n,m)=>n+m.geometry.attributes.position.count/3,0);assert.ok(tris<FLOOR_FOOD.length*700,'coarse on the floor: '+tris+' triangles');
+ const box=new T.Box3();for(const m of meshes()){m.geometry.computeBoundingBox();box.union(m.geometry.boundingBox);}assert.ok(box.min.y>-.01&&box.max.y<.2,'lying on the floor: '+box.min.y.toFixed(3)+' to '+box.max.y.toFixed(3));
  // a tap on a dish on the floor: she walks there, through the food
  const f=FLOOR_FOOD[30],[sx,sy]=screen(new T.Vector3(f.x,.02,f.z));assert.deepEqual({...inside.pick(sx,sy)},{type:'floor'},'a walk');run(6);
  assert.ok(Math.hypot(girl.position.x-f.x,girl.position.z-f.z)<.3,'she is there, in the food ('+girl.position.x.toFixed(2)+', '+girl.position.z.toFixed(2)+')');
@@ -112,8 +115,34 @@ console.log('Food: a dish where the bowl stood, five bites, pizza, burger and su
  run(.2);assert.ok(!meal.floorList().some(o=>o.slot===slot),'off the floor to the table');for(let i=0;i<300&&st.step!=='eat';i++)frame();inside.mealTap();run(1.2);assert.deepEqual(steps().filter(s=>s==='taken'),['taken']);
  inside.finishMeal();run(2);const after=[...all];after[slot]=null;meal.setFood(after);run(.2);assert.ok(!meal.floorList().some(o=>o.slot===slot));
  inside.enter([],{pigHidden:true,place:'ludvig',friends:{ludvig:true}});run(.1);assert.equal(meal.homeThings.visible,false,'not at Ludvig\'s');
- inside.enter(list,{pigHidden:true});meal.setFood([]);run(.2);assert.equal(meal.floor.children.length,0,'an empty floor');}
+ inside.enter(list,{pigHidden:true});meal.setFood([]);run(.2);assert.equal(meshes().length,0,'an empty floor');}
 console.log('Food: after six the floor, each dish in its place, one mesh per colour, walked through, the farthest out eaten first, not at Ludvig\'s: OK');
+
+// The robot vacuum (26 November 2026): in its dock in front of the podium, on the screen and tapped at five sizes (at home only), the eyes on its lid; it
+// drives out, sucks up every dish on the floor (game.js takes each off the list at 'suck:'), leaves the trolley, stays in the room, goes round the furniture,
+// and backs into its dock facing out; a clean floor gets a round; home when asked.
+{const v=meal.vacuum,robot=v.robot;
+ for(const [w,h] of [[1024,768],[768,1024],[820,1180],[390,844],[844,390]]){canvas.clientWidth=w;canvas.clientHeight=h;inside.enter(list,{pigHidden:true});
+  const [x,y]=screen(new T.Vector3(VAC.dock.x,.06,VAC.dock.z));assert.ok(x>0&&x<w&&y>0&&y<h,`the robot vacuum on the screen at ${w}×${h}`);assert.deepEqual({...inside.pick(x,y)},{type:'vacuum'},`tapped at ${w}×${h}`);}
+ canvas.clientWidth=1024;canvas.clientHeight=768;
+ inside.enter([],{pigHidden:true,place:'ludvig',friends:{ludvig:true}});{const [x,y]=screen(new T.Vector3(VAC.dock.x,.06,VAC.dock.z));assert.notEqual(inside.pick(x,y)?.type,'vacuum','not at Ludvig\'s');}
+ inside.enter(list,{pigHidden:true});robot.updateMatrixWorld(true);
+ const eyes=[];robot.traverse(o=>{if(o.isMesh&&o.material.color?.getHexString()==='7b4fe0')eyes.push(o.getWorldPosition(new T.Vector3()));});
+ assert.equal(eyes.length,2,'two eyes');assert.ok(eyes.every(e=>e.y>.075&&e.z>robot.position.z),'on top of the lid, at the front');
+ let food=Array.from({length:FOOD_CART+40},(_,i)=>DISHES[i%4].id);meal.setFood(food);events.length=0;run(.2);
+ assert.ok(v.start(true));assert.equal(v.st.mode,'out');let n=0;
+ for(;n<6000&&v.st.mode!=='dock';n++){frame();for(const e of events.splice(0)){const m=/^meal:suck:(\d+)$/.exec(e);if(m){food=eatFood(food,+m[1]);meal.setFood(food);}}
+  assert.ok(Math.abs(robot.position.x)<4.4&&robot.position.z>.1&&robot.position.z<3,'in the room, in front of the podium');
+  for(const r of meal.obstacles)assert.ok(!(robot.position.x>r.x0+.05&&robot.position.x<r.x1-.05&&robot.position.z>r.z0+.05&&robot.position.z<r.z1-.05),'round the furniture');}
+ assert.equal(v.st.mode,'dock');assert.equal(food.length,FOOD_CART,'the floor clean, the trolley left');assert.equal(v.st.cleaned,40);assert.ok(n/30<90,'forty dishes in '+(n/30).toFixed(0)+' s');
+ assert.ok(Math.hypot(robot.position.x-VAC.dock.x,robot.position.z-VAC.dock.z)<1e-9&&robot.rotation.y===0,'back in its dock, facing out');
+ events.length=0;assert.ok(v.start(false));assert.equal(v.st.round.length,5,'a round of a clean floor');run(1.5);assert.ok(v.home());assert.equal(v.home(),false,'once');run(20);assert.equal(v.st.mode,'dock','home when asked');
+ assert.deepEqual(events.filter(e=>e.startsWith('meal:vacuum:')&&!/hum|slurp/.test(e)),['meal:vacuum:round','meal:vacuum:home','meal:vacuum:back']);
+ // while it sucks a dish up, that dish is not on the floor; coming in again, it is in its dock
+ food=Array.from({length:FOOD_CART+3},(_,i)=>DISHES[i%4].id);meal.setFood(food);v.start(true);for(let i=0;i<900&&v.suckSlot<0;i++)frame();assert.ok(v.suckSlot>=FOOD_CART);assert.ok(!meal.floorList().some(o=>o.slot===v.suckSlot));
+ inside.enter(list,{pigHidden:true});assert.equal(v.st.mode,'dock');assert.deepEqual(clearFloor(['egg',null,'pizza',null,null,null,'sushi']),['egg',null,'pizza']);
+ const g=fs.readFileSync('dist/game.js','utf8');assert.ok(/function goOutside\(\)\{if\(state!=='inside'\)return;closeFood\(\);vacuumAway\(\);/.test(g)&&/food=clearFloor\(food\);saveFood\(\);v\.reset\(\);/.test(g)&&/if\(cleanedAway\)\{cleanedAway=false;line\+=' Mens du var ute/.test(g),'out of the house: a clean floor, and she is told');}
+console.log('Food: the robot vacuum, eyes on its lid, sucks up the floor round the furniture and backs into its dock; a round of a clean floor; home when asked; at home only: OK');
 
 // With Ludvig at the table he gets one just like it where his bowl stands, and eats it the way she does.
 {inside.enter(list,{pigHidden:true,friends:{ludvig:true,duckling:true}});meal.setFood(['sushi']);run(.3);inside.startMeal('spoon','sushi');for(let i=0;i<300&&st.step!=='eat';i++)frame();

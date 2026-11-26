@@ -22,6 +22,7 @@ const ease=k=>k*k*(3-2*k),mix=(a,b,k)=>a+(b-a)*k,turn=(from,to,k)=>from+Math.ata
 
 import {createStarWall} from './star-wall.js';
 import {createDish,createBite,createPhone,createCart,dishById,FOOD_CART,FLOOR_FOOD,pickFood} from './food.js';
+import {createVacuum} from './vacuum.js';
 // Small builders shared with Ludvig's things at the table (friends.js, 25 November 2026): materials, meshes on a parent, rods between two points, an arm aimed at a point.
 export function meshKit(T){
  const std=(color,roughness=.8)=>new T.MeshStandardMaterial({color,roughness}),flat=color=>new T.MeshBasicMaterial({color});
@@ -60,7 +61,7 @@ export function createPegTube(T,parent,curve,reduced=()=>false){const {std,flat,
  function dress(grow,flow,time){group.visible=grow>0;if(!(grow>0))return;for(let i=0;i<SEG;i++){const u0=i/SEG,u1=(i+1)/SEG,show=u0<grow;segs[i].visible=show;if(show)place(segs[i],curve.getPoint(u0).toArray(),curve.getPoint(Math.min(u1,grow)).toArray());}
   plug.visible=grow>=1;drops.forEach((d,i)=>{d.visible=flow;if(flow)d.position.copy(curve.getPoint(((reduced()?0:time*.42)+i/7)%1));});}
  return {group,dress,plug,drops};}
-export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>false,on=()=>{}}){
+export function createMeal({T,scene,girl,walkTo,arrived,setHere,route,reduced=()=>false,on=()=>{}}){
  const std=(color,roughness=.8)=>new T.MeshStandardMaterial({color,roughness}),flat=color=>new T.MeshBasicMaterial({color});
  function add(g,m,x,y,z,parent=scene){const o=new T.Mesh(g,m);o.position.set(x,y,z);parent.add(o);return o;}
  const box=(w,h,d,m,x,y,z,p)=>add(new T.BoxGeometry(w,h,d),m,x,y,z,p),cyl=(rt,rb,h,m,x,y,z,p,seg=24)=>add(new T.CylinderGeometry(rt,rb,h,seg),m,x,y,z,p),ball=(r,m,x,y,z,p)=>add(new T.SphereGeometry(r,16,10),m,x,y,z,p);
@@ -88,10 +89,12 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
  const homeThings=new T.Group();scene.add(homeThings);
  const phone=createPhone(T);phone.group.position.set(MEAL.phone.x,bowlY+.002,MEAL.phone.z);phone.group.rotation.y=MEAL.phone.yaw;homeThings.add(phone.group);let phoneOpen=false;
  const cart=createCart(T);cart.group.position.set(MEAL.cart.x,0,MEAL.cart.z);homeThings.add(cart.group);cart.group.visible=false;
- let ordered=[],arriving=[],shownKey=null,onCart=[],pop={slot:-1,at:0},floorKey=null;const floor=new T.Group();homeThings.add(floor);const floorMats=new Map();
+ let ordered=[],arriving=[],shownKey=null,onCart=[],pop={slot:-1,at:0};const floor=new T.Group();homeThings.add(floor);const floorMats=new Map();
  // the dish she eats sits where the bowl stands; a bite of pizza, the burger or sushi is in her hand on its way up
  const dishSpot=new T.Group();dishSpot.position.set(MEAL.bowl.x,bowlY,MEAL.bowl.z);scene.add(dishSpot);let dish=null,handBite=null;
  const dispose=g=>g.traverse(o=>{if(o.isMesh){o.geometry.dispose();o.material.dispose();}});
+ // the robot vacuum and its dock (vacuum.js, 26 November 2026)
+ const vacuum=createVacuum({T,parent:homeThings,route,reduced,on});
  // ---- The PEG backpack (createPegBag, above), on the floor beside the table ----
  const {bag,light:bagLight,handle}=createPegBag(T);scene.add(bag);
  // ---- What she wears with it: the straps over her shoulders and the tube from the backpack's side round to the button on her tummy, with drops of food ----
@@ -135,7 +138,7 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
   const to=kind==='spoon'?MEAL.side:MEAL.stand,face=kind==='spoon'?Math.atan2(-(ch.x-to.x),-(ch.z-to.z)):Math.atan2(-(MEAL.bag.x-to.x),-(MEAL.bag.z-to.z));walkTo(to.x,to.z,{yaw:face,meal:true},true);return true;}
  function next(){const list=STEPS[st.kind],i=list.indexOf(st.step);st.s=0;if(i>=list.length-1){end();return;}st.step=list[i+1];on(st.step);if(st.step==='eat'&&st.drinkNext){st.drinkNext=false;st.drink=0;}}
  function end(){const k=st.kind;if(!k)return;const p=k==='spoon'?MEAL.side:MEAL.stand;setHere(p.x,p.z,Math.PI);st.kind=null;st.step='';restSpoon();on('end');}
- function reset(){st.kind=null;st.step='';st.view=0;st.bite=-1;st.dance=-1;st.drink=-1;st.drinkNext=false;st.dish=null;st.slot=-1;st.taken=false;restSpoon();dress(0);}
+ function reset(){st.kind=null;st.step='';st.view=0;st.bite=-1;st.dance=-1;st.drink=-1;st.drinkNext=false;st.dish=null;st.slot=-1;st.taken=false;vacuum.reset();restSpoon();dress(0);}
  function tap(){if(!st.kind)return null;if(st.step==='eat'){if(st.bite>=0||st.drink>=0)st.queued=Math.min(2,st.queued+1);else st.bite=0;return 'bite';}
   if(st.step==='ready'){st.step='pump';st.s=0;st.pump=0;on('pump');return 'pump';}if(st.step==='pump'&&st.dance<0){st.dance=0;on('dance');return 'dance';}return null;}
  // A tap on the glass at a meal with the spoon: she drinks now ('drink'), or as soon as this spoonful is eaten or she has sat down ('later').
@@ -147,7 +150,7 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
   if(st.kind==='spoon'&&i<=2){st.step='up';st.s=0;st.bite=-1;st.queued=0;st.drink=-1;st.drinkNext=false;on('thanks');return;}
   if(st.kind==='peg'&&i>=2&&i<=4){st.step=i<=3?'unplug':'beep';st.s=0;on(st.step);}} // before the pump has run the tube just comes off
  const stepTime=()=>TIME[st.step]??Infinity;
- function update(dt,time){starWall.update(time,reduced());st.view+=((st.kind&&st.step!=='walk'?1:0)-st.view)*Math.min(1,dt*2.2);if(!st.kind){dress(time);return;}st.s+=dt;
+ function update(dt,time){starWall.update(time,reduced());if(homeThings.visible)vacuum.update(dt,time,floorList());st.view+=((st.kind&&st.step!=='walk'?1:0)-st.view)*Math.min(1,dt*2.2);if(!st.kind){dress(time);return;}st.s+=dt;
   if(st.step==='walk'){if(arrived())next();}
   // a drink: «glugg» while the glass is tipped at her mouth, «ahh» as it comes down, then any spoonful tapped meanwhile
   else if(st.step==='eat'&&st.drink>=0){const was=st.drink;st.drink+=dt;if(was<.8&&st.drink>=.8)on('gulp');if(was<1.45&&st.drink>=1.45)on('ahh');
@@ -180,9 +183,10 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
   girl.group.updateMatrixWorld(true);arms[0].localToWorld(hand.set(0,-ARM,0));body.worldToLocal(hand);hand.sub(va.set(...g));glass.position.copy(body.localToWorld(hand));
   body.getWorldQuaternion(glass.quaternion);glass.quaternion.multiply(tilt.setFromAxisAngle(X,P.up*(.6+.4*P.sip)));return P;}
  // ---- The trolley and the mobile ----
- // The dishes there are to see, {id, slot} each: not those still on their way, nor the one on the table. On the trolley places 0–5, on the floor the rest.
+ // The dishes there are to see, {id, slot} each: not those still on their way, nor the one on the table, nor the one the robot vacuum is sucking up.
+ // On the trolley places 0–5, on the floor the rest.
  function shownFood(from,to){const out=[];for(let slot=from;slot<Math.min(to,ordered.length);slot++){const id=ordered[slot];
-  if(id&&!arriving.includes(slot)&&!(st.kind==='spoon'&&st.dish&&!st.taken&&st.slot===slot))out.push({id,slot});}return out;}
+  if(id&&slot!==vacuum.suckSlot&&!arriving.includes(slot)&&!(st.kind==='spoon'&&st.dish&&!st.taken&&st.slot===slot))out.push({id,slot});}return out;}
  const cartList=()=>shownFood(0,FOOD_CART),floorList=()=>shownFood(FOOD_CART,FOOD_CART+FLOOR_FOOD.length); // (never past the floor's last place)
  // The dishes on the trolley, each in its place, made again when they change (a dish that has just come pops up); the trolley is there while it has food
  // on it or she eats a dish from it, and is in the way (obstacles) while it is there in her own room. The mobile's screen lights up now and then, and while it is open.
@@ -196,9 +200,13 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
   const i=obstacles.indexOf(cartRect),want=cart.group.visible&&homeThings.visible;if(want&&i<0)obstacles.push(cartRect);else if(!want&&i>=0)obstacles.splice(i,1);
   phone.set(phoneOpen?1:reduced()?.3:Math.pow(Math.max(0,Math.sin(time*1.3)),8));}
  // The food on the floor: a floor full of food is more than a hundred dishes of a dozen pieces or more, which would be thousands of meshes to draw. So the
- // floor's dishes (made a little coarser, createDish(…, true)) are joined into one mesh per colour, again only when a dish comes or goes.
- function dressFloor(){const list=floorList(),key=list.map(o=>o.slot+o.id).join();if(key===floorKey)return;floorKey=key;
-  for(const m of [...floor.children]){floor.remove(m);m.geometry.dispose();}
+ // floor's dishes (made a little coarser, createDish(…, true)) are joined into one mesh per colour, again only when a dish comes or goes; in pieces of
+ // FLOOR_CHUNK places, so a dish that goes (the robot vacuum takes one every second or so) makes only its own piece again.
+ const FLOOR_CHUNK=24,chunks=[];
+ function dressFloor(){const list=floorList(),parts=[];for(const o of list)(parts[Math.floor((o.slot-FOOD_CART)/FLOOR_CHUNK)]??=[]).push(o);
+  for(let c=0;c<Math.ceil(FLOOR_FOOD.length/FLOOR_CHUNK);c++){const items=parts[c]||[],key=items.map(o=>o.slot+o.id).join(),ch=chunks[c]??={key:'',group:null};
+   if(key===ch.key)continue;ch.key=key;if(!ch.group){ch.group=new T.Group();floor.add(ch.group);}bakeFloor(items,ch.group);}}
+ function bakeFloor(list,into){for(const m of [...into.children]){into.remove(m);m.geometry.dispose();}
   const tmp=new T.Group(),by=new Map(),shown=o=>{for(let p=o;p&&p!==tmp;p=p.parent)if(!p.visible)return false;return true;};
   for(const o of list){const f=FLOOR_FOOD[o.slot-FOOD_CART],d=createDish(T,o.id,true);d.group.position.set(f.x,f.y,f.z);d.group.rotation.y=f.yaw;d.group.scale.setScalar(.9);tmp.add(d.group);}
   tmp.updateMatrixWorld(true);
@@ -207,7 +215,7 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
   for(const [c,geos] of by){const n=geos.reduce((s,g)=>s+g.attributes.position.count,0),pos=new Float32Array(n*3),nor=new Float32Array(n*3);let k=0;
    for(const g of geos){pos.set(g.attributes.position.array,k*3);nor.set(g.attributes.normal.array,k*3);k+=g.attributes.position.count;g.dispose();}
    const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(pos,3));geo.setAttribute('normal',new T.BufferAttribute(nor,3));geo.computeBoundingSphere();
-   if(!floorMats.has(c))floorMats.set(c,new T.MeshStandardMaterial({color:c,roughness:.7}));floor.add(new T.Mesh(geo,floorMats.get(c)));}
+   if(!floorMats.has(c))floorMats.set(c,new T.MeshStandardMaterial({color:c,roughness:.7}));into.add(new T.Mesh(geo,floorMats.get(c)));}
   dispose(tmp);}
  function dress(time){const k=st.kind,s=st.step,c=Math.min(1,st.s/stepTime());dressCart(time);
   // a dish from the trolley stands where the bowl was while she eats it, and is gone when she gets down from the chair
@@ -255,7 +263,7 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
  function viewPoints(){const k=st.kind||st.last;return k==='spoon'?[[tb.x-.45,.5,tb.z+.1],[tb.x+.45,.5,tb.z+.1],[ch.x-.35,1.1,ch.z-.2],[ch.x+.35,1.1,ch.z-.2]]:[[MEAL.stand.x-.4,1.2,MEAL.stand.z],[MEAL.stand.x+.35,0,MEAL.stand.z],[MEAL.bag.x-.3,0,MEAL.bag.z+.25],[MEAL.bag.x+.3,.5,MEAL.bag.z]];}
  // game.js tells what she has ordered (a dish or null for each place) and the places of what is on its way, and when the mobile is open.
  function setFood(list,onTheWay=[]){ordered=[...list];arriving=[...onTheWay];}
- return {st,start,tap,drink,finish,update,pose,reset,setBrushed,starWall,wallArt,foodLeft,viewPoints,hits:[tableHit,bagHit,glassHit,phoneHit,...slotHits],obstacles,bag,spoon,glass,food,worn,tubeOn,chart,
-  setFood,cartList,floorList,floor,setPhoneOpen:o=>{phoneOpen=!!o;},homeThings,phone,cart,phoneHit,slotHits,dishSpot,get dish(){return dish;},get handBite(){return handBite;},get onCart(){return onCart;},
+ return {st,start,tap,drink,finish,update,pose,reset,setBrushed,starWall,wallArt,foodLeft,viewPoints,hits:[tableHit,bagHit,glassHit,phoneHit,...slotHits,...vacuum.hits],obstacles,bag,spoon,glass,food,worn,tubeOn,chart,
+  setFood,cartList,floorList,floor,vacuum,setPhoneOpen:o=>{phoneOpen=!!o;},homeThings,phone,cart,phoneHit,slotHits,dishSpot,get dish(){return dish;},get handBite(){return handBite;},get onCart(){return onCart;},
   get active(){return !!st.kind;},get busy(){return !!st.kind&&st.step!=='walk';}};
 }

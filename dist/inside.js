@@ -141,7 +141,7 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
  const pig=createPig(T);pig.group.scale.setScalar(.18);home.add(pig.group);
  const pigHit=box(1.4,1,1.1,new T.MeshBasicMaterial({color:'#ff00ff'}),-3.95,.5,3,home,'pig');pigHit.visible=false;
  let gx=0,gz=1.4,yaw=Math.PI,walk=null,arrive=null,waveLeft=0,pigOut=false,hop=-1;
- const meal=createMeal({T,scene,girl,walkTo:(x,z,face,free)=>walkTo(x,z,face,free),arrived:()=>!walk&&!!arrive&&Math.abs(Math.atan2(Math.sin(arrive.yaw-yaw),Math.cos(arrive.yaw-yaw)))<.12,
+ const meal=createMeal({T,scene,girl,walkTo:(x,z,face,free)=>walkTo(x,z,face,free),route:(...a)=>route(...a),arrived:()=>!walk&&!!arrive&&Math.abs(Math.atan2(Math.sin(arrive.yaw-yaw),Math.cos(arrive.yaw-yaw)))<.12,
   setHere:(x,z,y)=>{gx=x;gz=z;yaw=y;walk=null;arrive=null;},on:name=>on('meal:'+name)});
  const OBST=meal.obstacles;pickables.push(...meal.hits); // where she cannot walk (walkTo, below)
  // Where the girl may walk: the free floor in front of the podium, clear of the sofa, the lamp, the plant and the door. (Going to bed she goes closer, to take hold of it.)
@@ -324,7 +324,7 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
    if(kind==='item'){const slot=slots.find(s=>s.id===o.userData.id);walkTo(slot.x,.65,{yaw:0});return {type:'item',id:slot.id};}
    if(kind==='pig'){walkTo(-2.7,2.6,{yaw:Math.PI*.7});return {type:'pig'};}
    if(kind==='door'){walkTo(3.45,1.5,{yaw:-Math.PI/2});return {type:'door'};}
-   if(kind==='table'||kind==='bag'||kind==='glass'||kind==='phone')return {type:kind};
+   if(kind==='table'||kind==='bag'||kind==='glass'||kind==='phone'||kind==='vacuum')return {type:kind};
    if(kind==='dish'&&o.userData.id)return {type:'dish',id:o.userData.id,slot:o.userData.slot}; // a dish on the trolley (meal.js); on the floor a tap is a walk, through the food
    return null;}
   if(onFloor&&Math.abs(at.x)<ROOM.x&&at.z>ROOM.back&&at.z<ROOM.front){walkTo(at.x,at.z);return {type:'floor'};}
