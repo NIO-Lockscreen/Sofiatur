@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bygger den norske fonemiseringen (espeak-ng -> WebAssembly) som brukes når stemmeklippene lages (tts/espeak-ipa.mjs, tts/make-voice.mjs).
+# Bygger den norske fonemiseringen (espeak-ng -> WebAssembly) som brukes når stemmeklippene lages (tts/piper-core.mjs, tts/make-voice.mjs).
 # Resultat: tts/espeak-nb.mjs, tts/espeak-nb.wasm og tts/espeak-nb.data (bare norske data, ca. 1 MB).
 # Krever: git, cmake, make, en C-kompilator, Python 3 og Emscripten (emsdk) i PATH (source emsdk_env.sh).
 # Samme espeak-ng-versjon som Piper 1.8 (piper1-gpl) bruker, så fonemene blir like som stemmen ble trent med.

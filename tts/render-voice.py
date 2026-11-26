@@ -1,102 +1,38 @@
 #!/usr/bin/env python3
-"""Renders the game's sentences with Canora Norwegian «ingrid» (EmpirioLabs, Apache 2.0), a Kokoro-82M voice.
+"""Renders the game's sentences with Piper «talesyntese» (no_NO-talesyntese-medium, Nasjonalbiblioteket, CC0), 26 November 2026.
 
-Called by tts/make-voice.mjs, which finds the sentences and packs the clips; it can also be run by hand:
+Called by tts/make-voice.mjs, which finds the sentences, makes the phoneme ids (espeak-ng + piper-core.mjs) and packs the clips:
 
-    python3 tts/render-voice.py jobs.json cache_dir --model model.onnx --voice ingrid.bin [--speed 0.9]
+    python3 tts/render-voice.py jobs.json cache_dir --model no_NO-talesyntese-medium.onnx --config no_NO-talesyntese-medium.onnx.json [--length-scale 1.12]
 
-jobs.json is a list of {"key": sentence as the game says it, "say": the text to read}. Each clip is written once, as
-cache_dir/<hash>.wav (24 kHz, 16-bit), where the hash covers the phonemes, the speed and the model; a sentence already
-rendered is not rendered again. Prints a JSON list of {"key", "phonemes", "wav"} on stdout.
+jobs.json is a list of {"key": sentence as the game says it, "ids": [[phoneme ids of one sentence], ...]}. Each clip is written once,
+as cache_dir/<hash>.wav (22 050 Hz, 16-bit), where the hash covers the ids, the settings and the model; a sentence already rendered
+is not rendered again. Prints a JSON list of {"key", "wav"} on stdout.
 
-Text to phonemes is EmpirioLabs' own module for this model (src/g2p_no.py, unchanged), but espeak-ng is the game's build
-(tts/espeak-nb.*, with the pronunciation list src/no_listx) run through tts/espeak-ipa.mjs, so the planets and Sofia's
-name are stressed the way the list says. Needs python3 with numpy and onnxruntime, and node.
+The sound is the model's own, as Piper makes it: the noise and pace settings from the voice's config (the pace slowed by --length-scale,
+which stretches the sounds in time and leaves the pitch alone), loudness to a peak of 0.92 like Piper's own normalize_audio, and the
+silence before and after trimmed. No pitch or formant shift. The model draws its own noise, so a sentence rendered again sounds the same
+but is not bit for bit the same; that is why rendered clips are kept. Needs python3 with numpy and onnxruntime.
 """
 import argparse
 import hashlib
 import json
 import os
-import subprocess
 import sys
 import wave
 
 import numpy as np
 import onnxruntime as ort
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "src"))
-import g2p_no  # noqa: E402
-
-SAMPLE_RATE = 24000
-# Phonemes changed after the text-to-phoneme step, for this voice, each tried with NB-Whisper (small) with and without (25 November 2026):
-# - «Sofia» as no_listx has it (sʊfˈiːʲɑ, right for the Piper voice) was heard «Sofidia» or «Sofiria» in 6 of 6 sentences; suːfˈiːɑ «Sofia» in 6 of 6.
-# - ʲ: the game's espeak-ng (newer than the 1.51 the model was trained with) puts it between two vowels («viːʲ ˌɛːr», «lˈiːʲɑnvɑnnət»), and
-#   the model makes a sound of it: «Vi er» was heard «Hvit er», Lianvannet «liten vannet», KIWI «kivier». Without it, right.
-# - «igjen» is stressed on the first syllable (ˈɪjən) and was heard «i renn» / «i len»; ɪjˈɛn is heard «igjen».
-# - «ishall» (ˈɪshɑl) was heard «i sal»; ˈiːshˌɑl (is-hall) is heard «ishall».
-# - The food on the mobile (25 November 2026): espeak reads «pizza» with a z (pˈɪzɑ), «burger» as written (bˈɨrɡər), «sushi» as «sus-hi» (sˈɨshiː)
-#   and stresses «mobil» on the first syllable. Here as Norwegians say them: «pitsa», «børger», «sushi» with sj, «mobil» stressed last, and
-#   «trillebordet» without a long e in the middle.
-# - The robot vacuum (26 November 2026): «støvsugeren» had a long, stressed e at the end («støvsu-GEE-ren») and «laderen» a long e too; now as said.
-PHONEME_FIXES = [("sʊfˈiːʲɑ", "suːfˈiːɑ"), ("ʲ", ""), ("ˈɪjən", "ɪjˈɛn"), ("ˈɪshɑl", "ˈiːshˌɑl"),
-                 ("pˈɪzaːn", "pˈɪtsɑən"), ("pˈɪzɑ", "pˈɪtsɑ"), ("bˈɨrɡeːrən", "bˈœrɡərən"), ("bˈɨrɡər", "bˈœrɡər"), ("sˈɨshiː", "sˈɨːʃiː"),
-                 ("mˈuːbiːl", "mʊbˈiːl"), ("trˈɪlleːbˌuːrda", "trˈɪləbˌuːrda"),
-                 ("sɨːɡˌeːrən", "sɨːɡərən"), ("lˈadeːrən", "lˈɑːdərən")]
+GAP = 0.22  # between two sentences in one clip (the same as the game's pause between clips)
 
 
-class GameEspeak:
-    """g2p_no's Espeak, but every chunk is phonemized up front in one call to tts/espeak-ipa.mjs."""
-
-    def __init__(self):
-        self.known = {}
-
-    def learn(self, chunks):
-        todo = sorted({c for c in chunks if c not in self.known})
-        if not todo:
-            return
-        out = subprocess.run(["node", os.path.join(HERE, "espeak-ipa.mjs")], input="\n".join(todo) + "\n",
-                             capture_output=True, text=True, encoding="utf-8", check=True).stdout.split("\n")
-        for text, ipa in zip(todo, out):
-            self.known[text] = ipa.strip()
-
-    def __call__(self, chunks):
-        return [self.known[c] for c in chunks]
-
-
-class Recorder:
-    def __init__(self):
-        self.chunks = []
-
-    def __call__(self, chunks):
-        self.chunks.extend(chunks)
-        return ["" for _ in chunks]
-
-
-def phonemize(texts):
-    g2p = g2p_no.NorwegianG2P.__new__(g2p_no.NorwegianG2P)
-    g2p.espeak = Recorder()
-    for t in texts:
-        g2p(t)
-    game = GameEspeak()
-    game.learn(g2p.espeak.chunks)
-    g2p.espeak = game
-    out = []
-    for t in texts:
-        ps = g2p(t)[0]
-        for a, b in PHONEME_FIXES:
-            ps = ps.replace(a, b)
-        out.append(ps)
-    return out
-
-
-def trim(audio, threshold=0.004, keep=0.03):
-    """Silence off both ends, keeping 30 ms."""
+def trim(audio, sample_rate, threshold=0.008, lead=0.03, tail=0.09):
+    """Silence off both ends, keeping 30 ms before and 90 ms after (as the voice did on the iPad)."""
     loud = np.nonzero(np.abs(audio) > threshold)[0]
     if not len(loud):
         return audio[:0]
-    pad = int(keep * SAMPLE_RATE)
-    return audio[max(0, loud[0] - pad):loud[-1] + pad]
+    return audio[max(0, loud[0] - int(lead * sample_rate)):loud[-1] + 1 + int(tail * sample_rate)]
 
 
 def main():
@@ -104,44 +40,50 @@ def main():
     ap.add_argument("jobs")
     ap.add_argument("cache")
     ap.add_argument("--model", required=True)
-    ap.add_argument("--voice", required=True)
-    ap.add_argument("--speed", type=float, default=0.9)
+    ap.add_argument("--config", required=True)
+    ap.add_argument("--length-scale", type=float, default=1.0)
     ap.add_argument("--threads", type=int, default=os.cpu_count() or 4)
     a = ap.parse_args()
     jobs = json.load(open(a.jobs, encoding="utf-8"))
+    config = json.load(open(a.config, encoding="utf-8"))
+    inf, sr = config.get("inference", {}), config["audio"]["sample_rate"]
+    scales = [inf.get("noise_scale", 0.667), inf.get("length_scale", 1.0) * a.length_scale, inf.get("noise_w", 0.8)]
     os.makedirs(a.cache, exist_ok=True)
-    vocab = json.load(open(os.path.join(HERE, "src", "canora-config.json"), encoding="utf-8"))["vocab"]
-    voice = np.fromfile(a.voice, dtype=np.float32).reshape(-1, 1, 256)
-    model_id = f"{os.path.basename(a.model)}:{os.path.getsize(a.model)}:{os.path.basename(a.voice)}"
-    phonemes = phonemize([j["say"] for j in jobs])
+    model_id = f"{os.path.basename(a.model)}:{os.path.getsize(a.model)}"
     session = None
     results, made = [], 0
-    for job, ps in zip(jobs, phonemes):
-        digest = hashlib.sha1(f"{ps}|{a.speed}|{model_id}".encode()).hexdigest()[:16]
+    for job in jobs:
+        digest = hashlib.sha1(f"{json.dumps(job['ids'])}|{scales}|{model_id}".encode()).hexdigest()[:16]
         path = os.path.join(a.cache, digest + ".wav")
         if not os.path.exists(path):
             if session is None:
                 opts = ort.SessionOptions()
                 opts.intra_op_num_threads = a.threads
                 session = ort.InferenceSession(a.model, opts, providers=["CPUExecutionProvider"])
-            ids = [0] + [vocab[p] for p in ps if p in vocab][:510] + [0]
-            audio = session.run(None, {
-                "input_ids": np.array([ids], dtype=np.int64),
-                "style": voice[min(len(ps), len(voice)) - 1],
-                "speed": np.array([a.speed], dtype=np.float32),
-            })[0].reshape(-1)
-            audio = trim(audio)
+            pieces = []
+            for ids in job["ids"]:
+                audio = session.run(None, {
+                    "input": np.array([ids], dtype=np.int64),
+                    "input_lengths": np.array([len(ids)], dtype=np.int64),
+                    "scales": np.array(scales, dtype=np.float32),
+                })[0].reshape(-1)
+                peak = float(np.max(np.abs(audio))) if len(audio) else 0.0
+                audio = audio * (0.92 / peak) if peak > 1e-8 else audio * 0
+                if pieces:
+                    pieces.append(np.zeros(int(GAP * sr), dtype=np.float32))
+                pieces.append(trim(audio, sr))
+            audio = np.concatenate(pieces) if pieces else np.zeros(0, dtype=np.float32)
             pcm = (np.clip(audio, -1, 1) * 32767).astype("<i2")
             with wave.open(path + ".tmp", "wb") as w:
                 w.setnchannels(1)
                 w.setsampwidth(2)
-                w.setframerate(SAMPLE_RATE)
+                w.setframerate(sr)
                 w.writeframes(pcm.tobytes())
             os.replace(path + ".tmp", path)
             made += 1
-            if made % 25 == 0:
+            if made % 100 == 0:
                 print(f"  {made} rendered", file=sys.stderr, flush=True)
-        results.append({"key": job["key"], "phonemes": ps, "wav": path})
+        results.append({"key": job["key"], "wav": path})
     print(f"Rendered {made} new, {len(jobs) - made} from the cache.", file=sys.stderr)
     json.dump(results, sys.stdout, ensure_ascii=False)
 

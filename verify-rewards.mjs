@@ -981,7 +981,7 @@ console.log('Friends: parked at Ludvig\'s (or by his place in free driving) «Sp
 
 // Every line the game said in these tests has a clip in the new voice (dist/tts/voice/, made by node tts/make-voice.mjs): nothing said here
 // would fall back to the iPad's own voice.
-{const {sentences}=await import('./dist/tts/clips.mjs'),index=JSON.parse(fs.readFileSync('dist/tts/voice/ingrid.json','utf8'));
+{const {sentences}=await import('./dist/tts/clips.mjs'),index=JSON.parse(fs.readFileSync('dist/tts/voice/talesyntese.json','utf8'));
  const missing=[...everySpoken].flatMap(t=>sentences(t)).filter(s=>!index.clips[s]);
  assert.deepEqual([...new Set(missing)],[],'said without a clip (run node tts/make-voice.mjs)');
  console.log(`Every one of the ${everySpoken.size} lines said in these tests has clips in the new voice: OK`);}

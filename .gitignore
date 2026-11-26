@@ -12,6 +12,6 @@ height-test.json
 __pycache__/
 byasen-*.osm
 
-# Canora model and rendered clips (tts/make-voice.mjs)
+# The Piper model and rendered clips (tts/make-voice.mjs)
 tts/.voice-cache/
 __pycache__/
