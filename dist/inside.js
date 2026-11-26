@@ -325,7 +325,7 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
    if(kind==='pig'){walkTo(-2.7,2.6,{yaw:Math.PI*.7});return {type:'pig'};}
    if(kind==='door'){walkTo(3.45,1.5,{yaw:-Math.PI/2});return {type:'door'};}
    if(kind==='table'||kind==='bag'||kind==='glass'||kind==='phone')return {type:kind};
-   if(kind==='dish'&&o.userData.id)return {type:'dish',id:o.userData.id}; // a dish on the trolley (meal.js)
+   if(kind==='dish'&&o.userData.id)return {type:'dish',id:o.userData.id,slot:o.userData.slot}; // a dish on the trolley (meal.js); on the floor a tap is a walk, through the food
    return null;}
   if(onFloor&&Math.abs(at.x)<ROOM.x&&at.z>ROOM.back&&at.z<ROOM.front){walkTo(at.x,at.z);return {type:'floor'};}
   return null;}
@@ -349,6 +349,6 @@ export function createInside({T,renderer,canvas,on=()=>{}}){ // on(name, at): ga
   pig.update(dt,0,time);
   renderer.render(scene,camera);}
  // Mealtime: only from awake and standing, with the sofa a sofa.
- function startMeal(kind,dish=null){if(bed.on||bed.jumping||bed.u>0||bed.k>0)return false;return meal.start(kind,dish);}
+ function startMeal(kind,dish=null,slot=-1){if(bed.on||bed.jumping||bed.u>0||bed.k>0)return false;return meal.start(kind,dish,slot);}
  return {friends,get place(){return place;},home,away,meal,startMeal,mealTap:()=>meal.tap(),mealDrink:()=>meal.drink(),finishMeal:()=>meal.finish(),setBrushed:n=>meal.setBrushed(n),route,scene,camera,girl,pig,slots,pigHit,door,enter,refresh,update,pick,sleep,wake,jump,get asleep(){return bed.on;},get jumping(){return bed.jumping;},bed,dream,sofaBed,hitBoxes:slots.map(s=>s.hit),JUMP};
 }

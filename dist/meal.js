@@ -11,6 +11,7 @@
 // (25 November 2026) A white mobile lies on the table, and the food she orders on it waits on a trolley at the front of the room (food.js, game.js).
 // start('spoon', dish) puts a dish from the trolley where the bowl stands; she eats it in five bites like the bowl, pizza, the burger and sushi with her
 // fingers, the egg with the spoon. 'taken' is told at the first bite, when the dish has left the trolley for good.
+// (26 November 2026) After six on the trolley the food goes on the floor (food.js FLOOR_FOOD), each dish in its own place; she walks through it.
 export const MEAL={chair:{x:2.2,z:1.62},seat:.3,side:{x:1.56,z:1.62},table:{x:2.2,z:2.3,r:.46,h:.5},bowl:{x:2.12,z:1.98},glass:{x:2.4,z:1.935},bag:{x:3.05,z:2.52},stand:{x:3.05,z:1.9},chart:{x:2.3,y:2.92,z:-3.46},
  phone:{x:2.45,z:2.55,yaw:.5},cart:{x:-1.75,z:2.62}}; // the mobile at the front of the table to the right, on the screen on every size (not under the title); the trolley in front of the sofa, by the rug
 export const BITES=5,PUMP=16,BITE=1.05,DRINK=2;
@@ -20,7 +21,7 @@ export const FOODS=[{name:'grøt med blåbær',color:'#efe0bb',dots:'#4b5fae'},{
 const ease=k=>k*k*(3-2*k),mix=(a,b,k)=>a+(b-a)*k,turn=(from,to,k)=>from+Math.atan2(Math.sin(to-from),Math.cos(to-from))*k;
 
 import {createStarWall} from './star-wall.js';
-import {createDish,createBite,createPhone,createCart,dishById} from './food.js';
+import {createDish,createBite,createPhone,createCart,dishById,FOOD_CART,FLOOR_FOOD,pickFood} from './food.js';
 // Small builders shared with Ludvig's things at the table (friends.js, 25 November 2026): materials, meshes on a parent, rods between two points, an arm aimed at a point.
 export function meshKit(T){
  const std=(color,roughness=.8)=>new T.MeshStandardMaterial({color,roughness}),flat=color=>new T.MeshBasicMaterial({color});
@@ -82,11 +83,12 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
  const spoon=new T.Group();scene.add(spoon);const silver=std('#c9ced8',.35);cyl(.006,.007,.11,silver,0,.055,0,spoon,8);const sb=ball(1,silver,0,.125,0,spoon);sb.scale.set(.02,.026,.008);
  const bite=ball(1,std('#efe0bb'),0,.128,-.008,spoon);bite.scale.set(.016,.018,.012);const restSpoon=()=>{spoon.position.set(MEAL.bowl.x+.17,bowlY+.008,MEAL.bowl.z-.02);spoon.quaternion.setFromAxisAngle(new T.Vector3(1,0,0),Math.PI/2);spoon.rotateOnWorldAxis(Y,.4);bite.visible=false;};restSpoon();
  // ---- The white mobile and the trolley with the food she orders (food.js): only in her own room (homeThings; inside.js hides it at Ludvig's) ----
- // ordered: what she has ordered (game.js, setFood), arriving: the orders still on their way; the trolley shows the rest, without the dish on the table.
+ // ordered: what she has ordered, a dish for each place (game.js, setFood; null for an empty place); arriving: the places of the orders still on their way.
+ // The trolley shows places 0–5 and the floor the rest, without those on their way and the dish on the table.
  const homeThings=new T.Group();scene.add(homeThings);
  const phone=createPhone(T);phone.group.position.set(MEAL.phone.x,bowlY+.002,MEAL.phone.z);phone.group.rotation.y=MEAL.phone.yaw;homeThings.add(phone.group);let phoneOpen=false;
  const cart=createCart(T);cart.group.position.set(MEAL.cart.x,0,MEAL.cart.z);homeThings.add(cart.group);cart.group.visible=false;
- let ordered=[],arriving=[],shownKey=null,onCart=[],pop={i:-1,at:0};
+ let ordered=[],arriving=[],shownKey=null,onCart=[],pop={slot:-1,at:0},floorKey=null;const floor=new T.Group();homeThings.add(floor);const floorMats=new Map();
  // the dish she eats sits where the bowl stands; a bite of pizza, the burger or sushi is in her hand on its way up
  const dishSpot=new T.Group();dishSpot.position.set(MEAL.bowl.x,bowlY,MEAL.bowl.z);scene.add(dishSpot);let dish=null,handBite=null;
  const dispose=g=>g.traverse(o=>{if(o.isMesh){o.geometry.dispose();o.material.dispose();}});
@@ -122,17 +124,18 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
  // kind: null, 'spoon' or 'peg'; s: seconds into the step; bite: seconds into a spoonful (−1 between); queued: taps waiting; pump: seconds the pump has run;
  // dance: seconds into a twirl (−1 when not); view: how far the camera has glided in to the meal; food: today's dish (one after the other);
  // drink: seconds into a drink from the glass (−1 when not); drinkNext: the glass was tapped while she was busy, so she drinks next.
- // dish: the id of a dish from the trolley eaten instead of the bowl (null for the bowl); taken: it has left the trolley for good (at the first bite).
- const st={kind:null,last:null,step:'',s:0,bites:0,bite:-1,queued:0,pump:0,dance:-1,drink:-1,drinkNext:false,view:0,food:-1,dish:null,taken:false};
- function start(kind,dishId=null){if(st.kind)return false;const d=kind==='spoon'&&ordered.includes(dishId)?dishId:null;
-  Object.assign(st,{kind,last:kind,step:'walk',s:0,bites:0,bite:-1,queued:0,pump:0,dance:-1,drink:-1,drinkNext:false,dish:d,taken:false});if(kind==='spoon'&&!d)st.food=(st.food+1)%FOODS.length;
+ // dish: the id of a dish she has ordered, eaten instead of the bowl (null for the bowl); slot: its place, on the trolley or the floor (a tap on it, or
+ // else the one farthest out); taken: it has left its place for good (at the first bite).
+ const st={kind:null,last:null,step:'',s:0,bites:0,bite:-1,queued:0,pump:0,dance:-1,drink:-1,drinkNext:false,view:0,food:-1,dish:null,slot:-1,taken:false};
+ function start(kind,dishId=null,slot=-1){if(st.kind)return false;let d=kind==='spoon'&&dishById(dishId)?dishId:null;if(d&&ordered[slot]!==d)slot=pickFood(ordered,d);if(slot<0)d=null;
+  Object.assign(st,{kind,last:kind,step:'walk',s:0,bites:0,bite:-1,queued:0,pump:0,dance:-1,drink:-1,drinkNext:false,dish:d,slot:d?slot:-1,taken:false});if(kind==='spoon'&&!d)st.food=(st.food+1)%FOODS.length;
   const f=FOODS[Math.max(0,st.food)];food.material.color.set(f.color);bite.material.color.set(d==='egg'?'#ffd96a':f.color);for(const d of dots)d.material.color.set(f.dots);
   if(dish){dishSpot.remove(dish.group);dispose(dish.group);dish=null;}if(handBite){scene.remove(handBite);dispose(handBite);handBite=null;}
   if(d){dish=createDish(T,d);dishSpot.add(dish.group);if(dishById(d).hand){handBite=createBite(T,d);handBite.visible=false;scene.add(handBite);}}
   const to=kind==='spoon'?MEAL.side:MEAL.stand,face=kind==='spoon'?Math.atan2(-(ch.x-to.x),-(ch.z-to.z)):Math.atan2(-(MEAL.bag.x-to.x),-(MEAL.bag.z-to.z));walkTo(to.x,to.z,{yaw:face,meal:true},true);return true;}
  function next(){const list=STEPS[st.kind],i=list.indexOf(st.step);st.s=0;if(i>=list.length-1){end();return;}st.step=list[i+1];on(st.step);if(st.step==='eat'&&st.drinkNext){st.drinkNext=false;st.drink=0;}}
  function end(){const k=st.kind;if(!k)return;const p=k==='spoon'?MEAL.side:MEAL.stand;setHere(p.x,p.z,Math.PI);st.kind=null;st.step='';restSpoon();on('end');}
- function reset(){st.kind=null;st.step='';st.view=0;st.bite=-1;st.dance=-1;st.drink=-1;st.drinkNext=false;st.dish=null;st.taken=false;restSpoon();dress(0);}
+ function reset(){st.kind=null;st.step='';st.view=0;st.bite=-1;st.dance=-1;st.drink=-1;st.drinkNext=false;st.dish=null;st.slot=-1;st.taken=false;restSpoon();dress(0);}
  function tap(){if(!st.kind)return null;if(st.step==='eat'){if(st.bite>=0||st.drink>=0)st.queued=Math.min(2,st.queued+1);else st.bite=0;return 'bite';}
   if(st.step==='ready'){st.step='pump';st.s=0;st.pump=0;on('pump');return 'pump';}if(st.step==='pump'&&st.dance<0){st.dance=0;on('dance');return 'dance';}return null;}
  // A tap on the glass at a meal with the spoon: she drinks now ('drink'), or as soon as this spoonful is eaten or she has sat down ('later').
@@ -177,19 +180,35 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
   girl.group.updateMatrixWorld(true);arms[0].localToWorld(hand.set(0,-ARM,0));body.worldToLocal(hand);hand.sub(va.set(...g));glass.position.copy(body.localToWorld(hand));
   body.getWorldQuaternion(glass.quaternion);glass.quaternion.multiply(tilt.setFromAxisAngle(X,P.up*(.6+.4*P.sip)));return P;}
  // ---- The trolley and the mobile ----
- // What stands on the trolley: what she has ordered, in order, without the orders still on their way and the dish she has taken to the table.
- function cartList(){const l=[...ordered];for(const id of arriving){const i=l.lastIndexOf(id);if(i>=0)l.splice(i,1);}
-  if(st.kind==='spoon'&&st.dish&&!st.taken){const i=l.indexOf(st.dish);if(i>=0)l.splice(i,1);}return l;}
- // The dishes on the trolley, made again when the list changes (a dish that has just come pops up); the trolley is there while it has food on it or she eats
- // a dish from it, and is in the way (obstacles) while it is there in her own room. The mobile's screen lights up now and then, and while it is open.
- function dressCart(time){const list=cartList(),key=list.join();
-  if(key!==shownKey){const grew=shownKey!==null&&list.length>onCart.length;for(const d of onCart){cart.group.remove(d.group);dispose(d.group);}
-   onCart=list.map((id,i)=>{const d=createDish(T,id);d.group.position.copy(cart.slots[i]);cart.group.add(d.group);return d;});shownKey=key;if(grew)pop={i:list.length-1,at:time};
-   slotHits.forEach((h,i)=>{if(i<list.length){cart.group.updateMatrixWorld(true);cart.group.localToWorld(h.position.copy(cart.slots[i]));h.position.y+=.06;h.userData.id=list[i];}else{h.position.set(0,-50,0);h.userData.id=null;}});}
-  const p=onCart[pop.i],u=(time-pop.at)/.45;if(p){const k=u>=1||u<0?1:1+Math.sin(u*Math.PI)*.35*(1-u)-(1-u)*(1-u)*.9;p.group.scale.setScalar(Math.max(.05,k));if(u>=1)pop.i=-1;}
-  cart.group.visible=list.length>0||st.kind==='spoon'&&!!st.dish;
+ // The dishes there are to see, {id, slot} each: not those still on their way, nor the one on the table. On the trolley places 0–5, on the floor the rest.
+ function shownFood(from,to){const out=[];for(let slot=from;slot<Math.min(to,ordered.length);slot++){const id=ordered[slot];
+  if(id&&!arriving.includes(slot)&&!(st.kind==='spoon'&&st.dish&&!st.taken&&st.slot===slot))out.push({id,slot});}return out;}
+ const cartList=()=>shownFood(0,FOOD_CART),floorList=()=>shownFood(FOOD_CART,FOOD_CART+FLOOR_FOOD.length); // (never past the floor's last place)
+ // The dishes on the trolley, each in its place, made again when they change (a dish that has just come pops up); the trolley is there while it has food
+ // on it or she eats a dish from it, and is in the way (obstacles) while it is there in her own room. The mobile's screen lights up now and then, and while it is open.
+ function dressCart(time){const list=cartList(),key=list.map(o=>o.slot+o.id).join();
+  if(key!==shownKey){const before=new Set(onCart.map(d=>d.slot));for(const d of onCart){cart.group.remove(d.group);dispose(d.group);}
+   onCart=list.map(o=>{const d=createDish(T,o.id);d.slot=o.slot;d.group.position.copy(cart.slots[o.slot]);cart.group.add(d.group);return d;});
+   const fresh=shownKey!==null&&list.find(o=>!before.has(o.slot));if(fresh)pop={slot:fresh.slot,at:time};shownKey=key;cart.group.updateMatrixWorld(true);
+   slotHits.forEach((h,i)=>{const o=list.find(o=>o.slot===i);if(o){cart.group.localToWorld(h.position.copy(cart.slots[i]));h.position.y+=.06;h.userData.id=o.id;}else{h.position.set(0,-50,0);h.userData.id=null;}});}
+  const p=onCart.find(d=>d.slot===pop.slot),u=(time-pop.at)/.45;if(p){const k=u>=1||u<0?1:1+Math.sin(u*Math.PI)*.35*(1-u)-(1-u)*(1-u)*.9;p.group.scale.setScalar(Math.max(.05,k));if(u>=1)pop.slot=-1;}
+  cart.group.visible=list.length>0||st.kind==='spoon'&&!!st.dish&&st.slot<FOOD_CART;dressFloor();
   const i=obstacles.indexOf(cartRect),want=cart.group.visible&&homeThings.visible;if(want&&i<0)obstacles.push(cartRect);else if(!want&&i>=0)obstacles.splice(i,1);
   phone.set(phoneOpen?1:reduced()?.3:Math.pow(Math.max(0,Math.sin(time*1.3)),8));}
+ // The food on the floor: a floor full of food is more than a hundred dishes of a dozen pieces or more, which would be thousands of meshes to draw. So the
+ // floor's dishes (made a little coarser, createDish(…, true)) are joined into one mesh per colour, again only when a dish comes or goes.
+ function dressFloor(){const list=floorList(),key=list.map(o=>o.slot+o.id).join();if(key===floorKey)return;floorKey=key;
+  for(const m of [...floor.children]){floor.remove(m);m.geometry.dispose();}
+  const tmp=new T.Group(),by=new Map(),shown=o=>{for(let p=o;p&&p!==tmp;p=p.parent)if(!p.visible)return false;return true;};
+  for(const o of list){const f=FLOOR_FOOD[o.slot-FOOD_CART],d=createDish(T,o.id,true);d.group.position.set(f.x,f.y,f.z);d.group.rotation.y=f.yaw;d.group.scale.setScalar(.9);tmp.add(d.group);}
+  tmp.updateMatrixWorld(true);
+  tmp.traverse(m=>{if(!m.isMesh||!shown(m))return;const g=(m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone()).applyMatrix4(m.matrixWorld),c='#'+m.material.color.getHexString();
+   if(!by.has(c))by.set(c,[]);by.get(c).push(g);});
+  for(const [c,geos] of by){const n=geos.reduce((s,g)=>s+g.attributes.position.count,0),pos=new Float32Array(n*3),nor=new Float32Array(n*3);let k=0;
+   for(const g of geos){pos.set(g.attributes.position.array,k*3);nor.set(g.attributes.normal.array,k*3);k+=g.attributes.position.count;g.dispose();}
+   const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(pos,3));geo.setAttribute('normal',new T.BufferAttribute(nor,3));geo.computeBoundingSphere();
+   if(!floorMats.has(c))floorMats.set(c,new T.MeshStandardMaterial({color:c,roughness:.7}));floor.add(new T.Mesh(geo,floorMats.get(c)));}
+  dispose(tmp);}
  function dress(time){const k=st.kind,s=st.step,c=Math.min(1,st.s/stepTime());dressCart(time);
   // a dish from the trolley stands where the bowl was while she eats it, and is gone when she gets down from the chair
   const onTable=!!dish&&k==='spoon'&&['walk','sit','eat','full','up'].includes(s);bowl.visible=!onTable;if(dish){dish.group.visible=onTable;if(onTable)dish.set(foodLeft());}if(handBite)handBite.visible=false;
@@ -234,9 +253,9 @@ export function createMeal({T,scene,girl,walkTo,arrived,setHere,reduced=()=>fals
   g.position.set(st0.x,y,st0.z);g.rotation.set(0,yaw,0);return true;}
  // The camera glides in to the table, or to her and the backpack: what it should keep in view.
  function viewPoints(){const k=st.kind||st.last;return k==='spoon'?[[tb.x-.45,.5,tb.z+.1],[tb.x+.45,.5,tb.z+.1],[ch.x-.35,1.1,ch.z-.2],[ch.x+.35,1.1,ch.z-.2]]:[[MEAL.stand.x-.4,1.2,MEAL.stand.z],[MEAL.stand.x+.35,0,MEAL.stand.z],[MEAL.bag.x-.3,0,MEAL.bag.z+.25],[MEAL.bag.x+.3,.5,MEAL.bag.z]];}
- // game.js tells what she has ordered and what is on its way, and when the mobile is open.
+ // game.js tells what she has ordered (a dish or null for each place) and the places of what is on its way, and when the mobile is open.
  function setFood(list,onTheWay=[]){ordered=[...list];arriving=[...onTheWay];}
  return {st,start,tap,drink,finish,update,pose,reset,setBrushed,starWall,wallArt,foodLeft,viewPoints,hits:[tableHit,bagHit,glassHit,phoneHit,...slotHits],obstacles,bag,spoon,glass,food,worn,tubeOn,chart,
-  setFood,cartList,setPhoneOpen:o=>{phoneOpen=!!o;},homeThings,phone,cart,phoneHit,slotHits,dishSpot,get dish(){return dish;},get handBite(){return handBite;},get onCart(){return onCart;},
+  setFood,cartList,floorList,floor,setPhoneOpen:o=>{phoneOpen=!!o;},homeThings,phone,cart,phoneHit,slotHits,dishSpot,get dish(){return dish;},get handBite(){return handBite;},get onCart(){return onCart;},
   get active(){return !!st.kind;},get busy(){return !!st.kind&&st.step!=='walk';}};
 }
