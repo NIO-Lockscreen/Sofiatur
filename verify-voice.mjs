@@ -61,7 +61,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
  {const core=await import('./tts/piper-core.mjs'),espeak=await core.startEspeak('tts'),config=make.voiceConfig();assert.equal(config.dataset,'talesyntese');
   for(const c of JSON.parse(fs.readFileSync('tts/src/piper-fixture.json','utf8')).cases)assert.deepEqual(core.textToIdSentences(espeak,c.text,config),c.ids,'the same ids as Python Piper: '+c.text);
   const said=t=>core.fixPhonemes(core.ipa(espeak,t),make.PHONEME_FIXES);
-  for(const [word,expected] of [['Sofia','sʊfˈiːʲɑ'],['ishall','ˈiːshˌɑl'],['KIWI','kˈiːviː'],['pizza','pˈɪtsɑ'],['burger','bˈœrɡər'],['sushi','sˈʉːʃiː'],['mobilen','mʊbˈiːlən'],['Vi er framme!','viːʲ ˌɛːr frˈɑmma'],['igjen','ˈɪjən']])assert.equal(said(word),expected,word);}
+  for(const [word,expected] of [['Sofia','sʊfˈiːʲɑ'],['ishall','ˈiːshˌɑl'],['KIWI','kˈiːviː'],['pizza','pˈɪtsɑ'],['burger','bˈœrɡər'],['sushi','sˈʉːʃiː'],['mobilen','mʊbˈiːlən'],['Vi er framme!','viːʲ ˌɛːr frˈɑmma'],['igjen','ˈɪjən'],['støvsugeren','stˈœvsʉːɡərən'],['laderen','lˈɑːdərən']])assert.equal(said(word),expected,word);}
  assert.equal(crypto.createHash('sha1').update(pack).digest('hex').slice(0,12),index.hash,'the list belongs to this pack');assert.equal(pack.length,index.bytes);
  for(const [k,[at,len]] of Object.entries(index.clips)){assert.ok(at>=0&&len>400&&at+len<=pack.length,k);const h=pack.subarray(at,at+3);assert.ok(h[0]===0xff&&(h[1]&0xe0)===0xe0||h.toString()==='ID3','an MP3 stream starts at '+k);}
  for(const k of keys)assert.deepEqual(clips.sentences(k),[k],'a clip is one sentence: '+k);

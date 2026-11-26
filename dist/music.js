@@ -78,6 +78,8 @@ export function createMusic({fetch=globalThis.fetch,horns:files=HORNS}={}){
  Object.assign(SOUNDS,{nam:[[330,0,.12,.07],[392,.14,.15,.06]],click:[[1500,0,.035,.025,'square'],[950,.05,.05,.022,'square']],beep:[[1760,0,.13,.05]],pumpdone:[[1760,0,.13,.05],[1760,.24,.13,.05],[1760,.48,.13,.05]],
   scrub:[[2400,0,.05,.012,'triangle'],[1900,.06,.05,.01,'triangle']],squeeze:[[230,0,.3,.05,'triangle'],[180,.12,.25,.03,'triangle']],rinse:[[240,.3,.12,.04],[280,.52,.12,.04],[320,.74,.12,.04],[360,.96,.12,.04]]});
  // The white mobile (25 November 2026): two soft blips when it opens, a rising tone when an order is sent, and the doorbell when the food comes.
+ // The robot vacuum (26 November 2026): a low hum while it runs (again every half second) and a little tune when it starts and stops; the slurp is below.
+ Object.assign(SOUNDS,{vacuum:[[98,0,.5,.014,'sawtooth'],[196,0,.5,.006,'triangle']],robot:[[523,0,.13,.045],[659,.09,.13,.045],[784,.18,.13,.045]]});
  Object.assign(SOUNDS,{phone:[[1175,0,.07,.035],[1567,.09,.07,.035]],order:[[880,0,.12,.04],[1320,.1,.14,.035]],doorbell:[[659,0,.75,.07],[1318,0,.4,.014],[523,.42,.75,.07],[1046,.42,.4,.014]]});
  [0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26].forEach((s,i)=>{SOUNDS['ding'+i]=[[523.25*2**(s/12),0,.3,.045]];});
  return {
@@ -86,6 +88,7 @@ export function createMusic({fetch=globalThis.fetch,horns:files=HORNS}={}){
    else if(name==='sparkle')[1319,1568,2093].forEach((f,i)=>fx(f,i*.05,.16,.05));
    else if(name==='pop')fx(520,0,.09,.08,1150);
    else if(name==='boing')fx(210,0,.42,.07,640);
+   else if(name==='slurp')fx(240,0,.16,.05,900); // a dish sucked up by the robot vacuum
    else if(name==='glugg')[0,.22,.44].forEach((d,i)=>{fx(260-i*25,d,.13,.06,150);fx(520-i*50,d+.02,.06,.015,300);}); // three soft gulps from the glass (24 November 2026)
    else if(Array.isArray(SOUNDS[name]))for(const [f,d,l,p,t] of SOUNDS[name])sound(f,d,l,p,t);},
   preloadHorns(){hornContext();for(const name in files)loadHorn(name);},

@@ -42,8 +42,10 @@ export const VOICE = {
 //   «sushi» as «sus-hi» (sˈʉshiː), stresses «mobil» on the first syllable and gives «trillebordet» a long e in the middle. Here as
 //   Norwegians say them: «pitsa», «børger», «sushi» with sj, «mobil» stressed last.
 // - In Sofiatur: «ishall» has a short i (ˈɪshɑl, «i sal»); is-hall is ˈiːshˌɑl. KIWI is read with kj (xˈiːviː, «kjivi»); the shop is «kivi».
+// - The robot vacuum: «støvsugeren» gets a long, stressed e at the end (stˈœvsʉːɡˌeːrən, «støvsu-GEE-ren») and «laderen» a long e (lˈadeːrən).
 export const PHONEME_FIXES = [['pˈɪzaːn', 'pˈɪtsɑən'], ['pˈɪzɑ', 'pˈɪtsɑ'], ['bˈʉrɡeːrən', 'bˈœrɡərən'], ['bˈʉrɡər', 'bˈœrɡər'], ['sˈʉshiː', 'sˈʉːʃiː'],
-  ['mˈuːbiːl', 'mʊbˈiːl'], ['trˈɪlleːbˌuːrda', 'trˈɪləbˌuːrda'], ['ˈɪshɑl', 'ˈiːshˌɑl'], ['xˈiːviː', 'kˈiːviː']];
+  ['mˈuːbiːl', 'mʊbˈiːl'], ['trˈɪlleːbˌuːrda', 'trˈɪləbˌuːrda'], ['ˈɪshɑl', 'ˈiːshˌɑl'], ['xˈiːviː', 'kˈiːviː'],
+  ['sʉːɡˌeːrən', 'sʉːɡərən'], ['lˈadeːrən', 'lˈɑːdərən']];
 
 const config = (await import(path.join(HERE, 'voice-lines.mjs'))).default;
 const OUT = path.join(ROOT, config.out || 'tts/voice');
